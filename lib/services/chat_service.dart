@@ -146,7 +146,7 @@ Current conversation context: General assistance and chat.
             model: 'gemini-2.0-flash',
             apiKey: apiKey,
             generationConfig: GenerationConfig(
-              temperature: 0.7,
+              temperature: 0.0,
               maxOutputTokens: 2048,
             ),
           );

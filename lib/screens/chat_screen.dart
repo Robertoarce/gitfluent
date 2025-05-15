@@ -4,6 +4,7 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 import '../services/chat_service.dart';
 import '../services/settings_service.dart';
 import 'settings_screen.dart';
+import '../services/language_settings_service.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -38,10 +39,17 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   Widget build(BuildContext context) {
     final settings = context.watch<SettingsService>();
+    final languageSettings = context.watch<LanguageSettings>();
+    
+    String title = ' Professor is now ready';
+    if (languageSettings.targetLanguage != null) {
+      title += ' to teach ${languageSettings.targetLanguage?.name}';
+    }
+    title += ' using: ${settings.getProviderName(settings.currentProvider)}';
     
     return Scaffold(
       appBar: AppBar(
-        title: Text(' Professor is now ready, using:${settings.getProviderName(settings.currentProvider)}'),
+        title: Text(title),
         actions: [
           IconButton(
             icon: const Icon(Icons.settings),
@@ -127,16 +135,45 @@ class _ChatScreenState extends State<ChatScreen> {
             const SizedBox(width: 8),
             Consumer<ChatService>(
               builder: (context, chatService, child) {
+                final languageSettings = context.watch<LanguageSettings>();
                 return IconButton(
                   icon: const Icon(Icons.send),
                   onPressed: chatService.isLoading
                       ? null
                       : () {
                           if (_controller.text.isNotEmpty) {
+                            final targetLang = languageSettings.targetLanguage?.name ?? 'Italian';
+                            final nativeLang = languageSettings.nativeLanguage?.name ?? 'English';
+                            
                             chatService.updateSystemPrompt("""
-                            You are a teacher, you are helping me to learn italian,
-From now on translate to  italian everything I say, unless is in italian already then first correct it and then translate to english,
-Add at the end the verbs at infinitive and the correct conjugason in the time that is needed among the other persons conjugaisons
+You are a teacher helping me learn $targetLang. From now on:
+1. If I write in $nativeLang, translate it to $targetLang
+2. If I write in $targetLang, first correct it (if needed) and then translate it to $nativeLang
+3. For each response, include:
+   - The translation
+   - Any corrections (if the input was in $targetLang)
+   - The key verbs in their infinitive form
+   - The correct conjugation used in the context
+   - Other relevant conjugations
+4. Keep the tone light and playful
+
+Example format:
+'''$targetLang:
+[Original text in $targetLang]
+
+Corrections (if any):
+[List any corrections needed]
+
+$nativeLang translation:
+[Translation]
+
+Verb analysis:
+- Verb 1 (infinitive): [conjugations]
+- Verb 2 (infinitive): [conjugations]
+'''
+
+DO NOT include any other text than the example format.
+DO NOT include ''' in the response.
 """);
                             chatService.sendMessage(_controller.text);
                             _controller.clear();
