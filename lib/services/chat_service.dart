@@ -75,7 +75,7 @@ class ChatService extends ChangeNotifier {
             return;
           }
           _geminiModel = GenerativeModel(
-            model: 'gemini-pro',
+            model: 'gemini-2.0-flash',
             apiKey: apiKey,
           );
           debugPrint('Gemini initialized successfully');
