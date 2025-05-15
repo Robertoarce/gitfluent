@@ -7,7 +7,21 @@ import 'services/settings_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await dotenv.load(fileName: ".env");
+  
+  try {
+    await dotenv.load(fileName: ".env");
+    debugPrint('Loaded .env file successfully');
+    
+    // Verify API keys are present
+    final geminiKey = dotenv.env['GEMINI_API_KEY'];
+    final openaiKey = dotenv.env['OPENAI_API_KEY'];
+    
+    debugPrint('GEMINI_API_KEY present: ${geminiKey != null}');
+    debugPrint('OPENAI_API_KEY present: ${openaiKey != null}');
+    
+  } catch (e) {
+    debugPrint('Error loading .env file: $e');
+  }
   
   final settingsService = SettingsService();
   await settingsService.init();

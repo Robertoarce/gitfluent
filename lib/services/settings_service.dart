@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 enum AIProvider {
   gemini,
   openai,
-  claude,
-  // Add more providers here
 }
 
 class SettingsService extends ChangeNotifier {
@@ -39,8 +37,6 @@ class SettingsService extends ChangeNotifier {
         return 'Google Gemini';
       case AIProvider.openai:
         return 'OpenAI GPT';
-      case AIProvider.claude:
-        return 'Anthropic Claude';
     }
   }
 
@@ -50,8 +46,6 @@ class SettingsService extends ChangeNotifier {
         return 'GEMINI_API_KEY';
       case AIProvider.openai:
         return 'OPENAI_API_KEY';
-      case AIProvider.claude:
-        return 'CLAUDE_API_KEY';
     }
   }
 } 
