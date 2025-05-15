@@ -5,6 +5,39 @@ import 'package:langchain_openai/langchain_openai.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'settings_service.dart';
 
+enum MessageType {
+  system,
+  user,
+  assistant
+}
+
+class ChatMessage {
+  final String content;
+  final MessageType type;
+  final DateTime timestamp;
+
+  ChatMessage({
+    required this.content,
+    required this.type,
+    DateTime? timestamp,
+  }) : timestamp = timestamp ?? DateTime.now();
+
+  static ChatMessage system(String content) => ChatMessage(
+    content: content,
+    type: MessageType.system,
+  );
+
+  static ChatMessage user(String content) => ChatMessage(
+    content: content,
+    type: MessageType.user,
+  );
+
+  static ChatMessage assistant(String content) => ChatMessage(
+    content: content,
+    type: MessageType.assistant,
+  );
+}
+
 class Message {
   final String content;
   final bool isUser;
@@ -25,6 +58,41 @@ class ChatService extends ChangeNotifier {
   final List<ChatMessage> _chatHistory = [];
   final SettingsService _settings;
   GenerativeModel? get _activeGeminiModel => _geminiModel;
+  
+  // System prompt for context
+  static const String _defaultSystemPrompt = """
+You are a helpful AI assistant. Your responses should be:
+- Clear and concise
+- Professional but friendly
+- Accurate and well-researched
+- Formatted in markdown when appropriate
+
+Current conversation context: General assistance and chat.
+""";
+
+  String _systemPrompt = _defaultSystemPrompt;
+  
+  String get systemPrompt => _systemPrompt;
+  
+  // Update system prompt and context
+  void updateSystemPrompt(String newPrompt) {
+    _systemPrompt = newPrompt;
+    // Add system message to chat history if it's empty or different
+    if (_chatHistory.isEmpty || 
+        (_chatHistory.first.type == MessageType.system && 
+         _chatHistory.first.content != newPrompt)) {
+      if (_chatHistory.isNotEmpty && _chatHistory.first.type == MessageType.system) {
+        _chatHistory.removeAt(0);
+      }
+      _chatHistory.insert(0, ChatMessage.system(newPrompt));
+    }
+    notifyListeners();
+  }
+
+  // Reset to default prompt
+  void resetSystemPrompt() {
+    updateSystemPrompt(_defaultSystemPrompt);
+  }
 
   ChatService({required SettingsService settings}) : _settings = settings {
     _initializeAI();
@@ -77,10 +145,20 @@ class ChatService extends ChangeNotifier {
           _geminiModel = GenerativeModel(
             model: 'gemini-2.0-flash',
             apiKey: apiKey,
+            generationConfig: GenerationConfig(
+              temperature: 0.7,
+              maxOutputTokens: 2048,
+            ),
           );
           debugPrint('Gemini initialized successfully');
           break;
       }
+      
+      // Initialize chat history with system prompt
+      if (_chatHistory.isEmpty) {
+        _chatHistory.add(ChatMessage.system(_systemPrompt));
+      }
+      
     } catch (e) {
       debugPrint('Error initializing AI: $e');
       _messages.add(Message(
@@ -99,7 +177,7 @@ class ChatService extends ChangeNotifier {
 
     // Add user message
     _messages.add(Message(content: message, isUser: true));
-    _chatHistory.add(ChatMessage.humanText(message));
+    _chatHistory.add(ChatMessage.user(message));
     notifyListeners();
 
     _isLoading = true;
@@ -113,7 +191,18 @@ class ChatService extends ChangeNotifier {
           if (_openAILlm == null) {
             throw Exception('OpenAI not initialized. Please check your API key.');
           }
-          final prompt = PromptValue.chat(_chatHistory);
+          
+          final prompt = PromptValue.string('''
+${_systemPrompt.trim()}
+
+Previous conversation context:
+${_chatHistory.where((msg) => msg.type != MessageType.system).map((msg) => 
+  "${msg.type == MessageType.user ? 'User' : 'Assistant'}: ${msg.content}"
+).join('\n')}
+
+User: $message
+Assistant:''');
+          
           final response = await _openAILlm!.invoke(prompt);
           reply = response.firstOutput?.content ?? 'No response from AI';
           break;
@@ -122,15 +211,33 @@ class ChatService extends ChangeNotifier {
           if (_geminiModel == null) {
             throw Exception('Gemini not initialized. Please check your API key.');
           }
-          final response = await _geminiModel!.generateContent(
-            [Content.text(message)]
-          );
-          reply = response.text ?? 'No response from Gemini';
+          
+          // For Gemini, we'll send both the system prompt and user message together
+          final prompt = '''
+${_systemPrompt.trim()}
+
+Previous conversation context:
+${_chatHistory.where((msg) => msg.type != MessageType.system).map((msg) => 
+  "${msg.type == MessageType.user ? 'User' : 'Assistant'}: ${msg.content}"
+).join('\n')}
+
+User: $message
+Assistant:''';
+
+          final response = await _geminiModel!.generateContent([
+            Content.text(prompt)
+          ]);
+          
+          if (response.text == null) {
+            throw Exception('No response received from Gemini');
+          }
+          
+          reply = response.text!;
           break;
       }
       
       _messages.add(Message(content: reply, isUser: false));
-      _chatHistory.add(ChatMessage.system(reply));
+      _chatHistory.add(ChatMessage.assistant(reply));
     } catch (e) {
       debugPrint('Error sending message: $e');
       _messages.add(Message(
@@ -146,6 +253,8 @@ class ChatService extends ChangeNotifier {
   void clearChat() {
     _messages.clear();
     _chatHistory.clear();
+    // Reinitialize chat history with system prompt
+    _chatHistory.add(ChatMessage.system(_systemPrompt));
     notifyListeners();
   }
 } 

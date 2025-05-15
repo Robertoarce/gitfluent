@@ -41,7 +41,7 @@ class _ChatScreenState extends State<ChatScreen> {
     
     return Scaffold(
       appBar: AppBar(
-        title: Text('Chat with ${settings.getProviderName(settings.currentProvider)}'),
+        title: Text(' Professor is now ready, using:${settings.getProviderName(settings.currentProvider)}'),
         actions: [
           IconButton(
             icon: const Icon(Icons.settings),
@@ -133,6 +133,11 @@ class _ChatScreenState extends State<ChatScreen> {
                       ? null
                       : () {
                           if (_controller.text.isNotEmpty) {
+                            chatService.updateSystemPrompt("""
+                            You are a teacher, you are helping me to learn italian,
+From now on translate to  italian everything I say, unless is in italian already then first correct it and then translate to english,
+Add at the end the verbs at infinitive and the correct conjugason in the time that is needed among the other persons conjugaisons
+""");
                             chatService.sendMessage(_controller.text);
                             _controller.clear();
                           }
