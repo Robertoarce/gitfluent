@@ -47,21 +47,35 @@ class VocabularyItem {
         'lastSeen': lastSeen.toIso8601String(),
       };
 
-  factory VocabularyItem.fromJson(Map<String, dynamic> json) => VocabularyItem(
-        word: json['word'],
-        type: json['type'],
-        translation: json['translation'],
-        count: json['count'],
-        firstSeen: DateTime.parse(json['firstSeen']),
-        lastSeen: DateTime.parse(json['lastSeen']),
+  factory VocabularyItem.fromJson(Map<String, dynamic> json) {
+    try {
+      return VocabularyItem(
+        word: json['word'] as String,
+        type: json['type'] as String,
+        translation: json['translation'] as String,
+        count: json['count'] as int,
+        firstSeen: DateTime.parse(json['firstSeen'] as String),
+        lastSeen: DateTime.parse(json['lastSeen'] as String),
       );
+    } catch (e) {
+      debugPrint('Error parsing VocabularyItem: $e');
+      // Return a default item if parsing fails
+      return VocabularyItem(
+        word: json['word'] as String? ?? 'unknown',
+        type: json['type'] as String? ?? 'noun',
+        translation: json['translation'] as String? ?? 'unknown',
+      );
+    }
+  }
 }
 
 class VocabularyService extends ChangeNotifier {
-  late SharedPreferences _prefs;
+  SharedPreferences? _prefs;
   final Map<String, VocabularyItem> _vocabulary = {};
   static const String _storageKey = 'vocabulary';
+  bool _isInitialized = false;
 
+  bool get isInitialized => _isInitialized;
   Map<String, VocabularyItem> get vocabulary => Map.unmodifiable(_vocabulary);
   List<VocabularyItem> get verbs => 
       _vocabulary.values.where((item) => item.type == 'verb').toList();
@@ -69,71 +83,139 @@ class VocabularyService extends ChangeNotifier {
       _vocabulary.values.where((item) => item.type == 'noun').toList();
 
   Future<void> init() async {
-    _prefs = await SharedPreferences.getInstance();
-    await _loadVocabulary();
+    try {
+      debugPrint('Initializing VocabularyService...');
+      _prefs = await SharedPreferences.getInstance();
+      await _loadVocabulary();
+      _isInitialized = true;
+      debugPrint('VocabularyService initialized successfully');
+    } catch (e) {
+      debugPrint('Error initializing VocabularyService: $e');
+      _isInitialized = false;
+    }
   }
 
   Future<void> _loadVocabulary() async {
-    final String? vocabJson = _prefs.getString(_storageKey);
-    if (vocabJson != null) {
-      final Map<String, dynamic> vocabMap = json.decode(vocabJson);
-      vocabMap.forEach((key, value) {
-        _vocabulary[key] = VocabularyItem.fromJson(value);
-      });
+    try {
+      final String? vocabJson = _prefs?.getString(_storageKey);
+      if (vocabJson != null) {
+        debugPrint('Loading vocabulary from storage...');
+        final Map<String, dynamic> vocabMap = json.decode(vocabJson);
+        _vocabulary.clear();
+        vocabMap.forEach((key, value) {
+          try {
+            _vocabulary[key] = VocabularyItem.fromJson(value);
+          } catch (e) {
+            debugPrint('Error loading vocabulary item: $e');
+          }
+        });
+        debugPrint('Loaded ${_vocabulary.length} vocabulary items');
+      } else {
+        debugPrint('No vocabulary found in storage');
+      }
+    } catch (e) {
+      debugPrint('Error loading vocabulary: $e');
     }
     notifyListeners();
   }
 
   Future<void> _saveVocabulary() async {
-    final Map<String, dynamic> vocabMap = {};
-    _vocabulary.forEach((key, value) {
-      vocabMap[key] = value.toJson();
-    });
-    await _prefs.setString(_storageKey, json.encode(vocabMap));
+    try {
+      if (_prefs == null) {
+        debugPrint('SharedPreferences not initialized');
+        return;
+      }
+
+      final Map<String, dynamic> vocabMap = {};
+      _vocabulary.forEach((key, value) {
+        vocabMap[key] = value.toJson();
+      });
+      
+      final String jsonString = json.encode(vocabMap);
+      await _prefs!.setString(_storageKey, jsonString);
+      debugPrint('Saved ${_vocabulary.length} vocabulary items');
+    } catch (e) {
+      debugPrint('Error saving vocabulary: $e');
+    }
     notifyListeners();
   }
 
   Future<void> addOrUpdateItem(String word, String type, String translation) async {
-    final normalizedWord = word.toLowerCase().trim();
-    if (_vocabulary.containsKey(normalizedWord)) {
-      final existingItem = _vocabulary[normalizedWord]!;
-      _vocabulary[normalizedWord] = existingItem.copyWith(
-        count: existingItem.count + 1,
-        lastSeen: DateTime.now(),
-        // Update translation only if it's more complete
-        translation: translation.length > existingItem.translation.length 
-            ? translation 
-            : existingItem.translation,
-      );
-    } else {
-      _vocabulary[normalizedWord] = VocabularyItem(
-        word: normalizedWord,
-        type: type,
-        translation: translation,
-      );
+    if (!_isInitialized) {
+      debugPrint('VocabularyService not initialized');
+      return;
     }
-    await _saveVocabulary();
+
+    try {
+      final normalizedWord = word.toLowerCase().trim();
+      if (_vocabulary.containsKey(normalizedWord)) {
+        final existingItem = _vocabulary[normalizedWord]!;
+        _vocabulary[normalizedWord] = existingItem.copyWith(
+          count: existingItem.count + 1,
+          lastSeen: DateTime.now(),
+          translation: translation.length > existingItem.translation.length 
+              ? translation 
+              : existingItem.translation,
+        );
+        debugPrint('Updated vocabulary item: $normalizedWord');
+      } else {
+        _vocabulary[normalizedWord] = VocabularyItem(
+          word: normalizedWord,
+          type: type,
+          translation: translation,
+        );
+        debugPrint('Added new vocabulary item: $normalizedWord');
+      }
+      await _saveVocabulary();
+    } catch (e) {
+      debugPrint('Error adding/updating vocabulary item: $e');
+    }
   }
 
   Future<void> removeItem(String word) async {
-    final normalizedWord = word.toLowerCase().trim();
-    _vocabulary.remove(normalizedWord);
-    await _saveVocabulary();
+    if (!_isInitialized) {
+      debugPrint('VocabularyService not initialized');
+      return;
+    }
+
+    try {
+      final normalizedWord = word.toLowerCase().trim();
+      _vocabulary.remove(normalizedWord);
+      debugPrint('Removed vocabulary item: $normalizedWord');
+      await _saveVocabulary();
+    } catch (e) {
+      debugPrint('Error removing vocabulary item: $e');
+    }
   }
 
   List<VocabularyItem> getMostFrequent({int limit = 10}) {
+    if (!_isInitialized) {
+      debugPrint('VocabularyService not initialized');
+      return [];
+    }
+
     final items = _vocabulary.values.toList()
       ..sort((a, b) => b.count.compareTo(a.count));
     return items.take(limit).toList();
   }
 
   List<VocabularyItem> getRecentlyAdded({int limit = 10}) {
+    if (!_isInitialized) {
+      debugPrint('VocabularyService not initialized');
+      return [];
+    }
+
     final items = _vocabulary.values.toList()
       ..sort((a, b) => b.firstSeen.compareTo(a.firstSeen));
     return items.take(limit).toList();
   }
 
   List<VocabularyItem> searchVocabulary(String query) {
+    if (!_isInitialized) {
+      debugPrint('VocabularyService not initialized');
+      return [];
+    }
+
     final normalizedQuery = query.toLowerCase().trim();
     return _vocabulary.values
         .where((item) => 

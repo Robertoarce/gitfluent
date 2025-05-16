@@ -252,8 +252,9 @@ class _MessageBubble extends StatelessWidget {
 
 class _VocabularyButtons extends StatelessWidget {
   final Message message;
-  static final RegExp _sectionPattern = RegExp(r'(?:^|\n)([A-Za-z]+):\n(.*?)(?=\n[A-Za-z]+:|\Z)', dotAll: true);
-  static final RegExp _wordPattern = RegExp(r'\b([A-Za-z]+)\b');
+  // Updated patterns to match the AI response format
+  static final RegExp _verbPattern = RegExp(r'(?:^|\n)-\s*([A-Za-z]+(?:\s+[A-Za-z]+)*)\s*\(infinitive\):', multiLine: true);
+  static final RegExp _nounPattern = RegExp(r'(?:^|\n)([A-Za-z]+(?:\s+[A-Za-z]+)*)\s+translation:', multiLine: true);
 
   const _VocabularyButtons({required this.message});
 
@@ -261,74 +262,63 @@ class _VocabularyButtons extends StatelessWidget {
   Widget build(BuildContext context) {
     if (message.isUser) return const SizedBox();
 
-    // Get language settings
-    final languageSettings = context.read<LanguageSettings>();
-    final targetLang = languageSettings.targetLanguage?.name ?? 'Italian';
-    final nativeLang = languageSettings.nativeLanguage?.name ?? 'English';
+    debugPrint('Processing message content: ${message.content}');
 
-    // Extract the target language section
-    String? targetSection;
-    for (final match in _sectionPattern.allMatches(message.content)) {
-      final sectionName = match.group(1);
-      if (sectionName == targetLang) {
-        targetSection = match.group(2)?.trim();
-        break;
-      }
-    }
-
-    if (targetSection == null) return const SizedBox();
-
-    // Extract words from the target section
-    final words = _wordPattern
-        .allMatches(targetSection)
-        .map((m) => m.group(1)?.trim())
-        .where((word) => 
-          word != null && 
-          word.length > 2 && // Skip short words
-          !word.contains(RegExp(r'\d')) && // Skip words with numbers
-          !_isCommonWord(word)) // Skip common words
-        .map((word) => word!)
+    // Extract verbs and nouns
+    final verbs = _verbPattern
+        .allMatches(message.content)
+        .map((m) {
+          final verb = m.group(1)?.trim();
+          debugPrint('Found verb: $verb');
+          return verb;
+        })
+        .where((v) => v != null && v.isNotEmpty)
+        .map((v) => v!)
         .toSet()
         .toList();
 
-    if (words.isEmpty) return const SizedBox();
+    final nouns = _nounPattern
+        .allMatches(message.content)
+        .map((m) {
+          final noun = m.group(1)?.trim();
+          debugPrint('Found noun: $noun');
+          return noun;
+        })
+        .where((n) => n != null && n.isNotEmpty && !n.toLowerCase().contains('verb'))
+        .map((n) => n!)
+        .toSet()
+        .toList();
+
+    debugPrint('Found ${verbs.length} verbs and ${nouns.length} nouns');
+
+    if (verbs.isEmpty && nouns.isEmpty) {
+      debugPrint('No vocabulary items found in message');
+      return const SizedBox();
+    }
 
     return Padding(
       padding: const EdgeInsets.only(top: 8),
       child: Wrap(
         spacing: 8,
         runSpacing: 8,
-        children: words.map((word) => _VocabularyChip(
-          word: word,
-          type: _determineWordType(word),
-          translation: word,
-        )).toList(),
+        children: [
+          ...verbs.map((verb) => _VocabularyChip(
+                word: verb,
+                type: 'verb',
+                translation: 'To $verb',
+              )),
+          ...nouns.map((noun) => _VocabularyChip(
+                word: noun,
+                type: 'noun',
+                translation: noun,
+              )),
+        ],
       ),
     );
   }
-
-  String _determineWordType(String word) {
-    // Simple heuristic: if word ends in 'are', 'ere', 'ire' for Italian verbs
-    // You might want to adjust this based on the target language
-    if (word.endsWith('are') || word.endsWith('ere') || word.endsWith('ire')) {
-      return 'verb';
-    }
-    return 'noun';
-  }
-
-  bool _isCommonWord(String word) {
-    // Add common words to skip (articles, prepositions, etc.)
-    const commonWords = {
-      'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for',
-      'of', 'with', 'by', 'il', 'la', 'le', 'i', 'gli', 'lo', 'un', 'una',
-      'dei', 'delle', 'el', 'los', 'las', 'unos', 'unas',
-      'de', 'en', 'con', 'por', 'para'
-    };
-    return commonWords.contains(word.toLowerCase());
-  }
 }
 
-class _VocabularyChip extends StatelessWidget {
+class _VocabularyChip extends StatefulWidget {
   final String word;
   final String type;
   final String translation;
@@ -340,38 +330,80 @@ class _VocabularyChip extends StatelessWidget {
   });
 
   @override
+  State<_VocabularyChip> createState() => _VocabularyChipState();
+}
+
+class _VocabularyChipState extends State<_VocabularyChip> {
+  bool _isLoading = false;
+
+  @override
   Widget build(BuildContext context) {
-    final isVerb = type == 'verb';
+    final isVerb = widget.type == 'verb';
     return ActionChip(
       avatar: CircleAvatar(
         backgroundColor: Colors.transparent,
-        child: Icon(
-          isVerb ? Icons.run_circle : Icons.label,
-          color: isVerb ? Colors.blue.shade700 : Colors.green.shade700,
-          size: 18,
-        ),
+        child: _isLoading
+            ? SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: isVerb ? Colors.blue.shade700 : Colors.green.shade700,
+                ),
+              )
+            : Icon(
+                isVerb ? Icons.run_circle : Icons.label,
+                color: isVerb ? Colors.blue.shade700 : Colors.green.shade700,
+                size: 18,
+              ),
       ),
       backgroundColor: isVerb ? Colors.blue.shade50 : Colors.green.shade50,
       label: Text(
-        word,
+        widget.word,
         style: TextStyle(
           color: isVerb ? Colors.blue.shade900 : Colors.green.shade900,
         ),
       ),
-      onPressed: () {
-        context.read<VocabularyService>().addOrUpdateItem(
-          word,
-          type,
-          translation,
-        );
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Added "$word" to your vocabulary'),
-            duration: const Duration(seconds: 2),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      },
+      onPressed: _isLoading
+          ? null
+          : () async {
+              setState(() => _isLoading = true);
+              try {
+                final vocabularyService = context.read<VocabularyService>();
+                if (!vocabularyService.isInitialized) {
+                  throw Exception('Vocabulary service not initialized');
+                }
+                
+                await vocabularyService.addOrUpdateItem(
+                  widget.word,
+                  widget.type,
+                  widget.translation,
+                );
+
+                if (!mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Added "${widget.word}" to your vocabulary'),
+                    duration: const Duration(seconds: 2),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              } catch (e) {
+                if (!mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Error adding word: $e'),
+                    backgroundColor: Colors.red,
+                    duration: const Duration(seconds: 2),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              } finally {
+                if (mounted) {
+                  setState(() => _isLoading = false);
+                }
+              }
+            },
     );
   }
 } 

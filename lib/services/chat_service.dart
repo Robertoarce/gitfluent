@@ -61,13 +61,17 @@ class ChatService extends ChangeNotifier {
   
   // System prompt for context
   static const String _defaultSystemPrompt = """
-You are a helpful AI assistant. Your responses should be:
-- Clear and concise
-- Professional but friendly
-- Accurate and well-researched
-- Formatted in markdown when appropriate
+You are a helpful language learning assistant. Your responses should be:
+- Clear and structured
+- Focused on vocabulary and grammar
+- Include translations and examples
+- Use consistent formatting for vocabulary items:
+  - verb (infinitive): [conjugations]
+  verb translation: [translation]
+  - noun: [article + noun]
+  noun translation: [translation]
 
-Current conversation context: General assistance and chat.
+Current conversation context: Language learning assistance.
 """;
 
   String _systemPrompt = _defaultSystemPrompt;

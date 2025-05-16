@@ -5,6 +5,7 @@ import 'screens/chat_screen.dart';
 import 'services/chat_service.dart';
 import 'services/settings_service.dart';
 import 'services/language_settings_service.dart';
+import 'services/vocabulary_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -30,20 +31,26 @@ void main() async {
   final languageSettings = LanguageSettings();
   await languageSettings.init();
   
+  final vocabularyService = VocabularyService();
+  await vocabularyService.init();
+  
   runApp(MyApp(
     settingsService: settingsService,
     languageSettings: languageSettings,
+    vocabularyService: vocabularyService,
   ));
 }
 
 class MyApp extends StatelessWidget {
   final SettingsService settingsService;
   final LanguageSettings languageSettings;
+  final VocabularyService vocabularyService;
   
   const MyApp({
     super.key,
     required this.settingsService,
     required this.languageSettings,
+    required this.vocabularyService,
   });
 
   @override
@@ -52,6 +59,7 @@ class MyApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider.value(value: settingsService),
         ChangeNotifierProvider.value(value: languageSettings),
+        ChangeNotifierProvider.value(value: vocabularyService),
         ChangeNotifierProxyProvider<SettingsService, ChatService>(
           create: (context) => ChatService(settings: settingsService),
           update: (context, settings, previous) =>
