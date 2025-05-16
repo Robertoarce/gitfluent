@@ -5,6 +5,7 @@ import '../services/chat_service.dart';
 import '../services/settings_service.dart';
 import '../services/language_settings_service.dart';
 import '../services/vocabulary_service.dart';
+import '../services/nlp_service.dart';
 import 'settings_screen.dart';
 import 'vocabulary_review_screen.dart';
 
@@ -250,49 +251,117 @@ class _MessageBubble extends StatelessWidget {
   }
 }
 
-class _VocabularyButtons extends StatelessWidget {
+class _VocabularyButtons extends StatefulWidget {
   final Message message;
-  // Updated patterns to match the AI response format
-  static final RegExp _verbPattern = RegExp(r'(?:^|\n)-\s*([A-Za-z]+(?:\s+[A-Za-z]+)*)\s*\(infinitive\):', multiLine: true);
-  static final RegExp _nounPattern = RegExp(r'(?:^|\n)([A-Za-z]+(?:\s+[A-Za-z]+)*)\s+translation:', multiLine: true);
 
   const _VocabularyButtons({required this.message});
 
   @override
+  State<_VocabularyButtons> createState() => _VocabularyButtonsState();
+}
+
+class _VocabularyButtonsState extends State<_VocabularyButtons> {
+  bool _isLoading = true;
+  final Map<String, String> _verbs = {};
+  final Map<String, String> _nouns = {};
+  static final RegExp _translationPattern = RegExp(r'([A-Za-z]+(?:\s+[A-Za-z]+)*)\s+translation:\s*([^\n]+)', multiLine: true);
+
+  @override
+  void initState() {
+    super.initState();
+    _processMessage();
+  }
+
+  Future<void> _processMessage() async {
+    if (widget.message.isUser) {
+      setState(() => _isLoading = false);
+      return;
+    }
+
+    try {
+      debugPrint('Processing message content: ${widget.message.content}');
+
+      // Get the target language code
+      final languageSettings = context.read<LanguageSettings>();
+      final targetLang = languageSettings.targetLanguage?.code ?? 'it';
+
+      // Extract the target language section
+      final targetLangName = languageSettings.targetLanguage?.name ?? 'Italian';
+      final targetSection = _extractTargetSection(widget.message.content, targetLangName);
+      
+      if (targetSection == null) {
+        debugPrint('No target language section found');
+        setState(() => _isLoading = false);
+        return;
+      }
+
+      // Analyze the text
+      final words = await NLPService.analyzeText(targetSection, targetLang);
+      
+      // Process translations
+      final translations = _extractTranslations(widget.message.content);
+
+      // Group words by type
+      for (final word in words) {
+        final translation = translations[word.word] ?? 
+            (word.type == 'verb' ? 'to ${word.word}' : word.word);
+            
+        if (word.type == 'verb') {
+          _verbs[word.word] = translation;
+        } else if (word.type == 'noun') {
+          _nouns[word.word] = translation;
+        }
+      }
+
+      debugPrint('Found ${_verbs.length} verbs and ${_nouns.length} nouns');
+    } catch (e) {
+      debugPrint('Error processing message: $e');
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  String? _extractTargetSection(String content, String targetLang) {
+    final sectionPattern = RegExp(
+      r'(?:^|\n)' + RegExp.escape(targetLang) + r':\s*\n(.*?)(?=\n\w+:|$)',
+      multiLine: true,
+      dotAll: true,
+    );
+    
+    final match = sectionPattern.firstMatch(content);
+    return match?.group(1)?.trim();
+  }
+
+  Map<String, String> _extractTranslations(String content) {
+    final translations = <String, String>{};
+    for (final match in _translationPattern.allMatches(content)) {
+      final word = match.group(1)?.trim();
+      final translation = match.group(2)?.trim();
+      if (word != null && translation != null) {
+        translations[word] = translation;
+      }
+    }
+    return translations;
+  }
+
+  @override
   Widget build(BuildContext context) {
-    if (message.isUser) return const SizedBox();
+    if (_isLoading) {
+      return const Padding(
+        padding: EdgeInsets.only(top: 8),
+        child: Center(
+          child: SizedBox(
+            width: 24,
+            height: 24,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+        ),
+      );
+    }
 
-    debugPrint('Processing message content: ${message.content}');
-
-    // Extract verbs and nouns
-    final verbs = _verbPattern
-        .allMatches(message.content)
-        .map((m) {
-          final verb = m.group(1)?.trim();
-          debugPrint('Found verb: $verb');
-          return verb;
-        })
-        .where((v) => v != null && v.isNotEmpty)
-        .map((v) => v!)
-        .toSet()
-        .toList();
-
-    final nouns = _nounPattern
-        .allMatches(message.content)
-        .map((m) {
-          final noun = m.group(1)?.trim();
-          debugPrint('Found noun: $noun');
-          return noun;
-        })
-        .where((n) => n != null && n.isNotEmpty && !n.toLowerCase().contains('verb'))
-        .map((n) => n!)
-        .toSet()
-        .toList();
-
-    debugPrint('Found ${verbs.length} verbs and ${nouns.length} nouns');
-
-    if (verbs.isEmpty && nouns.isEmpty) {
-      debugPrint('No vocabulary items found in message');
+    if (_verbs.isEmpty && _nouns.isEmpty) {
       return const SizedBox();
     }
 
@@ -302,15 +371,15 @@ class _VocabularyButtons extends StatelessWidget {
         spacing: 8,
         runSpacing: 8,
         children: [
-          ...verbs.map((verb) => _VocabularyChip(
-                word: verb,
+          ..._verbs.entries.map((entry) => _VocabularyChip(
+                word: entry.key,
                 type: 'verb',
-                translation: 'To $verb',
+                translation: entry.value,
               )),
-          ...nouns.map((noun) => _VocabularyChip(
-                word: noun,
+          ..._nouns.entries.map((entry) => _VocabularyChip(
+                word: entry.key,
                 type: 'noun',
-                translation: noun,
+                translation: entry.value,
               )),
         ],
       ),

@@ -18,6 +18,9 @@ dependencies:
   google_generative_ai: ^0.2.0
   langchain: ^0.3.0
   langchain_openai: ^0.3.0
+  ffi: ^2.1.0
+  path_provider: ^2.1.2
+  path: ^1.8.3
 
 dev_dependencies:
   flutter_test:
@@ -27,4 +30,5 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
-    - .env 
+    - .env
+    - assets/dictionaries/ 
