@@ -18,6 +18,8 @@ class SettingsScreen extends StatelessWidget {
           _buildAIProviderSection(context),
           const Divider(height: 32),
           _buildLanguageSection(context),
+          const Divider(height: 32),
+          _buildAnalysisLimitsSection(context),
         ],
       ),
     );
@@ -159,6 +161,92 @@ class SettingsScreen extends StatelessWidget {
           onChanged: onChanged,
         ),
       ),
+    );
+  }
+
+  Widget _buildAnalysisLimitsSection(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Analysis Limits',
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 16),
+        Consumer<SettingsService>(
+          builder: (context, settings, child) {
+            return Column(
+              children: [
+                _buildLimitSlider(
+                  context: context,
+                  label: 'Maximum Verbs',
+                  value: settings.maxVerbs.toDouble(),
+                  min: 1,
+                  max: SettingsService.maxVerbsLimit.toDouble(),
+                  defaultValue: SettingsService.defaultMaxVerbs,
+                  onChanged: (value) => settings.setMaxVerbs(value.round()),
+                ),
+                const SizedBox(height: 16),
+                _buildLimitSlider(
+                  context: context,
+                  label: 'Maximum Nouns',
+                  value: settings.maxNouns.toDouble(),
+                  min: 1,
+                  max: SettingsService.maxNounsLimit.toDouble(),
+                  defaultValue: SettingsService.defaultMaxNouns,
+                  onChanged: (value) => settings.setMaxNouns(value.round()),
+                ),
+              ],
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildLimitSlider({
+    required BuildContext context,
+    required String label,
+    required double value,
+    required double min,
+    required double max,
+    required int defaultValue,
+    required ValueChanged<double> onChanged,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            Text(
+              '${value.round()} (Default: $defaultValue)',
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.secondary,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Slider(
+          value: value,
+          min: min,
+          max: max,
+          divisions: (max - min).round(),
+          label: value.round().toString(),
+          onChanged: onChanged,
+        ),
+      ],
     );
   }
 } 

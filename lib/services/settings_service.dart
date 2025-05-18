@@ -8,10 +8,22 @@ enum AIProvider {
 
 class SettingsService extends ChangeNotifier {
   static const String _providerKey = 'ai_provider';
+  static const String _maxVerbsKey = 'max_verbs';
+  static const String _maxNounsKey = 'max_nouns';
+  
+  static const int defaultMaxVerbs = 5;
+  static const int defaultMaxNouns = 10;
+  static const int maxVerbsLimit = 15;  // 3x default
+  static const int maxNounsLimit = 30;  // 3x default
+  
   late SharedPreferences _prefs;
   AIProvider _currentProvider = AIProvider.gemini;
+  int _maxVerbs = defaultMaxVerbs;
+  int _maxNouns = defaultMaxNouns;
 
   AIProvider get currentProvider => _currentProvider;
+  int get maxVerbs => _maxVerbs;
+  int get maxNouns => _maxNouns;
 
   Future<void> init() async {
     _prefs = await SharedPreferences.getInstance();
@@ -22,6 +34,10 @@ class SettingsService extends ChangeNotifier {
         orElse: () => AIProvider.gemini,
       );
     }
+    
+    _maxVerbs = _prefs.getInt(_maxVerbsKey) ?? defaultMaxVerbs;
+    _maxNouns = _prefs.getInt(_maxNounsKey) ?? defaultMaxNouns;
+    
     notifyListeners();
   }
 
@@ -29,6 +45,22 @@ class SettingsService extends ChangeNotifier {
     _currentProvider = provider;
     await _prefs.setString(_providerKey, provider.toString());
     notifyListeners();
+  }
+
+  Future<void> setMaxVerbs(int value) async {
+    if (value >= 1 && value <= maxVerbsLimit) {
+      _maxVerbs = value;
+      await _prefs.setInt(_maxVerbsKey, value);
+      notifyListeners();
+    }
+  }
+
+  Future<void> setMaxNouns(int value) async {
+    if (value >= 1 && value <= maxNounsLimit) {
+      _maxNouns = value;
+      await _prefs.setInt(_maxNounsKey, value);
+      notifyListeners();
+    }
   }
 
   String getProviderName(AIProvider provider) {

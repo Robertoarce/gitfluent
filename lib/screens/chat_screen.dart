@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import '../services/chat_service.dart';
@@ -137,36 +138,65 @@ class _ChatScreenState extends State<ChatScreen> {
         child: Row(
           children: [
             Expanded(
-              child: TextField(
-                controller: _controller,
-                decoration: InputDecoration(
-                  hintText: 'Type your message...',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(24),
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
-                ),
-                maxLines: null,
-                textCapitalization: TextCapitalization.sentences,
+              child: Consumer2<ChatService, LanguageSettings>(
+                builder: (context, chatService, languageSettings, child) {
+                  return KeyboardListener(
+                    focusNode: FocusNode(),
+                    onKeyEvent: (event) {
+                      if (event is KeyDownEvent &&
+                          event.logicalKey == LogicalKeyboardKey.enter &&
+                          HardwareKeyboard.instance.isShiftPressed &&
+                          !HardwareKeyboard.instance.isControlPressed) {
+                        _sendMessage(chatService, languageSettings);
+                      }
+                    },
+                    child: TextField(
+                      controller: _controller,
+                      decoration: InputDecoration(
+                        hintText: 'Type your message... (Shift+Enter to send)',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(24),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                      ),
+                      maxLines: null,
+                      textCapitalization: TextCapitalization.sentences,
+                      keyboardType: TextInputType.multiline,
+                    ),
+                  );
+                },
               ),
             ),
             const SizedBox(width: 8),
-            Consumer<ChatService>(
-              builder: (context, chatService, child) {
-                final languageSettings = context.watch<LanguageSettings>();
+            Consumer2<ChatService, LanguageSettings>(
+              builder: (context, chatService, languageSettings, child) {
                 return IconButton(
                   icon: const Icon(Icons.send),
                   onPressed: chatService.isLoading
                       ? null
-                      : () {
-                          if (_controller.text.isNotEmpty) {
-                            final targetLang = languageSettings.targetLanguage?.name ?? 'Italian';
-                            final nativeLang = languageSettings.nativeLanguage?.name ?? 'English';
-                            
-                            chatService.updateSystemPrompt("""
+                      : () => _sendMessage(chatService, languageSettings),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _sendMessage(ChatService chatService, LanguageSettings languageSettings) {
+    if (_controller.text.isEmpty) return;
+    
+    final targetLang = languageSettings.targetLanguage?.name ?? 'Italian';
+    final nativeLang = languageSettings.nativeLanguage?.name ?? 'English';
+    final settings = context.read<SettingsService>();
+    final maxVerbs = settings.maxVerbs;
+    final maxNouns = settings.maxNouns;
+    
+    chatService.updateSystemPrompt("""
 You are a teacher helping me learn $targetLang. From now on:
 1. If I write in $nativeLang, translate it to $targetLang
 2. If I write in $targetLang, first correct it (if needed) and then translate it to $nativeLang
@@ -179,9 +209,11 @@ You are a teacher helping me learn $targetLang. From now on:
 4. Keep the tone light and playful
 
 Example format:
-$targetLang:
-[Original text in $targetLang]
+[INPUT]
+[Original text, in any mix of languages]
 
+[EXPECTED OUTPUT]
+$targetLang:
 Corrections (if any):
 [List any corrections needed]
 
@@ -191,21 +223,18 @@ $nativeLang translation:
 Verb analysis:
 - Verb 1 (infinitive): [conjugations]
 - Verb 2 (infinitive): [conjugations]
+[Continue with the next verbs, up to $maxVerbs verbs]
+
+Nouns analysis:
+- Noun 1 (singular): [Definition]
+- Noun 2 (singular): [Definition]
+[Continue with the next nouns, up to $maxNouns nouns]
 
 DO NOT include any other text than the example format.
 DO NOT include ''' in the response.
 """);
-                            chatService.sendMessage(_controller.text);
-                            _controller.clear();
-                          }
-                        },
-                );
-              },
-            ),
-          ],
-        ),
-      ),
-    );
+    chatService.sendMessage(_controller.text);
+    _controller.clear();
   }
 }
 
@@ -232,13 +261,13 @@ class _MessageBubble extends StatelessWidget {
           borderRadius: BorderRadius.circular(16),
         ),
         child: isUser
-            ? Text(
+            ? SelectableText(
                 message.content,
                 style: TextStyle(
                   color: Theme.of(context).colorScheme.onPrimary,
                 ),
               )
-            : MarkdownBody(
+            : SelectableMarkdown(
                 data: message.content,
                 styleSheet: MarkdownStyleSheet(
                   p: TextStyle(
@@ -261,10 +290,9 @@ class _VocabularyButtons extends StatefulWidget {
 }
 
 class _VocabularyButtonsState extends State<_VocabularyButtons> {
-  bool _isLoading = true;
+  bool _isLoading = false;
   final Map<String, String> _verbs = {};
   final Map<String, String> _nouns = {};
-  static final RegExp _translationPattern = RegExp(r'([A-Za-z]+(?:\s+[A-Za-z]+)*)\s+translation:\s*([^\n]+)', multiLine: true);
 
   @override
   void initState() {
@@ -279,37 +307,41 @@ class _VocabularyButtonsState extends State<_VocabularyButtons> {
     }
 
     try {
-      debugPrint('Processing message content: ${widget.message.content}');
-
-      // Get the target language code
-      final languageSettings = context.read<LanguageSettings>();
-      final targetLang = languageSettings.targetLanguage?.code ?? 'it';
-
-      // Extract the target language section
-      final targetLangName = languageSettings.targetLanguage?.name ?? 'Italian';
-      final targetSection = _extractTargetSection(widget.message.content, targetLangName);
+      final content = widget.message.content;
       
-      if (targetSection == null) {
-        debugPrint('No target language section found');
-        setState(() => _isLoading = false);
-        return;
+      // Extract verbs
+      final verbSection = _extractSection(content, 'Verb analysis:', 'Nouns analysis:');
+      if (verbSection != null) {
+        final verbLines = verbSection.split('\n');
+        for (final line in verbLines) {
+          if (line.trim().startsWith('-')) {
+            final match = RegExp(r'-\s*([\w\s]+)\s*\((.*?)\)').firstMatch(line);
+            if (match != null) {
+              final verb = match.group(1)?.trim();
+              final meaning = match.group(2)?.trim();
+              if (verb != null && meaning != null) {
+                _verbs[verb] = meaning;
+              }
+            }
+          }
+        }
       }
 
-      // Analyze the text
-      final words = await NLPService.analyzeText(targetSection, targetLang);
-      
-      // Process translations
-      final translations = _extractTranslations(widget.message.content);
-
-      // Group words by type
-      for (final word in words) {
-        final translation = translations[word.word] ?? 
-            (word.type == 'verb' ? 'to ${word.word}' : word.word);
-            
-        if (word.type == 'verb') {
-          _verbs[word.word] = translation;
-        } else if (word.type == 'noun') {
-          _nouns[word.word] = translation;
+      // Extract nouns
+      final nounSection = _extractSection(content, 'Nouns analysis:', null);
+      if (nounSection != null) {
+        final nounLines = nounSection.split('\n');
+        for (final line in nounLines) {
+          if (line.trim().startsWith('-')) {
+            final match = RegExp(r'-\s*([\w\s]+)\s*\((.*?)\)').firstMatch(line);
+            if (match != null) {
+              final noun = match.group(1)?.trim();
+              final meaning = match.group(2)?.trim();
+              if (noun != null && meaning != null) {
+                _nouns[noun] = meaning;
+              }
+            }
+          }
         }
       }
 
@@ -323,27 +355,18 @@ class _VocabularyButtonsState extends State<_VocabularyButtons> {
     }
   }
 
-  String? _extractTargetSection(String content, String targetLang) {
-    final sectionPattern = RegExp(
-      r'(?:^|\n)' + RegExp.escape(targetLang) + r':\s*\n(.*?)(?=\n\w+:|$)',
-      multiLine: true,
-      dotAll: true,
-    );
-    
-    final match = sectionPattern.firstMatch(content);
-    return match?.group(1)?.trim();
-  }
+  String? _extractSection(String content, String startMarker, String? endMarker) {
+    final startIndex = content.indexOf(startMarker);
+    if (startIndex == -1) return null;
 
-  Map<String, String> _extractTranslations(String content) {
-    final translations = <String, String>{};
-    for (final match in _translationPattern.allMatches(content)) {
-      final word = match.group(1)?.trim();
-      final translation = match.group(2)?.trim();
-      if (word != null && translation != null) {
-        translations[word] = translation;
-      }
+    final start = startIndex + startMarker.length;
+    final end = endMarker != null ? content.indexOf(endMarker, start) : content.length;
+    
+    if (end == -1) {
+      return content.substring(start).trim();
     }
-    return translations;
+    
+    return content.substring(start, end).trim();
   }
 
   @override
@@ -473,6 +496,25 @@ class _VocabularyChipState extends State<_VocabularyChip> {
                 }
               }
             },
+    );
+  }
+}
+
+class SelectableMarkdown extends StatelessWidget {
+  final String data;
+  final MarkdownStyleSheet? styleSheet;
+
+  const SelectableMarkdown({
+    super.key,
+    required this.data,
+    this.styleSheet,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SelectableText(
+      data,
+      style: styleSheet?.p ?? DefaultTextStyle.of(context).style,
     );
   }
 } 
