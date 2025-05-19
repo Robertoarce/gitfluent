@@ -65,3 +65,31 @@ To customize the LLM integration:
 ## Contributing
 
 Feel free to submit issues and enhancement requests! 
+
+
+
+## upcoming ideas:
+
+1) personalized persistent teaching (users creation):
+- db of users, with:
+    - user preferences
+    - history of chat
+    - vocabulary db
+- chat llm:
+    - it will be a teacher:
+        - present new verbs, nouns, adjectives and adverbs.
+    - situational character:
+        - a personage, such as cashier, waiter, boss, colleague, investor
+
+
+
+- improver target:
+    - vocabulary review
+    - grammar review
+    - pronunciation
+    - cultural (regional variation)
+
+- quiz maker!
+-  memory cards ! 
+- image story maker !
+- maze story! 
