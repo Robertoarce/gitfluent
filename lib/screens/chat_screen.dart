@@ -7,6 +7,7 @@ import '../services/settings_service.dart';
 import '../services/language_settings_service.dart';
 import '../services/vocabulary_service.dart';
 import '../services/nlp_service.dart';
+import '../models/vocabulary_item.dart';
 import 'settings_screen.dart';
 import 'vocabulary_review_screen.dart';
 
@@ -195,6 +196,7 @@ class _ChatScreenState extends State<ChatScreen> {
     final settings = context.read<SettingsService>();
     final maxVerbs = settings.maxVerbs;
     final maxNouns = settings.maxNouns;
+    final maxAdverbs = settings.maxNouns;  // Using maxNouns as default for adverbs
     
     chatService.updateSystemPrompt("""
 You are a teacher helping me learn $targetLang. From now on:
@@ -229,6 +231,11 @@ Nouns analysis:
 - Noun 1 (singular): [Definition]
 - Noun 2 (singular): [Definition]
 [Continue with the next nouns, up to $maxNouns nouns]
+
+Adverbs analysis:
+- Adverb 1 (singular): [Definition]
+- Adverb 2 (singular): [Definition]
+[Continue with the next adverbs, up to $maxAdverbs adverbs]
 
 DO NOT include any other text than the example format.
 DO NOT include ''' in the response.
@@ -293,10 +300,15 @@ class _VocabularyButtonsState extends State<_VocabularyButtons> {
   bool _isLoading = false;
   final Map<String, String> _verbs = {};
   final Map<String, String> _nouns = {};
+  final Map<String, String> _adverbs = {};
+  final Map<String, Map<String, dynamic>> _conjugations = {};
+  final Map<String, String> _definitions = {};
+  late final String _conversationId;
 
   @override
   void initState() {
     super.initState();
+    _conversationId = DateTime.now().toIso8601String();
     _processMessage();
   }
 
@@ -309,43 +321,12 @@ class _VocabularyButtonsState extends State<_VocabularyButtons> {
     try {
       final content = widget.message.content;
       
-      // Extract verbs
-      final verbSection = _extractSection(content, 'Verb analysis:', 'Nouns analysis:');
-      if (verbSection != null) {
-        final verbLines = verbSection.split('\n');
-        for (final line in verbLines) {
-          if (line.trim().startsWith('-')) {
-            final match = RegExp(r'-\s*([\w\s]+)\s*\((.*?)\)').firstMatch(line);
-            if (match != null) {
-              final verb = match.group(1)?.trim();
-              final meaning = match.group(2)?.trim();
-              if (verb != null && meaning != null) {
-                _verbs[verb] = meaning;
-              }
-            }
-          }
-        }
-      }
+      // Process sections in order
+      await _processVerbs(content);
+      await _processNouns(content);
+      await _processAdverbs(content);
 
-      // Extract nouns
-      final nounSection = _extractSection(content, 'Nouns analysis:', null);
-      if (nounSection != null) {
-        final nounLines = nounSection.split('\n');
-        for (final line in nounLines) {
-          if (line.trim().startsWith('-')) {
-            final match = RegExp(r'-\s*([\w\s]+)\s*\((.*?)\)').firstMatch(line);
-            if (match != null) {
-              final noun = match.group(1)?.trim();
-              final meaning = match.group(2)?.trim();
-              if (noun != null && meaning != null) {
-                _nouns[noun] = meaning;
-              }
-            }
-          }
-        }
-      }
-
-      debugPrint('Found ${_verbs.length} verbs and ${_nouns.length} nouns');
+      debugPrint('Found ${_verbs.length} verbs, ${_nouns.length} nouns, and ${_adverbs.length} adverbs');
     } catch (e) {
       debugPrint('Error processing message: $e');
     } finally {
@@ -353,6 +334,105 @@ class _VocabularyButtonsState extends State<_VocabularyButtons> {
         setState(() => _isLoading = false);
       }
     }
+  }
+
+  Future<void> _processVerbs(String content) async {
+    final verbSection = _extractSection(content, 'Verb analysis:', 'Nouns analysis:');
+    if (verbSection != null) {
+      final verbLines = verbSection.split('\n');
+      String? currentVerb;
+      String? currentMeaning;
+      List<String> conjugationLines = [];
+
+      for (final line in verbLines) {
+        final trimmedLine = line.trim();
+        if (trimmedLine.startsWith('-')) {
+          // Save previous verb's conjugations if any
+          if (currentVerb != null && conjugationLines.isNotEmpty) {
+            _conjugations[currentVerb] = _processConjugations(conjugationLines);
+          }
+          
+          // Start new verb
+          final match = RegExp(r'-\s*([\w\s]+)\s*\((.*?)\)').firstMatch(trimmedLine);
+          if (match != null) {
+            currentVerb = match.group(1)?.trim();
+            currentMeaning = match.group(2)?.trim();
+            if (currentVerb != null && currentMeaning != null) {
+              _verbs[currentVerb] = currentMeaning;
+              conjugationLines = [];
+            }
+          }
+        } else if (trimmedLine.isNotEmpty && currentVerb != null) {
+          conjugationLines.add(trimmedLine);
+        }
+      }
+      
+      // Process the last verb's conjugations
+      if (currentVerb != null && conjugationLines.isNotEmpty) {
+        _conjugations[currentVerb] = _processConjugations(conjugationLines);
+      }
+    }
+  }
+
+  Future<void> _processNouns(String content) async {
+    final nounSection = _extractSection(content, 'Nouns analysis:', 'Adverbs analysis:');
+    if (nounSection != null) {
+      final nounLines = nounSection.split('\n');
+      for (final line in nounLines) {
+        if (line.trim().startsWith('-')) {
+          final match = RegExp(r'-\s*([\w\s]+)\s*\((.*?)\)(.*)').firstMatch(line.trim());
+          if (match != null) {
+            final noun = match.group(1)?.trim() ?? '';
+            final meaning = match.group(2)?.trim() ?? '';
+            final definition = match.group(3)?.trim() ?? '';
+            
+            if (noun.isNotEmpty) {
+              _nouns[noun] = meaning;
+              if (definition.isNotEmpty) {
+                _definitions[noun] = definition.replaceAll(RegExp(r'^\s*[-:]\s*'), '');
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  Future<void> _processAdverbs(String content) async {
+    final adverbSection = _extractSection(content, 'Adverbs analysis:', null);
+    if (adverbSection != null) {
+      final adverbLines = adverbSection.split('\n');
+      for (final line in adverbLines) {
+        if (line.trim().startsWith('-')) {
+          final match = RegExp(r'-\s*([\w\s]+)\s*\((.*?)\)(.*)').firstMatch(line.trim());
+          if (match != null) {
+            final adverb = match.group(1)?.trim() ?? '';
+            final meaning = match.group(2)?.trim() ?? '';
+            final definition = match.group(3)?.trim() ?? '';
+            
+            if (adverb.isNotEmpty) {
+              _adverbs[adverb] = meaning;
+              if (definition.isNotEmpty) {
+                _definitions[adverb] = definition.replaceAll(RegExp(r'^\s*[-:]\s*'), '');
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  Map<String, String> _processConjugations(List<String> lines) {
+    final conjugations = <String, String>{};
+    for (final line in lines) {
+      final parts = line.split(':').map((p) => p.trim()).toList();
+      if (parts.length == 2) {
+        conjugations[parts[0]] = parts[1];
+      } else if (parts.length == 1 && parts[0].isNotEmpty) {
+        conjugations['form${conjugations.length + 1}'] = parts[0];
+      }
+    }
+    return conjugations;
   }
 
   String? _extractSection(String content, String startMarker, String? endMarker) {
@@ -384,7 +464,7 @@ class _VocabularyButtonsState extends State<_VocabularyButtons> {
       );
     }
 
-    if (_verbs.isEmpty && _nouns.isEmpty) {
+    if (_verbs.isEmpty && _nouns.isEmpty && _adverbs.isEmpty) {
       return const SizedBox();
     }
 
@@ -396,13 +476,24 @@ class _VocabularyButtonsState extends State<_VocabularyButtons> {
         children: [
           ..._verbs.entries.map((entry) => _VocabularyChip(
                 word: entry.key,
-                type: 'verb',
+                type: VocabularyItem.typeVerb,
                 translation: entry.value,
+                conjugations: _conjugations[entry.key],
+                conversationId: _conversationId,
               )),
           ..._nouns.entries.map((entry) => _VocabularyChip(
                 word: entry.key,
-                type: 'noun',
+                type: VocabularyItem.typeNoun,
                 translation: entry.value,
+                definition: _definitions[entry.key],
+                conversationId: _conversationId,
+              )),
+          ..._adverbs.entries.map((entry) => _VocabularyChip(
+                word: entry.key,
+                type: VocabularyItem.typeAdverb,
+                translation: entry.value,
+                definition: _definitions[entry.key],
+                conversationId: _conversationId,
               )),
         ],
       ),
@@ -414,11 +505,17 @@ class _VocabularyChip extends StatefulWidget {
   final String word;
   final String type;
   final String translation;
+  final Map<String, dynamic>? conjugations;
+  final String? definition;
+  final String conversationId;
 
   const _VocabularyChip({
     required this.word,
     required this.type,
     required this.translation,
+    this.conjugations,
+    this.definition,
+    required this.conversationId,
   });
 
   @override
@@ -427,10 +524,38 @@ class _VocabularyChip extends StatefulWidget {
 
 class _VocabularyChipState extends State<_VocabularyChip> {
   bool _isLoading = false;
+  bool _isAdded = false;
 
   @override
   Widget build(BuildContext context) {
-    final isVerb = widget.type == 'verb';
+    final isVerb = widget.type == VocabularyItem.typeVerb;
+    final isNoun = widget.type == VocabularyItem.typeNoun;
+    final isAdverb = widget.type == VocabularyItem.typeAdverb;
+    
+    Color getChipColor() {
+      if (_isAdded) return Colors.green.shade700;
+      if (isVerb) return Colors.blue.shade700;
+      if (isNoun) return Colors.green.shade700;
+      if (isAdverb) return Colors.red.shade700;
+      return Colors.grey.shade700;
+    }
+    
+    Color getBackgroundColor() {
+      if (_isAdded) return Colors.green.shade50;
+      if (isVerb) return Colors.blue.shade50;
+      if (isNoun) return Colors.green.shade50;
+      if (isAdverb) return Colors.red.shade50;
+      return Colors.grey.shade50;
+    }
+    
+    IconData getIcon() {
+      if (_isAdded) return Icons.check;
+      if (isVerb) return Icons.run_circle;
+      if (isNoun) return Icons.label;
+      if (isAdverb) return Icons.speed;
+      return Icons.help_outline;
+    }
+    
     return ActionChip(
       avatar: CircleAvatar(
         backgroundColor: Colors.transparent,
@@ -440,23 +565,23 @@ class _VocabularyChipState extends State<_VocabularyChip> {
                 height: 18,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
-                  color: isVerb ? Colors.blue.shade700 : Colors.green.shade700,
+                  color: getChipColor(),
                 ),
               )
             : Icon(
-                isVerb ? Icons.run_circle : Icons.label,
-                color: isVerb ? Colors.blue.shade700 : Colors.green.shade700,
+                getIcon(),
+                color: getChipColor(),
                 size: 18,
               ),
       ),
-      backgroundColor: isVerb ? Colors.blue.shade50 : Colors.green.shade50,
+      backgroundColor: getBackgroundColor(),
       label: Text(
         widget.word,
         style: TextStyle(
-          color: isVerb ? Colors.blue.shade900 : Colors.green.shade900,
+          color: getChipColor().withOpacity(0.9),
         ),
       ),
-      onPressed: _isLoading
+      onPressed: _isLoading || _isAdded
           ? null
           : () async {
               setState(() => _isLoading = true);
@@ -470,9 +595,13 @@ class _VocabularyChipState extends State<_VocabularyChip> {
                   widget.word,
                   widget.type,
                   widget.translation,
+                  definition: widget.definition,
+                  conjugations: widget.conjugations,
+                  conversationId: widget.conversationId,
                 );
 
                 if (!mounted) return;
+                setState(() => _isAdded = true);
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text('Added "${widget.word}" to your vocabulary'),

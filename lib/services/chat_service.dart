@@ -4,6 +4,7 @@ import 'package:langchain/langchain.dart';
 import 'package:langchain_openai/langchain_openai.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'settings_service.dart';
+import 'prompts.dart';
 
 enum MessageType {
   system,
@@ -59,35 +60,7 @@ class ChatService extends ChangeNotifier {
   final SettingsService _settings;
   GenerativeModel? get _activeGeminiModel => _geminiModel;
   
-  // System prompt for context
-  static const String _defaultSystemPrompt = """
-You are a helpful language learning assistant. Your responses should be:
-- Clear and structured
-- Focused on vocabulary and grammar
-- Include translations and examples
-
-Always format your responses exactly like this:
-
-[Target Language]:
-[Text in target language]
-
-Corrections (if any):
-[List any corrections]
-
-[Native Language] translation:
-[Translation]
-
-Vocabulary:
-- [verb] (infinitive): [conjugation examples]
-[verb] translation: [translation]
-
-- [noun]: [article + noun forms]
-[noun] translation: [translation]
-
-Current conversation context: Language learning assistance.
-""";
-
-  String _systemPrompt = _defaultSystemPrompt;
+  String _systemPrompt = Prompts.defaultSystemPrompt;
   
   String get systemPrompt => _systemPrompt;
   
@@ -108,7 +81,7 @@ Current conversation context: Language learning assistance.
 
   // Reset to default prompt
   void resetSystemPrompt() {
-    updateSystemPrompt(_defaultSystemPrompt);
+    updateSystemPrompt(Prompts.defaultSystemPrompt);
   }
 
   ChatService({required SettingsService settings}) : _settings = settings {
