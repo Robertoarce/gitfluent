@@ -52,72 +52,85 @@ class _ChatScreenState extends State<ChatScreen> {
     }
     title += ' using: ${settings.getProviderName(settings.currentProvider)}';
     
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(title),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.menu_book),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const VocabularyReviewScreen()),
-              );
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.settings),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const SettingsScreen()),
-              );
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.delete_outline),
-            onPressed: () {
-              context.read<ChatService>().clearChat();
-            },
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          Expanded(
-            child: Consumer<ChatService>(
-              builder: (context, chatService, child) {
-                _scrollToBottom();
-                return ListView.builder(
-                  controller: _scrollController,
-                  padding: const EdgeInsets.all(16),
-                  itemCount: chatService.messages.length,
-                  itemBuilder: (context, index) {
-                    final message = chatService.messages[index];
-                    return Column(
-                      crossAxisAlignment: message.isUser 
-                          ? CrossAxisAlignment.end 
-                          : CrossAxisAlignment.start,
-                      children: [
-                        _MessageBubble(message: message),
-                        if (!message.isUser)
-                          _VocabularyButtons(message: message),
-                      ],
-                    );
-                  },
+    return KeyboardListener(
+      focusNode: FocusNode(),
+      onKeyEvent: (event) {
+        if (event is KeyDownEvent &&
+            event.logicalKey == LogicalKeyboardKey.keyV &&
+            HardwareKeyboard.instance.isMetaPressed) {
+          final chatService = context.read<ChatService>();
+          final languageSettings = context.read<LanguageSettings>();
+          _controller.text = 'I lov working with u at the skool';
+          _sendMessage(chatService, languageSettings);
+        }
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(title),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.menu_book),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const VocabularyReviewScreen()),
                 );
               },
             ),
-          ),
-          Consumer<ChatService>(
-            builder: (context, chatService, child) {
-              return chatService.isLoading
-                  ? const LinearProgressIndicator()
-                  : const SizedBox();
-            },
-          ),
-          _buildMessageInput(),
-        ],
+            IconButton(
+              icon: const Icon(Icons.settings),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const SettingsScreen()),
+                );
+              },
+            ),
+            IconButton(
+              icon: const Icon(Icons.delete_outline),
+              onPressed: () {
+                context.read<ChatService>().clearChat();
+              },
+            ),
+          ],
+        ),
+        body: Column(
+          children: [
+            Expanded(
+              child: Consumer<ChatService>(
+                builder: (context, chatService, child) {
+                  _scrollToBottom();
+                  return ListView.builder(
+                    controller: _scrollController,
+                    padding: const EdgeInsets.all(16),
+                    itemCount: chatService.messages.length,
+                    itemBuilder: (context, index) {
+                      final message = chatService.messages[index];
+                      return Column(
+                        crossAxisAlignment: message.isUser 
+                            ? CrossAxisAlignment.end 
+                            : CrossAxisAlignment.start,
+                        children: [
+                          _MessageBubble(message: message),
+                          if (!message.isUser)
+                            _VocabularyButtons(message: message),
+                        ],
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+            Consumer<ChatService>(
+              builder: (context, chatService, child) {
+                return chatService.isLoading
+                    ? const LinearProgressIndicator()
+                    : const SizedBox();
+              },
+            ),
+            _buildMessageInput(),
+          ],
+        ),
       ),
     );
   }
@@ -191,55 +204,6 @@ class _ChatScreenState extends State<ChatScreen> {
   void _sendMessage(ChatService chatService, LanguageSettings languageSettings) {
     if (_controller.text.isEmpty) return;
     
-    final targetLang = languageSettings.targetLanguage?.name ?? 'Italian';
-    final nativeLang = languageSettings.nativeLanguage?.name ?? 'English';
-    final settings = context.read<SettingsService>();
-    final maxVerbs = settings.maxVerbs;
-    final maxNouns = settings.maxNouns;
-    final maxAdverbs = settings.maxNouns;  // Using maxNouns as default for adverbs
-    
-    chatService.updateSystemPrompt("""
-You are a teacher helping me learn $targetLang. From now on:
-1. If I write in $nativeLang, translate it to $targetLang
-2. If I write in $targetLang, first correct it (if needed) and then translate it to $nativeLang
-3. For each response, include:
-   - The translation
-   - Any corrections (if the input was in $targetLang)
-   - The key verbs in their infinitive form
-   - The correct conjugation used in the context
-   - Other relevant conjugations
-4. Keep the tone light and playful
-
-Example format:
-[INPUT]
-[Original text, in any mix of languages]
-
-[EXPECTED OUTPUT]
-$targetLang:
-Corrections (if any):
-[List any corrections needed]
-
-$nativeLang translation:
-[Translation]
-
-Verb analysis:
-- Verb 1 (infinitive): [conjugations]
-- Verb 2 (infinitive): [conjugations]
-[Continue with the next verbs, up to $maxVerbs verbs]
-
-Nouns analysis:
-- Noun 1 (singular): [Definition]
-- Noun 2 (singular): [Definition]
-[Continue with the next nouns, up to $maxNouns nouns]
-
-Adverbs analysis:
-- Adverb 1 (singular): [Definition]
-- Adverb 2 (singular): [Definition]
-[Continue with the next adverbs, up to $maxAdverbs adverbs]
-
-DO NOT include any other text than the example format.
-DO NOT include ''' in the response.
-""");
     chatService.sendMessage(_controller.text);
     _controller.clear();
   }

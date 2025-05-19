@@ -5,6 +5,7 @@ import 'package:langchain_openai/langchain_openai.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'settings_service.dart';
 import 'prompts.dart';
+import 'prompt_config_service.dart';
 
 enum MessageType {
   system,
@@ -61,6 +62,7 @@ class ChatService extends ChangeNotifier {
   GenerativeModel? get _activeGeminiModel => _geminiModel;
   
   String _systemPrompt = Prompts.defaultSystemPrompt;
+  PromptConfig? _config;
   
   String get systemPrompt => _systemPrompt;
   
@@ -85,9 +87,29 @@ class ChatService extends ChangeNotifier {
   }
 
   ChatService({required SettingsService settings}) : _settings = settings {
+    _initializeConfig();
     _initializeAI();
     // Listen to settings changes
     _settings.addListener(_initializeAI);
+  }
+
+  Future<void> _initializeConfig() async {
+    try {
+      PromptConfigService.clearCache();
+      _config = await PromptConfigService.loadConfig();
+      // Set default provider to Gemini if not already set
+      if (_settings.currentProvider != AIProvider.gemini) {
+        _settings.setProvider(AIProvider.gemini);
+      }
+      // Set the system prompt based on the config
+      final promptType = _config?.systemPromptType ?? 'default';
+      _systemPrompt = Prompts.getPrompt(promptType);
+      if (_chatHistory.isEmpty) {
+        _chatHistory.add(ChatMessage.system(_systemPrompt));
+      }
+    } catch (e) {
+      debugPrint('Error loading config: $e');
+    }
   }
 
   @override
@@ -114,9 +136,9 @@ class ChatService extends ChangeNotifier {
           }
           _openAILlm = ChatOpenAI(
             apiKey: apiKey,
-            defaultOptions: const ChatOpenAIOptions(
-              model: 'gpt-3.5-turbo',
-              temperature: 0.7,
+            defaultOptions: ChatOpenAIOptions(
+              model: _config?.modelName ?? 'gpt-3.5-turbo',
+              temperature: _config?.temperature ?? 0.7,
             ),
           );
           debugPrint('OpenAI initialized successfully');
@@ -133,11 +155,11 @@ class ChatService extends ChangeNotifier {
             return;
           }
           _geminiModel = GenerativeModel(
-            model: 'gemini-2.0-flash',
+            model: _config?.modelName ?? 'gemini-2.0-flash',
             apiKey: apiKey,
             generationConfig: GenerationConfig(
-              temperature: 0.0,
-              maxOutputTokens: 2048,
+              temperature: _config?.temperature ?? 0.0,
+              maxOutputTokens: _config?.maxTokens ?? 2048,
             ),
           );
           debugPrint('Gemini initialized successfully');
@@ -213,6 +235,11 @@ ${_chatHistory.where((msg) => msg.type != MessageType.system).map((msg) =>
 
 User: $message
 Assistant:''';
+
+          debugPrint('----------------');
+          debugPrint('Full prompt sent to LLM:');
+          debugPrint(prompt);
+          debugPrint('----------------');
 
           final response = await _geminiModel!.generateContent([
             Content.text(prompt)
