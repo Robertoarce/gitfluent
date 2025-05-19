@@ -20,6 +20,14 @@ class LanguageSettings extends ChangeNotifier {
     Language('zh', 'Chinese'),
     Language('ja', 'Japanese'),
     Language('ko', 'Korean'),
+    Language('nl', 'Dutch'),
+    Language('el', 'Greek'),
+    Language('he', 'Hebrew'),
+    Language('hi', 'Hindi'),
+    Language('ga', 'Irish'),
+    Language('pl', 'Polish'),
+    Language('sv', 'Swedish'),
+    Language('vi', 'Vietnamese'),
   ];
 
   late SharedPreferences _prefs;
