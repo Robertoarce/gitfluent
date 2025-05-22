@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/services.dart';
 import 'package:yaml/yaml.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class PromptConfig {
   final String modelName;
@@ -34,24 +35,89 @@ class PromptConfig {
       systemPromptType: yaml['system_prompt_type'].toString().trim(),
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'model': {
+        'name': modelName,
+        'temperature': temperature,
+        'max_tokens': maxTokens,
+      },
+      'prompt_variables': promptVariables,
+      'default_settings': defaultSettings,
+      'system_prompt_type': systemPromptType,
+    };
+  }
 }
 
 class PromptConfigService {
   static PromptConfig? _config;
+  static late SharedPreferences _prefs;
+  static const String _configKey = 'prompt_config';
+
+  static Future<void> init() async {
+    _prefs = await SharedPreferences.getInstance();
+  }
 
   static void clearCache() {
     _config = null;
   }
 
   static Future<PromptConfig> loadConfig() async {
+    if (_config != null) return _config!;
+
     try {
+      // First try to load from saved preferences
+      final savedConfig = _prefs.getString(_configKey);
+      if (savedConfig != null) {
+        final Map<String, dynamic> jsonConfig = json.decode(savedConfig);
+        _config = PromptConfig.fromYaml(jsonConfig);
+        return _config!;
+      }
+
+      // If no saved config, load from YAML file
       final String yamlString = await rootBundle.loadString('lib/config/prompt_config.yaml');
       final dynamic yamlData = loadYaml(yamlString);
       _config = PromptConfig.fromYaml(yamlData);
+
+      
+      
+      // Save the default config
+      await _saveConfig();
+      
       return _config!;
     } catch (e) {
       throw Exception('Failed to load prompt configuration: $e');
     }
+  }
+
+  static Future<void> _saveConfig() async {
+    if (_config != null) {
+      final jsonString = json.encode(_config!.toJson());
+      await _prefs.setString(_configKey, jsonString);
+    }
+  }
+
+  static Future<void> updateConfig({
+    String? modelName,
+    double? temperature,
+    int? maxTokens,
+    Map<String, String>? promptVariables,
+    Map<String, String>? defaultSettings,
+    String? systemPromptType,
+  }) async {
+    final currentConfig = await loadConfig();
+    
+    _config = PromptConfig(
+      modelName: modelName ?? currentConfig.modelName,
+      temperature: temperature ?? currentConfig.temperature,
+      maxTokens: maxTokens ?? currentConfig.maxTokens,
+      promptVariables: promptVariables ?? currentConfig.promptVariables,
+      defaultSettings: defaultSettings ?? currentConfig.defaultSettings,
+      systemPromptType: systemPromptType ?? currentConfig.systemPromptType,
+    );
+
+    await _saveConfig();
   }
 
   static Future<Map<String, String>> getPromptVariables() async {

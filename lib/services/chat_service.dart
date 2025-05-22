@@ -95,6 +95,7 @@ class ChatService extends ChangeNotifier {
 
   Future<void> _initializeConfig() async {
     try {
+      await PromptConfigService.init();
       PromptConfigService.clearCache();
       _config = await PromptConfigService.loadConfig();
       // Set default provider to Gemini if not already set
@@ -103,13 +104,52 @@ class ChatService extends ChangeNotifier {
       }
       // Set the system prompt based on the config
       final promptType = _config?.systemPromptType ?? 'default';
-      _systemPrompt = Prompts.getPrompt(promptType);
+      debugPrint('Prompt type from config: $promptType');
+      
+      // Get language variables from config
+      final variables = {
+        'target_language': _config?.defaultSettings['target_language'] ?? 'it',
+        'native_language': _config?.defaultSettings['native_language'] ?? 'en',
+        'support_language_1': _config?.defaultSettings['support_language_1'] ?? 'es',
+        'support_language_2': _config?.defaultSettings['support_language_2'] ?? 'fr',
+      };
+      debugPrint('Language variables: $variables');
+      
+      _systemPrompt = Prompts.getPrompt(promptType, variables: variables);
+      debugPrint('Selected prompt type: $promptType');
+      debugPrint('System prompt length: ${_systemPrompt.length}');
+
+      
       if (_chatHistory.isEmpty) {
         _chatHistory.add(ChatMessage.system(_systemPrompt));
       }
     } catch (e) {
       debugPrint('Error loading config: $e');
     }
+  }
+
+  // Add method to update configuration
+  Future<void> updatePromptConfig({
+    String? modelName,
+    double? temperature,
+    int? maxTokens,
+    Map<String, String>? promptVariables,
+    Map<String, String>? defaultSettings,
+    String? systemPromptType,
+  }) async {
+    await PromptConfigService.updateConfig(
+      modelName: modelName,
+      temperature: temperature,
+      maxTokens: maxTokens,
+      promptVariables: promptVariables,
+      defaultSettings: defaultSettings,
+      systemPromptType: systemPromptType,
+    );
+    
+    // Reload configuration
+    await _initializeConfig();
+    // Reinitialize AI with new settings
+    _initializeAI();
   }
 
   @override
