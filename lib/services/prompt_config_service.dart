@@ -11,6 +11,7 @@ class PromptConfig {
   final Map<String, String> defaultSettings;
   final String systemPromptType;
 
+  // This comes from the system prompt type
   PromptConfig({
     required this.modelName,
     required this.temperature,

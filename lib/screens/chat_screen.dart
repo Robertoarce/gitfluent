@@ -46,11 +46,11 @@ class _ChatScreenState extends State<ChatScreen> {
     final settings = context.watch<SettingsService>();
     final languageSettings = context.watch<LanguageSettings>();
     
-    String title = ' Professor is now ready';
+    String title = ' ';
     if (languageSettings.targetLanguage != null) {
-      title += ' to teach ${languageSettings.targetLanguage?.name}';
+      title += '${languageSettings.targetLanguage?.name}';
     }
-    title += ' using: ${settings.getProviderName(settings.currentProvider)}';
+    title += ' -> Using: ${settings.getProviderName(settings.currentProvider)}';
     
     return KeyboardListener(
       focusNode: FocusNode(),
@@ -65,6 +65,7 @@ class _ChatScreenState extends State<ChatScreen> {
         }
       },
       child: Scaffold(
+        backgroundColor: Colors.black38, 
         appBar: AppBar(
           title: Text(title),
           actions: [
@@ -94,7 +95,7 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
           ],
         ),
-        body: Column(
+        body: Column( 
           children: [
             Expanded(
               child: Consumer<ChatService>(
@@ -144,7 +145,7 @@ class _ChatScreenState extends State<ChatScreen> {
           BoxShadow(
             offset: const Offset(0, -2),
             blurRadius: 4,
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
           ),
         ],
       ),
@@ -542,7 +543,7 @@ class _VocabularyChipState extends State<_VocabularyChip> {
       label: Text(
         widget.word,
         style: TextStyle(
-          color: getChipColor().withOpacity(0.9),
+          color: getChipColor().withValues(alpha: 0.9),
         ),
       ),
       onPressed: _isLoading || _isAdded

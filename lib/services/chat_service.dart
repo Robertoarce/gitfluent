@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:langchain/langchain.dart';
 import 'package:langchain_openai/langchain_openai.dart';
+import 'package:langchain_google/langchain_google.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'settings_service.dart';
 import 'prompts.dart';
@@ -61,7 +62,7 @@ class ChatService extends ChangeNotifier {
   final SettingsService _settings;
   GenerativeModel? get _activeGeminiModel => _geminiModel;
   
-  String _systemPrompt = Prompts.defaultSystemPrompt;
+  String _systemPrompt = Prompts.basePrompt;
   PromptConfig? _config;
   
   String get systemPrompt => _systemPrompt;
@@ -83,7 +84,7 @@ class ChatService extends ChangeNotifier {
 
   // Reset to default prompt
   void resetSystemPrompt() {
-    updateSystemPrompt(Prompts.defaultSystemPrompt);
+    updateSystemPrompt(Prompts.basePrompt);
   }
 
   ChatService({required SettingsService settings}) : _settings = settings {
@@ -98,27 +99,27 @@ class ChatService extends ChangeNotifier {
       await PromptConfigService.init();
       PromptConfigService.clearCache();
       _config = await PromptConfigService.loadConfig();
+      
       // Set default provider to Gemini if not already set
       if (_settings.currentProvider != AIProvider.gemini) {
         _settings.setProvider(AIProvider.gemini);
       }
-      // Set the system prompt based on the config
+
+      // Get the prompt type and variables directly from config
       final promptType = _config?.systemPromptType ?? 'default';
-      debugPrint('Prompt type from config: $promptType');
-      
-      // Get language variables from config
-      final variables = {
-        'target_language': _config?.defaultSettings['target_language'] ?? 'it',
-        'native_language': _config?.defaultSettings['native_language'] ?? 'en',
-        'support_language_1': _config?.defaultSettings['support_language_1'] ?? 'es',
-        'support_language_2': _config?.defaultSettings['support_language_2'] ?? 'fr',
+      final variables = _config?.defaultSettings ?? {
+        'target_language': 'it',
+        'native_language': 'en',
+        'support_language_1': 'es',
+        'support_language_2': 'fr',
       };
+      
+      debugPrint('Prompt type from config: $promptType');
       debugPrint('Language variables: $variables');
       
       _systemPrompt = Prompts.getPrompt(promptType, variables: variables);
       debugPrint('Selected prompt type: $promptType');
       debugPrint('System prompt length: ${_systemPrompt.length}');
-
       
       if (_chatHistory.isEmpty) {
         _chatHistory.add(ChatMessage.system(_systemPrompt));
@@ -245,15 +246,15 @@ class ChatService extends ChangeNotifier {
           }
           
           final prompt = PromptValue.string('''
-${_systemPrompt.trim()}
+          ${_systemPrompt.trim()}
 
-Previous conversation context:
-${_chatHistory.where((msg) => msg.type != MessageType.system).map((msg) => 
-  "${msg.type == MessageType.user ? 'User' : 'Assistant'}: ${msg.content}"
-).join('\n')}
+          Previous conversation context:
+          ${_chatHistory.where((msg) => msg.type != MessageType.system).map((msg) => 
+            "${msg.type == MessageType.user ? 'User' : 'Assistant'}: ${msg.content}"
+          ).join('\n')}
 
-User: $message
-Assistant:''');
+          User: $message
+          Assistant:''');
           
           final response = await _openAILlm!.invoke(prompt);
           reply = response.firstOutput?.content ?? 'No response from AI';
@@ -266,15 +267,15 @@ Assistant:''');
           
           // For Gemini, we'll send both the system prompt and user message together
           final prompt = '''
-${_systemPrompt.trim()}
+            ${_systemPrompt.trim()}
 
-Previous conversation context:
-${_chatHistory.where((msg) => msg.type != MessageType.system).map((msg) => 
-  "${msg.type == MessageType.user ? 'User' : 'Assistant'}: ${msg.content}"
-).join('\n')}
+            Previous conversation context:
+            ${_chatHistory.where((msg) => msg.type != MessageType.system).map((msg) => 
+              "${msg.type == MessageType.user ? 'User' : 'Assistant'}: ${msg.content}"
+            ).join('\n')}
 
-User: $message
-Assistant:''';
+            User: $message
+            Assistant:''';
 
           debugPrint('----------------');
           debugPrint('Full prompt sent to LLM:');

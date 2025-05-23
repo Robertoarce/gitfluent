@@ -15,7 +15,7 @@ default_settings:
   support_language_1: es
   support_language_2: fr
 
-system_prompt_type: examplePrompt
+system_prompt_type: base
 
 # //   "system_prompt_type": "qwen_1"
 # //   "system_prompt_type": "defaultSystemPrompt"
