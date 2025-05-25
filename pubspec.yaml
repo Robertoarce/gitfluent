@@ -23,11 +23,22 @@ dependencies:
   path_provider: ^2.1.2
   path: ^1.8.3
   yaml: ^3.1.2
+  # User authentication and database
+  sqflite: ^2.3.0
+  crypto: ^3.0.3
+  email_validator: ^2.1.17
+  uuid: ^4.2.1
+  # UI enhancements
+  flutter_secure_storage: ^9.0.0
+  # JSON serialization
+  json_annotation: ^4.8.1
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^3.0.0
+  json_serializable: ^6.7.1
+  build_runner: ^2.4.7
 
 flutter:
   uses-material-design: true
