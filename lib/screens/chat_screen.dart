@@ -337,9 +337,11 @@ class _MessageBubbleState extends State<_MessageBubble> {
       child: Container(
         constraints: BoxConstraints(
           maxWidth: MediaQuery.of(context).size.width * 0.8,
-          maxHeight: MediaQuery.of(context).size.height * 1.5,
+          minHeight: 50,
+          maxHeight: MediaQuery.of(context).size.height * 0.7,
         ),
-        margin: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+        margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+        padding: const EdgeInsets.all(1),
         decoration: BoxDecoration(
           color: isUser
               ? Theme.of(context).colorScheme.primary
@@ -348,23 +350,19 @@ class _MessageBubbleState extends State<_MessageBubble> {
         ),
         child: Scrollbar(
           controller: scrollController,
-          thumbVisibility: false,
-          trackVisibility: false,
-          thickness: 8,
+          thumbVisibility: true,
           radius: const Radius.circular(10),
           child: SingleChildScrollView(
             controller: scrollController,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 30, horizontal: 20),
-              child: isUser
-                ? SelectableText(
-                    widget.message.content,
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.onPrimary,
-                    ),
-                  )
-                : _buildFormattedContent(context),
-            ),
+            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+            child: isUser
+              ? SelectableText(
+                  widget.message.content,
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onPrimary,
+                  ),
+                )
+              : _buildFormattedContent(context),
           ),
         ),
       ),
