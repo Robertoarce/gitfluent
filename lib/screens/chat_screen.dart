@@ -117,7 +117,7 @@ class _ChatScreenState extends State<ChatScreen> {
                       // Parse the message JSON if possible
                       LanguageResponse? parsedResponse;
                       if (!message.isUser) {
-                        parsedResponse = _tryParseJsonResponse(message.content);
+                        parsedResponse = _tryParseJsonResponse(message.LLMjsonResponse ?? '');
                       }
                       
                       return Column(
@@ -239,7 +239,7 @@ class _ChatScreenState extends State<ChatScreen> {
         // Look for JSON inside code blocks
         final jsonCodeBlockRegex = RegExp(r'```json\s*([\s\S]*?)\s*```');
         final codeMatch = jsonCodeBlockRegex.firstMatch(content);
-        
+
         if (codeMatch != null && codeMatch.group(1) != null) {
           final jsonString = codeMatch.group(1)!.trim();
           return LanguageResponse.fromJson(json.decode(jsonString));

@@ -48,11 +48,13 @@ class Message {
   final String content;
   final bool isUser;
   final DateTime timestamp;
+  final String? LLMjsonResponse;
 
   Message({
     required this.content,
     required this.isUser,
     DateTime? timestamp,
+    this.LLMjsonResponse,
   }) : timestamp = timestamp ?? DateTime.now();
 }
 
@@ -232,7 +234,8 @@ class ChatService extends ChangeNotifier {
     if (message.trim().isEmpty) return;
 
     // Add user message
-    _messages.add(Message(content: message, isUser: true));
+    
+    _messages.add(Message(content: message, isUser: true, LLMjsonResponse: ''));
     _chatHistory.add(ChatMessage.user(message));
     notifyListeners();
 
@@ -241,6 +244,7 @@ class ChatService extends ChangeNotifier {
 
     try {
       String reply;
+      String LLMjsonOutput;
       
       switch (_settings.currentProvider) {
         case AIProvider.openai:
@@ -301,9 +305,9 @@ class ChatService extends ChangeNotifier {
       
       // Here is where we threat the response from the LLM
       // so we can extract the vocabulary items and add them to the vocabulary service
-      reply = _getVocabFromLLMResponse(reply);
+      (reply, LLMjsonOutput) = _getVocabFromLLMResponse(reply);
 
-      _messages.add(Message(content: reply, isUser: false));
+      _messages.add(Message(content: reply, isUser: false, LLMjsonResponse: LLMjsonOutput));
       _chatHistory.add(ChatMessage.assistant(reply));
     } catch (e) {
       debugPrint('Error sending message: $e');
@@ -325,7 +329,7 @@ class ChatService extends ChangeNotifier {
     notifyListeners();
   }
 
-  String _getVocabFromLLMResponse(String response) {
+  (String, String) _getVocabFromLLMResponse(String response) {
     // EXTRACT JSON FROM RESPONSE
     // PARSE JSON INTO OUR MODEL
     // FORMAT THE RESPONSE FOR DISPLAY
@@ -335,6 +339,8 @@ class ChatService extends ChangeNotifier {
     debugPrint('Processing JSON response:');
     debugPrint(response);
     
+    String jsonString = '';
+    
     try {
       
       /////////////////////////////////
@@ -342,7 +348,7 @@ class ChatService extends ChangeNotifier {
       ////////////////////////////////
       
       // Try to parse the response as JSON
-      String jsonString = '';
+      
       
       // Extract JSON if it's wrapped in text
       final jsonRegex = RegExp(r'(\{[\s\S]*\})');
@@ -366,15 +372,19 @@ class ChatService extends ChangeNotifier {
       debugPrint('Successfully parsed JSON into LanguageResponse model');
       debugPrint('Vocabulary items: ${languageResponse.vocabularyBreakdown.length}');
       
+       ///////////////////////////////////////
+      /////// USING JSON FOR BUTTONS  ////////
+      ////////////////////////////////////////
+
       // Format the response for display
       final formattedResponse = _formatLanguageResponseToDisplayText(languageResponse);
       debugPrint('Formatted response for display');
-      return formattedResponse;
+      return (formattedResponse, jsonString);
       
     } catch (e) {
       debugPrint('Error parsing JSON response: $e');
       debugPrint('Returning original response');
-      return response;
+      return (response, jsonString);
     }
   }
 

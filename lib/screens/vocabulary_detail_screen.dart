@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/vocabulary_item.dart';
-import '../services/vocabulary_service.dart';
-import 'package:provider/provider.dart';
+// import '../services/vocabulary_service.dart';
+// import 'package:provider/provider.dart';
 
 class VocabularyDetailScreen extends StatelessWidget {
   final VocabularyItem item;
