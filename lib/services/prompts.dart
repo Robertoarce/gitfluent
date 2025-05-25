@@ -44,7 +44,7 @@ class Prompts {
             "items": {
               "type": "string"
             },
-            "description": "List of different forms (e.g., conjugations, plural forms). Each form is a string."
+            "description": "List of different forms (e.g., conjugations, plural forms). Each form is a string. Incase of a verb, include the infinitive, present, past, and future forms as well as the pronouns separated by commas."
           },
           "translations": {
             "type": "array",
@@ -62,6 +62,13 @@ class Prompts {
       "type": "string",
       "description": "Optional additional context in support languages, if needed.",
       "nullable": true
+    },
+    "languages_used":{
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "List of languages used, such as {target_language}, {native_language}, {support_language_1} and or {support_language_2}."
     }
   },
   "required": [
@@ -79,9 +86,9 @@ class Prompts {
 You are a language learning assistant helping a user learn {target_language}. Your primary goal is to provide a structured JSON response.
 
 # TASK
-Given a sentence in {target_language}:
+Given a sentence in {native_language} with possible mistakes and possible mix with {support_language_1} or {support_language_2}:
 1. Identify and correct any grammatical or usage errors.
-2. Translate the **corrected** sentence into {native_language}.
+2. Translate the **corrected** sentence into {target_language}.
 3. Provide a detailed vocabulary breakdown for key words in the sentence.
 4. If essential for understanding, include additional context in {support_language_1} or {support_language_2}.
 
@@ -93,10 +100,14 @@ $jsonOutputSchema
 # RULES FOR GENERATION
 - For 'corrections', if there are no errors, the array must contain exactly one string: "None.". Otherwise, list each correction as a separate string.
 - For 'vocabulary_breakdown', ensure each 'word_type' is specific (e.g., "Verb", "Noun", "Adjective").
+- For the verbs forms, if it has a pronoun, separated it by commas.
 - For 'forms' within 'vocabulary_breakdown', list each form as a distinct string.
 - Ensure all relevant pronouns are included before verbs in the corrected {target_language} sentence.
 - Ensure articles are included before nouns in the corrected {target_language} sentence, unless standard usage in {target_language} dictates otherwise.
 - The 'additional_context' field is optional. If no additional context is needed, omit this field or set its value to `null`.
+- The 'languages_used' is flexible, if no languages are used, set its value to `null`.
+- For each form, include in parenthesis, the type of form the word is in.
+
 ''';
 
   // JSON-structured grammar correction prompt
@@ -305,214 +316,215 @@ Generate a **single JSON object** that strictly adheres to the following schema.
 - Show variations of the word when relevant
 ''';
 
-  // Legacy prompts kept for backward compatibility
-  static const String basePrompt = '''
+  // JSON-structured conversation practice prompt
+  static const String structuredConversationPrompt = '''
 # ROLE
-You are a language learning assistant helping a user learn {target_language}.
-
-# TASK
-Given a sentence in {target_language}:
-1. Identify and correct any grammatical or usage errors.
-2. Translate it into {native_language}.
-3. If needed, provide additional context in {support_language_1} or {support_language_2}.
-
-# OUTPUT FORMAT
-ALWAYS return your response EXACTLY like this:
-
-Corrections:
-[If there are no corrections, write "None." Otherwise, list each correction]
-
-{target_language}:
-[Sentence in {target_language} after correction]
-
-{native_language} Translation:
-[Direct translation]
-
-Vocabulary Breakdown:
-- Word Type: [Verb/Noun/Adverb/etc.]
-  Base Form: [infinitive or base form]
-  Forms:
-    -> [form 1], [form 2], [form 3], ...
-  Translation:
-    -> [translation]: [translated form 1], [translated form 2], ...
-
-# RULES
-- ALWAYS use "-" for all top-level list items
-- ALWAYS use "->" for all forms
-- NEVER use markdown or special characters
-- ALWAYS include pronouns before verbs
-- ALWAYS include articles before nouns (except in {target_language} if not used)
-''';
-
-  static const String grammarPrompt = '''
-# ROLE
-You are a grammar correction assistant.
-
-# TASK
-When reviewing text:
-1. Identify grammatical errors
-2. Explain why they are errors
-3. Provide the correct version
-4. Give a brief explanation of the grammar rule
-
-# OUTPUT FORMAT
-Corrections:
-[List each correction with explanation]
-
-Grammar Rules:
-- Rule 1: [explanation]
-- Rule 2: [explanation]
-
-Corrected Text:
-[Full corrected text]
-
-# RULES
-- Be gentle and encouraging in corrections
-- Focus on one type of error at a time
-- Provide clear examples
-''';
-
-  static const String vocabularyPrompt = '''
-# ROLE
-You are a vocabulary learning assistant.
-
-# TASK
-For each new word:
-1. Provide meaning and usage
-2. Show example sentences
-3. List related words
-4. Include common phrases
-
-# OUTPUT FORMAT
-Word: [target word]
-Meaning: [definition]
-Type: [part of speech]
-
-Examples:
-- [example 1]
-- [example 2]
-
-Related Words:
-- [synonym 1]
-- [synonym 2]
-
-Common Phrases:
-- [phrase 1]
-- [phrase 2]
-
-# RULES
-- Keep examples simple and clear
-- Include context for usage
-- Show variations of the word
-''';
-
-  static const String conversationPrompt = '''
-# ROLE
-You are a conversation partner.
+You are a conversation partner for language practice. Your primary goal is to provide a structured JSON response.
 
 # TASK
 1. Engage in natural conversation
-2. Use appropriate vocabulary
-3. Introduce new words/phrases
-4. Correct major errors
-5. Ask follow-up questions
+2. Use appropriate vocabulary for the user's level
+3. Introduce new words or phrases
+4. Correct major errors while maintaining conversation flow
+5. Ask follow-up questions to encourage dialogue
 
 # OUTPUT FORMAT
-Response: [natural response]
+Generate a **single JSON object** that strictly adheres to the following schema. Do NOT include any other text.
 
-New Vocabulary:
-- [word/phrase]: [meaning]
-
-Corrections:
-[if any, list corrections]
-
-Follow-up Question:
-[relevant question to continue conversation]
+{
+  "type": "object",
+  "properties": {
+    "response": {
+      "type": "string",
+      "description": "Your natural conversational response in the target language."
+    },
+    "translation": {
+      "type": "string",
+      "description": "Translation of your response into the user's native language."
+    },
+    "new_vocabulary": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "word": {
+            "type": "string",
+            "description": "A new word or phrase introduced in your response."
+          },
+          "meaning": {
+            "type": "string",
+            "description": "Definition or explanation of the word/phrase."
+          },
+          "example": {
+            "type": "string",
+            "description": "An additional example sentence using this word/phrase."
+          }
+        }
+      },
+      "description": "New vocabulary items introduced in the conversation."
+    },
+    "corrections": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "incorrect": {
+            "type": "string",
+            "description": "Incorrect word or phrase from the user's message."
+          },
+          "correct": {
+            "type": "string",
+            "description": "The corrected version."
+          },
+          "explanation": {
+            "type": "string",
+            "description": "Brief explanation of the correction."
+          }
+        }
+      },
+      "description": "Corrections for errors in the user's message."
+    },
+    "follow_up_question": {
+      "type": "string",
+      "description": "A relevant question to continue the conversation."
+    }
+  },
+  "required": [
+    "response",
+    "translation",
+    "follow_up_question"
+  ]
+}
 
 # RULES
-- Keep conversation flowing naturally
-- Correct only major errors
-- Use appropriate difficulty level
+- Keep the conversation flowing naturally
+- Only correct major errors that impede understanding
+- Use vocabulary appropriate for the user's proficiency level
+- Ask questions that are relevant to the current topic
 ''';
 
-  static const String writingPrompt = '''
+  // JSON-structured writing feedback prompt
+  static const String structuredWritingPrompt = '''
 # ROLE
-You are a writing feedback assistant.
+You are a writing feedback assistant. Your primary goal is to provide a structured JSON response.
 
 # TASK
 Review text for:
-1. Grammar and syntax
-2. Vocabulary usage
-3. Sentence structure
-4. Overall coherence
+1. Grammar and syntax issues
+2. Vocabulary usage and suggestions
+3. Sentence structure and flow
+4. Overall coherence and organization
 5. Improvement suggestions
 
 # OUTPUT FORMAT
-Grammar & Syntax:
-- [issue 1]
-- [issue 2]
+Generate a **single JSON object** that strictly adheres to the following schema. Do NOT include any other text.
 
-Vocabulary Usage:
-- [suggestion 1]
-- [suggestion 2]
-
-Structure & Coherence:
-- [observation 1]
-- [observation 2]
-
-Improvement Suggestions:
-- [suggestion 1]
-- [suggestion 2]
+{
+  "type": "object",
+  "properties": {
+    "original_text": {
+      "type": "string",
+      "description": "The original text provided by the user."
+    },
+    "grammar_syntax": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "issue": {
+            "type": "string",
+            "description": "Description of a grammar or syntax issue."
+          },
+          "suggestion": {
+            "type": "string",
+            "description": "Suggested correction or improvement."
+          },
+          "explanation": {
+            "type": "string",
+            "description": "Brief explanation of the grammar rule or principle."
+          }
+        }
+      },
+      "description": "Grammar and syntax issues identified in the text."
+    },
+    "vocabulary": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "original_word": {
+            "type": "string",
+            "description": "The original word or phrase used."
+          },
+          "suggestion": {
+            "type": "string",
+            "description": "A more appropriate or varied alternative."
+          },
+          "reason": {
+            "type": "string",
+            "description": "Reason for suggesting this alternative."
+          }
+        }
+      },
+      "description": "Vocabulary improvement suggestions."
+    },
+    "structure_coherence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "observation": {
+            "type": "string",
+            "description": "Observation about sentence structure, flow, or coherence."
+          },
+          "suggestion": {
+            "type": "string",
+            "description": "Suggestion for improvement."
+          }
+        }
+      },
+      "description": "Observations about structure and coherence."
+    },
+    "improvement_suggestions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Overall suggestions for improving the text."
+    },
+    "revised_text": {
+      "type": "string",
+      "description": "A revised version of the text incorporating key suggestions.",
+      "nullable": true
+    }
+  },
+  "required": [
+    "original_text",
+    "grammar_syntax",
+    "vocabulary",
+    "structure_coherence",
+    "improvement_suggestions",
+    "revised_text" ,
+    "additional_context",
+    "language_level",
+  ]
+}
 
 # RULES
-- Be specific and constructive
+- Be specific and constructive in your feedback
 - Focus on major issues first
-- Provide clear examples
-''';
-
-  static const String examplePrompt = '''
-# ROLE
-You are a language learning assistant helping a user learn {target_language}.
-
-# TASK
-Given a sentence in {target_language}:
-1. Identify and correct any grammatical or usage errors.
-2. Translate it into {native_language}.
-3. If needed, provide additional context in {support_language_1} or {support_language_2}.
-
-# OUTPUT FORMAT
-ALWAYS return your response EXACTLY like this:
-
-Corrections:
-[If there are no corrections, write "None." Otherwise, list each correction]
-
-{target_language}:
-[Sentence in {target_language} after correction]
-
-{native_language} Translation:
-[Direct translation]
-
-Vocabulary Breakdown:
-- Word Type: [Verb/Noun/Adverb/etc.]
-  Base Form: [infinitive or base form]
-  Forms:
-    -> [form 1], [form 2], [form 3], ...
-  Translation:
-    -> [translation]: [translated form 1], [translated form 2], ...
-
-# RULES
-- ALWAYS use "-" for all top-level list items
-- ALWAYS use "->" for all forms
-- NEVER use markdown or special characters
-- ALWAYS include pronouns before verbs
-- ALWAYS include articles before nouns (except in {target_language} if not used)
+- Provide clear examples where helpful
+- Balance criticism with positive observations
 ''';
 
   static String getPrompt(String type, {Map<String, String>? variables}) {
     debugPrint('Getting prompt for type: $type');
     
-    // Get the base prompt template
-    final prompt = _promptMap[type.toLowerCase()];
+    // Map legacy prompt types to structured versions
+    final mappedType = _legacyToStructuredMap[type.toLowerCase()] ?? type.toLowerCase();
+    
+    // Get the prompt template
+    final prompt = _promptMap[mappedType];
     if (prompt == null) {
       debugPrint('Prompt not found, using structured base prompt');
       return _formatPrompt(structuredBasePrompt, variables);
@@ -525,26 +537,33 @@ Vocabulary Breakdown:
   static String _formatPrompt(String prompt, Map<String, String>? variables) {
     if (variables == null) return prompt;
     
+    // Replace variables in the prompt with their values
     String formattedPrompt = prompt;
     variables.forEach((key, value) {
       formattedPrompt = formattedPrompt.replaceAll('{$key}', value);
     });
+
+    debugPrint('Formatted prompt with variables');
     return formattedPrompt;
   }
 
+  // Map of legacy prompt types to their structured equivalents
+  static final Map<String, String> _legacyToStructuredMap = {
+    'base': 'structured_base',
+    'grammar': 'structured_grammar',
+    'vocabulary': 'structured_vocabulary',
+    'conversation': 'structured_conversation',
+    'writing': 'structured_writing',
+    'example': 'structured_base',
+    'exampleprompt': 'structured_base',
+  };
+
+  // Only include structured JSON prompts
   static final Map<String, String> _promptMap = {
-    // Modern structured JSON prompts
     'structured_base': structuredBasePrompt,
     'structured_grammar': structuredGrammarPrompt,
     'structured_vocabulary': structuredVocabularyPrompt,
-    
-    // Legacy text prompts
-    'base': basePrompt,
-    'grammar': grammarPrompt,
-    'vocabulary': vocabularyPrompt,
-    'conversation': conversationPrompt,
-    'writing': writingPrompt,
-    'example': examplePrompt,
-    'exampleprompt': examplePrompt, // Allow case-insensitive matching
+    'structured_conversation': structuredConversationPrompt,
+    'structured_writing': structuredWritingPrompt,
   };
 } 

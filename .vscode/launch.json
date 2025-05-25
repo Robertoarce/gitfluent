@@ -25,6 +25,18 @@
             "request": "launch",
             "type": "dart",
             "flutterMode": "release"
+        },
+        {
+            "name": "gitfluent (web with disabled security)",
+            "request": "launch",
+            "type": "dart",
+            "args": [
+                "-d",
+                "chrome",
+                "--web-browser-flag=--disable-web-security",
+                "--web-browser-flag=--disable-site-isolation-trials",
+                "--web-browser-flag=--user-data-dir=/tmp/chrome_dev_test"
+            ]
         }
     ]
 }

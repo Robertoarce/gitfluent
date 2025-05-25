@@ -4,9 +4,12 @@ import 'package:langchain/langchain.dart';
 import 'package:langchain_openai/langchain_openai.dart';
 import 'package:langchain_google/langchain_google.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
+import 'dart:convert';
+import 'dart:math'; // Import for min function
 import 'settings_service.dart';
 import 'prompts.dart';
 import 'prompt_config_service.dart';
+import '../models/language_response.dart'; // Import the new model
 
 enum MessageType {
   system,
@@ -62,7 +65,7 @@ class ChatService extends ChangeNotifier {
   final SettingsService _settings;
   GenerativeModel? get _activeGeminiModel => _geminiModel;
   
-  String _systemPrompt = Prompts.basePrompt;
+  String _systemPrompt = Prompts.structuredBasePrompt;
   PromptConfig? _config;
   
   String get systemPrompt => _systemPrompt;
@@ -84,7 +87,7 @@ class ChatService extends ChangeNotifier {
 
   // Reset to default prompt
   void resetSystemPrompt() {
-    updateSystemPrompt(Prompts.basePrompt);
+    updateSystemPrompt(Prompts.structuredBasePrompt);
   }
 
   ChatService({required SettingsService settings}) : _settings = settings {
@@ -243,8 +246,9 @@ class ChatService extends ChangeNotifier {
         case AIProvider.openai:
           if (_openAILlm == null) {
             throw Exception('OpenAI not initialized. Please check your API key.');
-          }
+              }
           
+          // generates prompt for the LLM (with history )
           final prompt = PromptValue.string('''
           ${_systemPrompt.trim()}
 
@@ -279,6 +283,7 @@ class ChatService extends ChangeNotifier {
 
           debugPrint('----------------');
           debugPrint('Full prompt sent to LLM:');
+          debugPrint('===============================');
           debugPrint(prompt);
           debugPrint('----------------');
 
@@ -288,12 +293,16 @@ class ChatService extends ChangeNotifier {
           
           if (response.text == null) {
             throw Exception('No response received from Gemini');
-          }
+          }          
           
           reply = response.text!;
           break;
       }
       
+      // Here is where we threat the response from the LLM
+      // so we can extract the vocabulary items and add them to the vocabulary service
+      reply = _getVocabFromLLMResponse(reply);
+
       _messages.add(Message(content: reply, isUser: false));
       _chatHistory.add(ChatMessage.assistant(reply));
     } catch (e) {
@@ -314,5 +323,114 @@ class ChatService extends ChangeNotifier {
     // Reinitialize chat history with system prompt
     _chatHistory.add(ChatMessage.system(_systemPrompt));
     notifyListeners();
+  }
+
+  String _getVocabFromLLMResponse(String response) {
+    // EXTRACT JSON FROM RESPONSE
+    // PARSE JSON INTO OUR MODEL
+    // FORMAT THE RESPONSE FOR DISPLAY
+    // RETURN THE FORMATTED RESPONSE
+
+    debugPrint('===============================');
+    debugPrint('Processing JSON response:');
+    debugPrint(response);
+    
+    try {
+      
+      /////////////////////////////////
+      /////// JSON EXTRACTION  ////////
+      ////////////////////////////////
+      
+      // Try to parse the response as JSON
+      String jsonString = '';
+      
+      // Extract JSON if it's wrapped in text
+      final jsonRegex = RegExp(r'(\{[\s\S]*\})');
+      final match = jsonRegex.firstMatch(response);
+      
+      if (match != null) {
+        // Found JSON within text
+        jsonString = match.group(1) ?? '';
+        debugPrint('Extracted JSON: ${jsonString.substring(0, min(100, jsonString.length))}...');
+      } 
+      else if (response.replaceAll('```json', '').replaceAll('```', '').trim().isNotEmpty) {
+        jsonString = response.replaceAll('```json', '').replaceAll('```', '').trim();
+      }
+      else {
+        // Try to parse the entire response as JSON
+        jsonString = response;
+      }
+      
+      // Parse the JSON into our model
+      final languageResponse = LanguageResponse.fromJson(json.decode(jsonString));
+      debugPrint('Successfully parsed JSON into LanguageResponse model');
+      debugPrint('Vocabulary items: ${languageResponse.vocabularyBreakdown.length}');
+      
+      // Format the response for display
+      final formattedResponse = _formatLanguageResponseToDisplayText(languageResponse);
+      debugPrint('Formatted response for display');
+      return formattedResponse;
+      
+    } catch (e) {
+      debugPrint('Error parsing JSON response: $e');
+      debugPrint('Returning original response');
+      return response;
+    }
+  }
+
+  String _formatLanguageResponseToDisplayText(LanguageResponse languageResponse) {
+    final StringBuffer output = StringBuffer();
+    
+    // Extract parts from the language response
+    final config = _config;
+    final String targetLang = config?.defaultSettings['target_language'] ?? 'Target language';
+    final String nativeLang = config?.defaultSettings['native_language'] ?? 'Native language';
+    
+    // Target language sentence
+    output.writeln('$targetLang:');
+    output.writeln(languageResponse.targetLanguageSentence);
+    output.writeln();
+    
+    // Translation
+    output.writeln('$nativeLang Translation:');
+    output.writeln(languageResponse.nativeLanguageTranslation);
+    output.writeln();
+    
+    // Corrections
+    output.writeln('Corrections:');
+    if (languageResponse.corrections.isEmpty || 
+        (languageResponse.corrections.length == 1 && languageResponse.corrections[0] == 'None.')) {
+      output.writeln('None.');
+    } else {
+      for (final correction in languageResponse.corrections) {
+        output.writeln('- $correction');
+      }
+    }
+    output.writeln();
+    
+    // Vocabulary breakdown
+    output.writeln('Vocabulary Breakdown:');
+    for (final word in languageResponse.vocabularyBreakdown) {
+      output.writeln('- Word Type: ${word.wordType}');
+      output.writeln('  Base Form: ${word.baseForm}');
+      output.writeln('  Forms:');
+      for (final form in word.forms) {
+        output.writeln('    -> $form');
+      }
+      output.writeln('  Translation:');
+      for (final trans in word.translations) {
+        output.writeln('    -> $trans');
+      }
+      output.writeln();
+    }
+    
+    // Additional context (if provided)
+    if (languageResponse.additionalContext != null && 
+        languageResponse.additionalContext!.isNotEmpty) {
+      output.writeln('Additional Context:');
+      output.writeln(languageResponse.additionalContext);
+    }
+    
+    return output.toString();
   }
 } 

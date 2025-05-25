@@ -2,12 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
+import 'dart:convert';
+import 'dart:async';
 import '../services/chat_service.dart';
 import '../services/settings_service.dart';
 import '../services/language_settings_service.dart';
 import '../services/vocabulary_service.dart';
 import '../services/nlp_service.dart';
+import '../services/vocabulary_processor.dart';
+import '../services/llm_output_formatter.dart';
 import '../models/vocabulary_item.dart';
+import '../models/language_response.dart';
 import 'settings_screen.dart';
 import 'vocabulary_review_screen.dart';
 
@@ -66,7 +71,9 @@ class _ChatScreenState extends State<ChatScreen> {
       },
       child: Scaffold(
         backgroundColor: Colors.black38, 
+        
         appBar: AppBar(
+          backgroundColor: const Color.fromARGB(255, 71, 175, 227),
           title: Text(title),
           actions: [
             IconButton(
@@ -107,14 +114,26 @@ class _ChatScreenState extends State<ChatScreen> {
                     itemCount: chatService.messages.length,
                     itemBuilder: (context, index) {
                       final message = chatService.messages[index];
+                      // Parse the message JSON if possible
+                      LanguageResponse? parsedResponse;
+                      if (!message.isUser) {
+                        parsedResponse = _tryParseJsonResponse(message.content);
+                      }
+                      
                       return Column(
                         crossAxisAlignment: message.isUser 
                             ? CrossAxisAlignment.end 
                             : CrossAxisAlignment.start,
                         children: [
-                          _MessageBubble(message: message),
+                          _MessageBubble(
+                            message: message,
+                            parsedResponse: parsedResponse,
+                          ),
                           if (!message.isUser)
-                            _VocabularyButtons(message: message),
+                            VocabularyButtons(
+                              message: message,
+                              parsedResponse: parsedResponse,
+                            ),
                         ],
                       );
                     },
@@ -208,389 +227,111 @@ class _ChatScreenState extends State<ChatScreen> {
     chatService.sendMessage(_controller.text);
     _controller.clear();
   }
+  
+  // Helper method to parse JSON response - shared by message bubble and vocabulary buttons
+  LanguageResponse? _tryParseJsonResponse(String content) {
+    try {
+      // First try direct parsing of the entire content
+      return LanguageResponse.fromJson(json.decode(content));
+    } catch (e) {
+      // Try to extract JSON if it's embedded in text
+      try {
+        // Look for JSON inside code blocks
+        final jsonCodeBlockRegex = RegExp(r'```json\s*([\s\S]*?)\s*```');
+        final codeMatch = jsonCodeBlockRegex.firstMatch(content);
+        
+        if (codeMatch != null && codeMatch.group(1) != null) {
+          final jsonString = codeMatch.group(1)!.trim();
+          return LanguageResponse.fromJson(json.decode(jsonString));
+        }
+        
+        // Try simple regex extraction
+        final jsonRegex = RegExp(r'(\{[\s\S]*\})');
+        final match = jsonRegex.firstMatch(content);
+        
+        if (match != null) {
+          final jsonString = match.group(1);
+          if (jsonString != null) {
+            return LanguageResponse.fromJson(json.decode(jsonString));
+          }
+        }
+      } catch (e) {
+        debugPrint('Failed to parse JSON response: $e');
+      }
+    }
+    return null;
+  }
 }
 
 class _MessageBubble extends StatelessWidget {
   final Message message;
+  final LanguageResponse? parsedResponse;
 
-  const _MessageBubble({required this.message});
+  const _MessageBubble({
+    required this.message,
+    this.parsedResponse,
+  });
 
   @override
   Widget build(BuildContext context) {
     final isUser = message.isUser;
+    final ScrollController scrollController = ScrollController();
+    
     return Align(
       alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
         constraints: BoxConstraints(
-          maxWidth: MediaQuery.of(context).size.width * 0.75,
+          maxWidth: MediaQuery.of(context).size.width * 0.8,
+          maxHeight: MediaQuery.of(context).size.height * 1.5,
         ),
-        margin: const EdgeInsets.symmetric(vertical: 4),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        margin: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
         decoration: BoxDecoration(
           color: isUser
               ? Theme.of(context).colorScheme.primary
               : Theme.of(context).colorScheme.surfaceVariant,
           borderRadius: BorderRadius.circular(16),
         ),
-        child: isUser
-            ? SelectableText(
-                message.content,
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.onPrimary,
-                ),
-              )
-            : SelectableMarkdown(
-                data: message.content,
-                styleSheet: MarkdownStyleSheet(
-                  p: TextStyle(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ),
+        child: Scrollbar(
+          controller: scrollController,
+          thumbVisibility: false,
+          trackVisibility: false,
+          thickness: 8,
+          radius: const Radius.circular(10),
+          child: SingleChildScrollView(
+            controller: scrollController,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 30, horizontal: 20),
+              child: isUser
+                ? SelectableText(
+                    message.content,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onPrimary,
+                    ),
+                  )
+                : _buildFormattedContent(context, message),
+            ),
+          ),
+        ),
       ),
     );
   }
-}
-
-class _VocabularyButtons extends StatefulWidget {
-  final Message message;
-
-  const _VocabularyButtons({required this.message});
-
-  @override
-  State<_VocabularyButtons> createState() => _VocabularyButtonsState();
-}
-
-class _VocabularyButtonsState extends State<_VocabularyButtons> {
-  bool _isLoading = false;
-  final Map<String, String> _verbs = {};
-  final Map<String, String> _nouns = {};
-  final Map<String, String> _adverbs = {};
-  final Map<String, Map<String, dynamic>> _conjugations = {};
-  final Map<String, String> _definitions = {};
-  late final String _conversationId;
-
-  @override
-  void initState() {
-    super.initState();
-    _conversationId = DateTime.now().toIso8601String();
-    _processMessage();
-  }
-
-  Future<void> _processMessage() async {
-    if (widget.message.isUser) {
-      setState(() => _isLoading = false);
-      return;
-    }
-
-    try {
-      final content = widget.message.content;
-      
-      // Process sections in order
-      await _processVerbs(content);
-      await _processNouns(content);
-      await _processAdverbs(content);
-
-      debugPrint('Found ${_verbs.length} verbs, ${_nouns.length} nouns, and ${_adverbs.length} adverbs');
-    } catch (e) {
-      debugPrint('Error processing message: $e');
-    } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
-    }
-  }
-
-  Future<void> _processVerbs(String content) async {
-    final verbSection = _extractSection(content, 'Verb analysis:', 'Nouns analysis:');
-    if (verbSection != null) {
-      final verbLines = verbSection.split('\n');
-      String? currentVerb;
-      String? currentMeaning;
-      List<String> conjugationLines = [];
-
-      for (final line in verbLines) {
-        final trimmedLine = line.trim();
-        if (trimmedLine.startsWith('-')) {
-          // Save previous verb's conjugations if any
-          if (currentVerb != null && conjugationLines.isNotEmpty) {
-            _conjugations[currentVerb] = _processConjugations(conjugationLines);
-          }
-          
-          // Start new verb
-          final match = RegExp(r'-\s*([\w\s]+)\s*\((.*?)\)').firstMatch(trimmedLine);
-          if (match != null) {
-            currentVerb = match.group(1)?.trim();
-            currentMeaning = match.group(2)?.trim();
-            if (currentVerb != null && currentMeaning != null) {
-              _verbs[currentVerb] = currentMeaning;
-              conjugationLines = [];
-            }
-          }
-        } else if (trimmedLine.isNotEmpty && currentVerb != null) {
-          conjugationLines.add(trimmedLine);
-        }
-      }
-      
-      // Process the last verb's conjugations
-      if (currentVerb != null && conjugationLines.isNotEmpty) {
-        _conjugations[currentVerb] = _processConjugations(conjugationLines);
-      }
-    }
-  }
-
-  Future<void> _processNouns(String content) async {
-    final nounSection = _extractSection(content, 'Nouns analysis:', 'Adverbs analysis:');
-    if (nounSection != null) {
-      final nounLines = nounSection.split('\n');
-      for (final line in nounLines) {
-        if (line.trim().startsWith('-')) {
-          final match = RegExp(r'-\s*([\w\s]+)\s*\((.*?)\)(.*)').firstMatch(line.trim());
-          if (match != null) {
-            final noun = match.group(1)?.trim() ?? '';
-            final meaning = match.group(2)?.trim() ?? '';
-            final definition = match.group(3)?.trim() ?? '';
-            
-            if (noun.isNotEmpty) {
-              _nouns[noun] = meaning;
-              if (definition.isNotEmpty) {
-                _definitions[noun] = definition.replaceAll(RegExp(r'^\s*[-:]\s*'), '');
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-
-  Future<void> _processAdverbs(String content) async {
-    final adverbSection = _extractSection(content, 'Adverbs analysis:', null);
-    if (adverbSection != null) {
-      final adverbLines = adverbSection.split('\n');
-      for (final line in adverbLines) {
-        if (line.trim().startsWith('-')) {
-          final match = RegExp(r'-\s*([\w\s]+)\s*\((.*?)\)(.*)').firstMatch(line.trim());
-          if (match != null) {
-            final adverb = match.group(1)?.trim() ?? '';
-            final meaning = match.group(2)?.trim() ?? '';
-            final definition = match.group(3)?.trim() ?? '';
-            
-            if (adverb.isNotEmpty) {
-              _adverbs[adverb] = meaning;
-              if (definition.isNotEmpty) {
-                _definitions[adverb] = definition.replaceAll(RegExp(r'^\s*[-:]\s*'), '');
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-
-  Map<String, String> _processConjugations(List<String> lines) {
-    final conjugations = <String, String>{};
-    for (final line in lines) {
-      final parts = line.split(':').map((p) => p.trim()).toList();
-      if (parts.length == 2) {
-        conjugations[parts[0]] = parts[1];
-      } else if (parts.length == 1 && parts[0].isNotEmpty) {
-        conjugations['form${conjugations.length + 1}'] = parts[0];
-      }
-    }
-    return conjugations;
-  }
-
-  String? _extractSection(String content, String startMarker, String? endMarker) {
-    final startIndex = content.indexOf(startMarker);
-    if (startIndex == -1) return null;
-
-    final start = startIndex + startMarker.length;
-    final end = endMarker != null ? content.indexOf(endMarker, start) : content.length;
-    
-    if (end == -1) {
-      return content.substring(start).trim();
-    }
-    
-    return content.substring(start, end).trim();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (_isLoading) {
-      return const Padding(
-        padding: EdgeInsets.only(top: 8),
-        child: Center(
-          child: SizedBox(
-            width: 24,
-            height: 24,
-            child: CircularProgressIndicator(strokeWidth: 2),
+  
+  Widget _buildFormattedContent(BuildContext context, Message message) {
+    Widget contentWidget;
+    if (parsedResponse != null) {
+      contentWidget = LlmOutputFormatter.formatResponse(parsedResponse!);
+    } else {
+      contentWidget = SelectableMarkdown(
+        data: message.content,
+        styleSheet: MarkdownStyleSheet(
+          p: TextStyle(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
           ),
         ),
       );
     }
-
-    if (_verbs.isEmpty && _nouns.isEmpty && _adverbs.isEmpty) {
-      return const SizedBox();
-    }
-
-    return Padding(
-      padding: const EdgeInsets.only(top: 8),
-      child: Wrap(
-        spacing: 8,
-        runSpacing: 8,
-        children: [
-          ..._verbs.entries.map((entry) => _VocabularyChip(
-                word: entry.key,
-                type: VocabularyItem.typeVerb,
-                translation: entry.value,
-                conjugations: _conjugations[entry.key],
-                conversationId: _conversationId,
-              )),
-          ..._nouns.entries.map((entry) => _VocabularyChip(
-                word: entry.key,
-                type: VocabularyItem.typeNoun,
-                translation: entry.value,
-                definition: _definitions[entry.key],
-                conversationId: _conversationId,
-              )),
-          ..._adverbs.entries.map((entry) => _VocabularyChip(
-                word: entry.key,
-                type: VocabularyItem.typeAdverb,
-                translation: entry.value,
-                definition: _definitions[entry.key],
-                conversationId: _conversationId,
-              )),
-        ],
-      ),
-    );
-  }
-}
-
-class _VocabularyChip extends StatefulWidget {
-  final String word;
-  final String type;
-  final String translation;
-  final Map<String, dynamic>? conjugations;
-  final String? definition;
-  final String conversationId;
-
-  const _VocabularyChip({
-    required this.word,
-    required this.type,
-    required this.translation,
-    this.conjugations,
-    this.definition,
-    required this.conversationId,
-  });
-
-  @override
-  State<_VocabularyChip> createState() => _VocabularyChipState();
-}
-
-class _VocabularyChipState extends State<_VocabularyChip> {
-  bool _isLoading = false;
-  bool _isAdded = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final isVerb = widget.type == VocabularyItem.typeVerb;
-    final isNoun = widget.type == VocabularyItem.typeNoun;
-    final isAdverb = widget.type == VocabularyItem.typeAdverb;
     
-    Color getChipColor() {
-      if (_isAdded) return Colors.green.shade700;
-      if (isVerb) return Colors.blue.shade700;
-      if (isNoun) return Colors.green.shade700;
-      if (isAdverb) return Colors.red.shade700;
-      return Colors.grey.shade700;
-    }
-    
-    Color getBackgroundColor() {
-      if (_isAdded) return Colors.green.shade50;
-      if (isVerb) return Colors.blue.shade50;
-      if (isNoun) return Colors.green.shade50;
-      if (isAdverb) return Colors.red.shade50;
-      return Colors.grey.shade50;
-    }
-    
-    IconData getIcon() {
-      if (_isAdded) return Icons.check;
-      if (isVerb) return Icons.run_circle;
-      if (isNoun) return Icons.label;
-      if (isAdverb) return Icons.speed;
-      return Icons.help_outline;
-    }
-    
-    return ActionChip(
-      avatar: CircleAvatar(
-        backgroundColor: Colors.transparent,
-        child: _isLoading
-            ? SizedBox(
-                width: 18,
-                height: 18,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: getChipColor(),
-                ),
-              )
-            : Icon(
-                getIcon(),
-                color: getChipColor(),
-                size: 18,
-              ),
-      ),
-      backgroundColor: getBackgroundColor(),
-      label: Text(
-        widget.word,
-        style: TextStyle(
-          color: getChipColor().withValues(alpha: 0.9),
-        ),
-      ),
-      onPressed: _isLoading || _isAdded
-          ? null
-          : () async {
-              setState(() => _isLoading = true);
-              try {
-                final vocabularyService = context.read<VocabularyService>();
-                if (!vocabularyService.isInitialized) {
-                  throw Exception('Vocabulary service not initialized');
-                }
-                
-                await vocabularyService.addOrUpdateItem(
-                  widget.word,
-                  widget.type,
-                  widget.translation,
-                  definition: widget.definition,
-                  conjugations: widget.conjugations,
-                  conversationId: widget.conversationId,
-                );
-
-                if (!mounted) return;
-                setState(() => _isAdded = true);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Added "${widget.word}" to your vocabulary'),
-                    duration: const Duration(seconds: 2),
-                    behavior: SnackBarBehavior.floating,
-                  ),
-                );
-              } catch (e) {
-                if (!mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Error adding word: $e'),
-                    backgroundColor: Colors.red,
-                    duration: const Duration(seconds: 2),
-                    behavior: SnackBarBehavior.floating,
-                  ),
-                );
-              } finally {
-                if (mounted) {
-                  setState(() => _isLoading = false);
-                }
-              }
-            },
-    );
+    return contentWidget;
   }
 }
 
