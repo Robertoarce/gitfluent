@@ -10,13 +10,13 @@ class LlmOutputFormatter {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Original text with corrections
-        if (response.corrections.isNotEmpty)
-          _buildCorrectionSection(response.corrections, response.targetLanguageSentence),
-          
-        // Translation section
+        // Translation section - now placed first
         _buildTranslationSection(response.targetLanguageSentence, response.nativeLanguageTranslation),
         
+        // Corrections section - now placed after translation
+        if (response.corrections.isNotEmpty) 
+          _buildCorrectionSection(response.corrections, response.targetLanguageSentence),
+          
         // Vocabulary breakdown
         if (response.vocabularyBreakdown.isNotEmpty)
           _buildVocabularySection(response.vocabularyBreakdown),
@@ -30,13 +30,18 @@ class LlmOutputFormatter {
   
   /// Builds the corrections section showing original text with corrections
   static Widget _buildCorrectionSection(List<String> corrections, String correctedText) {
-    // Skip if corrected text is empty
+    // Debug logging to see what's in the corrections array
+    debugPrint('Corrections array content: $corrections');
+    
+    // Always show the corrections section unless explicitly empty
     if (correctedText.isEmpty) {
       return const SizedBox();
     }
     
-    final bool hasCorrections = !(corrections.length == 1 && corrections[0] == "None.");
-    
+    // Only filter out when exactly "None." is present alone
+    bool hasNoCorrections = corrections.isEmpty || 
+      (corrections.length == 1 && corrections[0].trim() == "None.");
+      
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 8),
       child: Padding(
@@ -47,12 +52,12 @@ class LlmOutputFormatter {
             Row(
               children: [
                 Icon(
-                  hasCorrections ? Icons.edit : Icons.check_circle,
-                  color: hasCorrections ? Colors.orange : Colors.green,
+                  hasNoCorrections ? Icons.check_circle : Icons.edit,
+                  color: hasNoCorrections ? Colors.green : Colors.orange,
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  'Corrections',
+                  'Cleaned input',
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 16,
@@ -61,28 +66,33 @@ class LlmOutputFormatter {
               ],
             ),
             const Divider(),
-            Text(
-              correctedText,
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            if (hasCorrections) ...[
-              const SizedBox(height: 8),
-              ...corrections.map((correction) => Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                child: Row(
-                  children: [
-                    const Icon(Icons.arrow_right, size: 16, color: Colors.grey),
-                    const SizedBox(width: 4),
-                    Expanded(
-                      child: Text(correction),
-                    ),
-                  ],
+            
+            // If no corrections, show a message
+            if (hasNoCorrections) 
+              const Text(
+                'No corrections needed.',
+                style: TextStyle(
+                  fontStyle: FontStyle.italic,
+                  color: Colors.green,
                 ),
-              )),
-            ],
+              )
+            else
+              // Display each correction
+              ...corrections
+                  .where((correction) => correction.trim().isNotEmpty)
+                  .map((correction) => Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Icon(Icons.arrow_right, size: 16, color: Colors.grey),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(correction),
+                        ),
+                      ],
+                    ),
+                  )),
           ],
         ),
       ),

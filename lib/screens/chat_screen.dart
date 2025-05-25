@@ -26,6 +26,7 @@ class ChatScreen extends StatefulWidget {
 class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  bool _detailedMode = false;
 
   @override
   void dispose() {
@@ -51,11 +52,11 @@ class _ChatScreenState extends State<ChatScreen> {
     final settings = context.watch<SettingsService>();
     final languageSettings = context.watch<LanguageSettings>();
     
-    String title = ' ';
-    if (languageSettings.targetLanguage != null) {
-      title += '${languageSettings.targetLanguage?.name}';
-    }
-    title += ' -> Using: ${settings.getProviderName(settings.currentProvider)}';
+    String title = ' GitFluent -> made by Roberto Arce';
+    // if (languageSettings.targetLanguage != null) {
+    //   title += '${languageSettings.targetLanguage?.name}';
+    // }
+    // title += ' -> Using: ${settings.getProviderName(settings.currentProvider)}';
     
     return KeyboardListener(
       focusNode: FocusNode(),
@@ -76,6 +77,19 @@ class _ChatScreenState extends State<ChatScreen> {
           backgroundColor: const Color.fromARGB(255, 71, 175, 227),
           title: Text(title),
           actions: [
+            Row(
+              children: [
+                const Text('Detailed mode', style: TextStyle(fontSize: 13)),
+                Switch(
+                  value: _detailedMode,
+                  onChanged: (value) {
+                    setState(() {
+                      _detailedMode = value;
+                    });
+                  },
+                ),
+              ],
+            ),
             IconButton(
               icon: const Icon(Icons.menu_book),
               onPressed: () {
@@ -116,8 +130,16 @@ class _ChatScreenState extends State<ChatScreen> {
                       final message = chatService.messages[index];
                       // Parse the message JSON if possible
                       LanguageResponse? parsedResponse;
-                      if (!message.isUser) {
-                        parsedResponse = _tryParseJsonResponse(message.LLMjsonResponse ?? '');
+                      if (!message.isUser && message.LLMjsonResponse != null && message.LLMjsonResponse!.isNotEmpty) {
+                        // Try to parse directly from stored JSON first
+                        try {
+                          parsedResponse = LanguageResponse.fromJson(json.decode(message.LLMjsonResponse!));
+                          debugPrint('Successfully parsed stored JSON response');
+                        } catch (e) {
+                          // If direct parsing fails, use the helper method
+                          debugPrint('Stored JSON parsing failed, trying helper: $e');
+                          parsedResponse = _tryParseJsonResponse(message.LLMjsonResponse!);
+                        }
                       }
                       
                       return Column(
@@ -128,6 +150,7 @@ class _ChatScreenState extends State<ChatScreen> {
                           _MessageBubble(
                             message: message,
                             parsedResponse: parsedResponse,
+                            detailedMode: _detailedMode,
                           ),
                           if (!message.isUser)
                             VocabularyButtons(
@@ -230,17 +253,26 @@ class _ChatScreenState extends State<ChatScreen> {
   
   // Helper method to parse JSON response - shared by message bubble and vocabulary buttons
   LanguageResponse? _tryParseJsonResponse(String content) {
+    if (content.isEmpty) {
+      debugPrint('Empty content provided to JSON parser');
+      return null;
+    }
+
     try {
       // First try direct parsing of the entire content
+      debugPrint('Attempting to parse JSON content directly');
       return LanguageResponse.fromJson(json.decode(content));
     } catch (e) {
+      debugPrint('Direct JSON parsing failed: $e');
+      
       // Try to extract JSON if it's embedded in text
       try {
         // Look for JSON inside code blocks
         final jsonCodeBlockRegex = RegExp(r'```json\s*([\s\S]*?)\s*```');
         final codeMatch = jsonCodeBlockRegex.firstMatch(content);
-
+        
         if (codeMatch != null && codeMatch.group(1) != null) {
+          debugPrint('Found JSON in code block');
           final jsonString = codeMatch.group(1)!.trim();
           return LanguageResponse.fromJson(json.decode(jsonString));
         }
@@ -250,6 +282,7 @@ class _ChatScreenState extends State<ChatScreen> {
         final match = jsonRegex.firstMatch(content);
         
         if (match != null) {
+          debugPrint('Found JSON using simple regex');
           final jsonString = match.group(1);
           if (jsonString != null) {
             return LanguageResponse.fromJson(json.decode(jsonString));
@@ -263,18 +296,40 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 }
 
-class _MessageBubble extends StatelessWidget {
+class _MessageBubble extends StatefulWidget {
   final Message message;
   final LanguageResponse? parsedResponse;
+  final bool detailedMode;
 
   const _MessageBubble({
     required this.message,
     this.parsedResponse,
+    required this.detailedMode,
   });
 
   @override
+  State<_MessageBubble> createState() => _MessageBubbleState();
+}
+
+class _MessageBubbleState extends State<_MessageBubble> {
+  bool _showCorrections = false;
+  bool _showVocabulary = false;
+
+  @override
+  void didUpdateWidget(_MessageBubble oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Reset expanded sections when detailed mode changes
+    if (oldWidget.detailedMode != widget.detailedMode && !widget.detailedMode) {
+      setState(() {
+        _showCorrections = false;
+        _showVocabulary = false;
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final isUser = message.isUser;
+    final isUser = widget.message.isUser;
     final ScrollController scrollController = ScrollController();
     
     return Align(
@@ -303,12 +358,12 @@ class _MessageBubble extends StatelessWidget {
               padding: const EdgeInsets.symmetric(vertical: 30, horizontal: 20),
               child: isUser
                 ? SelectableText(
-                    message.content,
+                    widget.message.content,
                     style: TextStyle(
                       color: Theme.of(context).colorScheme.onPrimary,
                     ),
                   )
-                : _buildFormattedContent(context, message),
+                : _buildFormattedContent(context),
             ),
           ),
         ),
@@ -316,13 +371,15 @@ class _MessageBubble extends StatelessWidget {
     );
   }
   
-  Widget _buildFormattedContent(BuildContext context, Message message) {
-    Widget contentWidget;
-    if (parsedResponse != null) {
-      contentWidget = LlmOutputFormatter.formatResponse(parsedResponse!);
+  Widget _buildFormattedContent(BuildContext context) {
+    if (widget.parsedResponse != null) {
+      return CollapsibleResponseFormatter(
+        response: widget.parsedResponse!,
+        detailedMode: widget.detailedMode,
+      );
     } else {
-      contentWidget = SelectableMarkdown(
-        data: message.content,
+      return SelectableMarkdown(
+        data: widget.message.content,
         styleSheet: MarkdownStyleSheet(
           p: TextStyle(
             color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -330,8 +387,391 @@ class _MessageBubble extends StatelessWidget {
         ),
       );
     }
+  }
+}
+
+/// A formatter that wraps LLM output with collapsible sections
+class CollapsibleResponseFormatter extends StatefulWidget {
+  final LanguageResponse response;
+  final bool detailedMode;
+
+  const CollapsibleResponseFormatter({
+    super.key, 
+    required this.response,
+    required this.detailedMode,
+  });
+
+  @override
+  State<CollapsibleResponseFormatter> createState() => _CollapsibleResponseFormatterState();
+}
+
+class _CollapsibleResponseFormatterState extends State<CollapsibleResponseFormatter> {
+  bool _showCorrections = false;
+  bool _showVocabulary = false;
+
+  @override
+  void didUpdateWidget(CollapsibleResponseFormatter oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Reset expanded sections when detailed mode changes
+    if (oldWidget.detailedMode != widget.detailedMode && !widget.detailedMode) {
+      setState(() {
+        _showCorrections = false;
+        _showVocabulary = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Translation section is always visible
+        _buildTranslationSection(),
+        
+        // Collapsible corrections section
+        if (widget.response.corrections.isNotEmpty)
+          _buildCollapsibleCorrectionsSection(),
+        
+        // Collapsible vocabulary section
+        if (widget.response.vocabularyBreakdown.isNotEmpty)
+          _buildCollapsibleVocabularySection(),
+        
+        // Additional context if available
+        if (widget.response.additionalContext != null && 
+            widget.response.additionalContext!.isNotEmpty)
+          _buildAdditionalContextSection(),
+      ],
+    );
+  }
+
+  Widget _buildTranslationSection() {
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Row(
+              children: [
+                Icon(Icons.translate, color: Colors.blue),
+                SizedBox(width: 8),
+                Text(
+                  'Translation',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+              ],
+            ),
+            const Divider(),
+            if (widget.response.targetLanguageSentence.isNotEmpty)
+              SelectableText(
+                widget.response.targetLanguageSentence,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            if (widget.response.targetLanguageSentence.isNotEmpty && 
+                widget.response.nativeLanguageTranslation.isNotEmpty)
+              const SizedBox(height: 8),
+            if (widget.response.nativeLanguageTranslation.isNotEmpty)
+              SelectableText(
+                widget.response.nativeLanguageTranslation,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontStyle: FontStyle.italic,
+                  color: Colors.grey.shade700,
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCollapsibleCorrectionsSection() {
+    // Check if we have real corrections or just "None" values
+    final hasCorrections = !(widget.response.corrections.isEmpty ||
+        (widget.response.corrections.length == 1 && 
+         (widget.response.corrections[0] == "None." || 
+          widget.response.corrections[0].toLowerCase().contains("none"))));
     
-    return contentWidget;
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      child: InkWell(
+        onTap: () => setState(() => _showCorrections = !_showCorrections),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    hasCorrections ? Icons.edit : Icons.check_circle,
+                    color: hasCorrections ? Colors.orange : Colors.green,
+                  ),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'Cleaned input',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                  const Spacer(),
+                  Icon(
+                    _showCorrections || widget.detailedMode
+                        ? Icons.expand_less
+                        : Icons.expand_more,
+                    size: 20,
+                  ),
+                ],
+              ),
+              
+              // Only show content if section is expanded or in detailed mode
+              if (_showCorrections || widget.detailedMode) ...[
+                const Divider(),
+                
+                // If no corrections, show a message
+                if (!hasCorrections)
+                  const Text(
+                    'No corrections needed.',
+                    style: TextStyle(
+                      fontStyle: FontStyle.italic,
+                      color: Colors.green,
+                    ),
+                  )
+                else
+                  // Display each correction
+                  ...widget.response.corrections
+                      .where((correction) => 
+                          correction.trim().isNotEmpty && 
+                          correction != "None." &&
+                          !correction.toLowerCase().contains("none"))
+                      .map((correction) => Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Icon(Icons.arrow_right, size: 16, color: Colors.grey),
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: Text(correction),
+                            ),
+                          ],
+                        ),
+                      )),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCollapsibleVocabularySection() {
+    final vocabulary = widget.response.vocabularyBreakdown;
+    
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      child: InkWell(
+        onTap: () => setState(() => _showVocabulary = !_showVocabulary),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.school, color: Colors.purple),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'Vocabulary',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                  const Spacer(),
+                  Icon(
+                    _showVocabulary || widget.detailedMode
+                        ? Icons.expand_less
+                        : Icons.expand_more,
+                    size: 20,
+                  ),
+                ],
+              ),
+              
+              // Only show content if section is expanded or in detailed mode
+              if (_showVocabulary || widget.detailedMode) ...[
+                const Divider(),
+                
+                // Group vocabulary by type
+                ..._buildVocabularyContent(vocabulary),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+  
+  List<Widget> _buildVocabularyContent(List<VocabularyBreakdown> vocabulary) {
+    if (vocabulary.isEmpty) {
+      return [const Text('No vocabulary items')];
+    }
+    
+    try {
+      // Group vocabulary by type
+      final verbs = vocabulary.where((item) => 
+        item.wordType.toLowerCase().contains('verb')).toList();
+      final nouns = vocabulary.where((item) => 
+        item.wordType.toLowerCase().contains('noun')).toList();
+      final others = vocabulary.where((item) => 
+        !item.wordType.toLowerCase().contains('verb') && 
+        !item.wordType.toLowerCase().contains('noun')).toList();
+      
+      final widgets = <Widget>[];
+      
+      // Verbs section
+      if (verbs.isNotEmpty) {
+        widgets.add(_buildVocabularyTypeHeader('Verbs', Icons.run_circle, Colors.blue));
+        widgets.addAll(verbs.map((verb) => _buildVocabularyItem(verb)));
+        widgets.add(const SizedBox(height: 8));
+      }
+      
+      // Nouns section
+      if (nouns.isNotEmpty) {
+        widgets.add(_buildVocabularyTypeHeader('Nouns', Icons.label, Colors.green));
+        widgets.addAll(nouns.map((noun) => _buildVocabularyItem(noun)));
+        widgets.add(const SizedBox(height: 8));
+      }
+      
+      // Other words section
+      if (others.isNotEmpty) {
+        widgets.add(_buildVocabularyTypeHeader('Other Words', Icons.text_fields, Colors.orange));
+        widgets.addAll(others.map((other) => _buildVocabularyItem(other)));
+      }
+      
+      return widgets;
+    } catch (e) {
+      debugPrint('Error building vocabulary section: $e');
+      return [Text('Error displaying vocabulary: $e')];
+    }
+  }
+  
+  Widget _buildVocabularyTypeHeader(String title, IconData icon, Color color) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 12, bottom: 4),
+      child: Row(
+        children: [
+          Icon(icon, color: color, size: 18),
+          const SizedBox(width: 6),
+          Text(
+            title,
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: color,
+              fontSize: 14,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  Widget _buildVocabularyItem(VocabularyBreakdown item) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '${item.word} ',
+                style: const TextStyle(
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              if (item.baseForm.isNotEmpty && item.baseForm != item.word)
+                Text(
+                  '(${item.baseForm})',
+                  style: TextStyle(
+                    fontStyle: FontStyle.italic,
+                    fontSize: 13,
+                    color: Colors.grey.shade700,
+                  ),
+                ),
+            ],
+          ),
+          if (item.translations.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(left: 12, top: 2),
+              child: Text(
+                item.translations.join(', '),
+                style: TextStyle(
+                  color: Colors.grey.shade800,
+                  fontSize: 13,
+                ),
+              ),
+            ),
+          if (item.forms.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(left: 12, top: 2),
+              child: Text(
+                'Forms: ${item.forms.join(', ')}',
+                style: TextStyle(
+                  color: Colors.grey.shade600,
+                  fontSize: 12,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+  
+  Widget _buildAdditionalContextSection() {
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Row(
+              children: [
+                Icon(Icons.info_outline, color: Colors.teal),
+                SizedBox(width: 8),
+                Text(
+                  'Additional Context',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+              ],
+            ),
+            const Divider(),
+            Text(
+              widget.response.additionalContext!,
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey.shade800,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

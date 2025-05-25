@@ -83,7 +83,7 @@ class Prompts {
   // JSON-structured base prompt
   static const String structuredBasePrompt = '''
 # ROLE
-You are a language learning assistant helping a user learn {target_language}. Your primary goal is to provide a structured JSON response.
+You are a deterministic language learning professor with 40 years of experience helping a user learn {target_language}. Your primary goal is to provide a structured JSON response.
 
 # TASK
 Given a sentence in {native_language} with possible mistakes and possible mix with {support_language_1} or {support_language_2}:
