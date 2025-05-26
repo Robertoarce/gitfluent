@@ -33,9 +33,21 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        // Core services
-        ChangeNotifierProvider(create: (_) => SettingsService()),
-        ChangeNotifierProvider(create: (_) => LanguageSettings()),
+        // Core services - need to be initialized
+        ChangeNotifierProvider(
+          create: (_) {
+            final settingsService = SettingsService();
+            _initializeSettingsService(settingsService);
+            return settingsService;
+          },
+        ),
+        ChangeNotifierProvider(
+          create: (_) {
+            final languageSettings = LanguageSettings();
+            _initializeLanguageSettings(languageSettings);
+            return languageSettings;
+          },
+        ),
         
         // User system services
         Provider<LocalAuthService>(
@@ -105,6 +117,26 @@ class MyApp extends StatelessWidget {
         },
       ),
     );
+  }
+
+  // Helper method to initialize settings service
+  static Future<void> _initializeSettingsService(SettingsService settingsService) async {
+    try {
+      await settingsService.init();
+      debugPrint('SettingsService initialized successfully');
+    } catch (e) {
+      debugPrint('Error initializing SettingsService: $e');
+    }
+  }
+
+  // Helper method to initialize language settings
+  static Future<void> _initializeLanguageSettings(LanguageSettings languageSettings) async {
+    try {
+      await languageSettings.init();
+      debugPrint('LanguageSettings initialized successfully');
+    } catch (e) {
+      debugPrint('Error initializing LanguageSettings: $e');
+    }
   }
 
   // Helper method to initialize demo users
