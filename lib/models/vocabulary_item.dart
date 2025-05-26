@@ -101,7 +101,7 @@ class VocabularyItem {
       case typeNoun:
         return const Color(0xFF4CAF50); // Green
       case typeAdverb:
-        return const Color(0xFFF44336); // Red
+        return const Color(0xFF9C27B0); // Purple
       default:
         return const Color(0xFF9E9E9E); // Grey
     }

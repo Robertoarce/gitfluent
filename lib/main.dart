@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 import 'services/chat_service.dart';
 import 'services/settings_service.dart';
 import 'services/language_settings_service.dart';
@@ -100,18 +101,29 @@ class MyApp extends StatelessWidget {
       ],
       child: Consumer<UserService>(
         builder: (context, userService, child) {
-          return MaterialApp(
-            title: 'GitFluent',
-            theme: ThemeData(
-              colorScheme: ColorScheme.fromSeed(
-                seedColor: const Color.fromARGB(255, 71, 175, 227),
-              ),
-              useMaterial3: true,
+          return ShadApp.custom(
+            themeMode: ThemeMode.light,
+            theme: ShadThemeData(
+              brightness: Brightness.light,
+              colorScheme: const ShadBlueColorScheme.light(),
             ),
-            home: _buildHome(userService),
-            routes: {
-              '/auth': (context) => const AuthScreen(),
-              '/home': (context) => const AppHome(),
+            darkTheme: ShadThemeData(
+              brightness: Brightness.dark,
+              colorScheme: const ShadBlueColorScheme.dark(),
+            ),
+            appBuilder: (context) {
+              return MaterialApp(
+                title: 'GitFluent',
+                theme: Theme.of(context),
+                home: _buildHome(userService),
+                routes: {
+                  '/auth': (context) => const AuthScreen(),
+                  '/home': (context) => const AppHome(),
+                },
+                builder: (context, child) {
+                  return ShadAppBuilder(child: child!);
+                },
+              );
             },
           );
         },

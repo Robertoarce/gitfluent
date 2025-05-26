@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:email_validator/email_validator.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 import '../services/user_service.dart';
 
 class AuthScreen extends StatefulWidget {
@@ -52,7 +53,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: const Color(0xFFFAFAFA),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -63,67 +64,75 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   // App Logo/Title
-                  Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: const Color.fromARGB(255, 71, 175, 227),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: const Icon(
-                      Icons.school,
-                      size: 60,
-                      color: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  const Text(
-                    'GitFluent',
-                    style: TextStyle(
-                      fontSize: 32,
-                      fontWeight: FontWeight.bold,
-                      color: Color.fromARGB(255, 71, 175, 227),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Learn languages with AI assistance',
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Colors.grey[600],
-                    ),
-                  ),
-                  const SizedBox(height: 40),
-
-                  // Tab Bar
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.grey[200],
-                      borderRadius: BorderRadius.circular(25),
-                    ),
-                    child: TabBar(
-                      controller: _tabController,
-                      indicator: BoxDecoration(
-                        color: const Color.fromARGB(255, 71, 175, 227),
-                        borderRadius: BorderRadius.circular(25),
-                      ),
-                      labelColor: Colors.white,
-                      unselectedLabelColor: Colors.grey[600],
-                      tabs: const [
-                        Tab(text: 'Login'),
-                        Tab(text: 'Register'),
+                  ShadCard(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF3B82F6),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: const Icon(
+                            Icons.school,
+                            size: 48,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        const Text(
+                          'GitFluent',
+                          style: TextStyle(
+                            fontSize: 28,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF1F2937),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Learn languages with AI assistance',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[600],
+                          ),
+                        ),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 32),
 
-                  // Tab Views
-                  SizedBox(
-                    height: 400,
-                    child: TabBarView(
-                      controller: _tabController,
+                  // Auth Card
+                  ShadCard(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
                       children: [
-                        _buildLoginForm(),
-                        _buildRegisterForm(),
+                        // Tab Bar
+                        DefaultTabController(
+                          length: 2,
+                          child: Column(
+                            children: [
+                              TabBar(
+                                controller: _tabController,
+                                tabs: const [
+                                  Tab(text: 'Login'),
+                                  Tab(text: 'Register'),
+                                ],
+                              ),
+                              const SizedBox(height: 16),
+                              SizedBox(
+                                height: 400,
+                                child: TabBarView(
+                                  controller: _tabController,
+                                  children: [
+                                    _buildLoginForm(),
+                                    _buildRegisterForm(),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -134,29 +143,10 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                       if (userService.error != null) {
                         return Container(
                           margin: const EdgeInsets.only(top: 16),
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Colors.red[50],
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Colors.red[200]!),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(Icons.error_outline, color: Colors.red[600]),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  userService.error!,
-                                  style: TextStyle(color: Colors.red[600]),
-                                ),
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.close),
-                                onPressed: () => userService.clearError(),
-                                color: Colors.red[600],
-                                iconSize: 20,
-                              ),
-                            ],
+                          child: ShadAlert.destructive(
+                            title: const Text('Error'),
+                            description: Text(userService.error!),
+                            icon: const Icon(Icons.error_outline),
                           ),
                         );
                       }
@@ -182,6 +172,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
       key: _loginFormKey,
       child: Column(
         children: [
+          const SizedBox(height: 16),
           TextFormField(
             controller: _loginEmailController,
             keyboardType: TextInputType.emailAddress,
@@ -189,7 +180,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
               labelText: 'Email',
               prefixIcon: const Icon(Icons.email_outlined),
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(8),
               ),
             ),
             validator: (value) {
@@ -214,7 +205,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                 onPressed: () => setState(() => _obscureLoginPassword = !_obscureLoginPassword),
               ),
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(8),
               ),
             ),
             validator: (value) {
@@ -229,35 +220,21 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
             builder: (context, userService, child) {
               return SizedBox(
                 width: double.infinity,
-                height: 50,
-                child: ElevatedButton(
+                child: ShadButton(
                   onPressed: userService.isLoading ? null : _handleLogin,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color.fromARGB(255, 71, 175, 227),
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
                   child: userService.isLoading
                       ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                          ),
+                          height: 16,
+                          width: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : const Text(
-                          'Login',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                        ),
+                      : const Text('Login'),
                 ),
               );
             },
           ),
           const SizedBox(height: 16),
-          TextButton(
+          ShadButton.ghost(
             onPressed: () {
               // TODO: Implement forgot password
               ScaffoldMessenger.of(context).showSnackBar(
@@ -276,6 +253,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
       key: _registerFormKey,
       child: Column(
         children: [
+          const SizedBox(height: 16),
           Row(
             children: [
               Expanded(
@@ -285,7 +263,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                     labelText: 'First Name',
                     prefixIcon: const Icon(Icons.person_outlined),
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(8),
                     ),
                   ),
                   validator: (value) {
@@ -303,7 +281,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                   decoration: InputDecoration(
                     labelText: 'Last Name',
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(8),
                     ),
                   ),
                   validator: (value) {
@@ -324,7 +302,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
               labelText: 'Email',
               prefixIcon: const Icon(Icons.email_outlined),
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(8),
               ),
             ),
             validator: (value) {
@@ -349,7 +327,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                 onPressed: () => setState(() => _obscureRegisterPassword = !_obscureRegisterPassword),
               ),
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(8),
               ),
             ),
             validator: (value) {
@@ -374,7 +352,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                 onPressed: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
               ),
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(8),
               ),
             ),
             validator: (value) {
@@ -392,29 +370,15 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
             builder: (context, userService, child) {
               return SizedBox(
                 width: double.infinity,
-                height: 50,
-                child: ElevatedButton(
+                child: ShadButton(
                   onPressed: userService.isLoading ? null : _handleRegister,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color.fromARGB(255, 71, 175, 227),
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
                   child: userService.isLoading
                       ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                          ),
+                          height: 16,
+                          width: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : const Text(
-                          'Create Account',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                        ),
+                      : const Text('Create Account'),
                 ),
               );
             },
@@ -425,25 +389,21 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
   }
 
   Widget _buildDemoUsersSection() {
-    return Container(
+    return ShadCard(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.blue[50],
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.blue[200]!),
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(Icons.info_outline, color: Colors.blue[600]),
+              Icon(Icons.info_outline, color: Colors.blue[600], size: 20),
               const SizedBox(width: 8),
               Text(
                 'Demo Users for Testing',
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                   color: Colors.blue[600],
+                  fontSize: 14,
                 ),
               ),
             ],
@@ -451,7 +411,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
           const SizedBox(height: 12),
           Text(
             'Try these demo accounts:',
-            style: TextStyle(color: Colors.blue[700]),
+            style: TextStyle(color: Colors.blue[700], fontSize: 13),
           ),
           const SizedBox(height: 8),
           _buildDemoUserTile('Regular User', 'regular@test.com', 'password123', false),
@@ -464,18 +424,18 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
   Widget _buildDemoUserTile(String name, String email, String password, bool isPremium) {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(8),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.blue[100]!),
+        border: Border.all(color: Colors.grey[200]!),
       ),
       child: Row(
         children: [
           Icon(
             isPremium ? Icons.star : Icons.person,
             color: isPremium ? Colors.amber : Colors.grey,
-            size: 20,
+            size: 18,
           ),
           const SizedBox(width: 8),
           Expanded(
@@ -493,13 +453,10 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
               ],
             ),
           ),
-          TextButton(
+          ShadButton.outline(
+            size: ShadButtonSize.sm,
             onPressed: () => _fillDemoCredentials(email, password),
-            style: TextButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              minimumSize: Size.zero,
-            ),
-            child: const Text('Use', style: TextStyle(fontSize: 12)),
+            child: const Text('Use', style: TextStyle(fontSize: 11)),
           ),
         ],
       ),
@@ -507,18 +464,16 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
   }
 
   void _fillDemoCredentials(String email, String password) {
-    if (_tabController.index == 0) {
-      // Login tab
+    if (_tabController.index == 1) {
+      // Switch to login tab if on register
+      _tabController.animateTo(0);
+      setState(() {});
+    }
+    
+    Future.delayed(const Duration(milliseconds: 100), () {
       _loginEmailController.text = email;
       _loginPasswordController.text = password;
-    } else {
-      // Register tab - switch to login
-      _tabController.animateTo(0);
-      Future.delayed(const Duration(milliseconds: 300), () {
-        _loginEmailController.text = email;
-        _loginPasswordController.text = password;
-      });
-    }
+    });
   }
 
   Future<void> _handleLogin() async {

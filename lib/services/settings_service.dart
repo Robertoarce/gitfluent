@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'language_settings_service.dart';
 
 enum AIProvider {
   gemini,
@@ -20,13 +21,28 @@ class SettingsService extends ChangeNotifier {
   AIProvider _currentProvider = AIProvider.gemini;
   int _maxVerbs = defaultMaxVerbs;
   int _maxNouns = defaultMaxNouns;
+  final LanguageSettings _languageSettings;
 
   AIProvider get currentProvider => _currentProvider;
   int get maxVerbs => _maxVerbs;
   int get maxNouns => _maxNouns;
+  LanguageSettings get languageSettings => _languageSettings;
+
+  SettingsService() : _languageSettings = LanguageSettings() {
+    _init();
+  }
 
   Future<void> init() async {
+    await _init();
+  }
+
+  Future<void> _init() async {
     _prefs = await SharedPreferences.getInstance();
+    _loadSettings();
+    await _languageSettings.init();
+  }
+
+  Future<void> _loadSettings() async {
     final savedProvider = _prefs.getString(_providerKey);
     if (savedProvider != null) {
       _currentProvider = AIProvider.values.firstWhere(

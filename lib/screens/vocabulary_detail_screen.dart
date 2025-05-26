@@ -93,7 +93,7 @@ class VocabularyDetailScreen extends StatelessWidget {
       case VocabularyItem.typeNoun:
         return Colors.green.shade700;
       case VocabularyItem.typeAdverb:
-        return Colors.red.shade700;
+        return Colors.purple.shade700;
       default:
         return Colors.grey.shade700;
     }

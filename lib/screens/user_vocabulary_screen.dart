@@ -210,7 +210,7 @@ class _UserVocabularyScreenState extends State<UserVocabularyScreen> with Single
           const SizedBox(height: 16),
         ],
         if (adverbs.isNotEmpty) ...[
-          _buildSectionHeader('Adverbs & Others', Icons.text_fields, Colors.orange, adverbs.length),
+          _buildSectionHeader('Adverbs & Others', Icons.text_fields, Colors.purple, adverbs.length),
           ...adverbs.map((item) => _buildLegacyVocabularyCard(item)),
         ],
       ],
@@ -403,6 +403,8 @@ class _UserVocabularyScreenState extends State<UserVocabularyScreen> with Single
         return Colors.blue;
       case 'noun':
         return Colors.green;
+      case 'adverb':
+        return Colors.purple;
       default:
         return Colors.orange;
     }
@@ -411,6 +413,7 @@ class _UserVocabularyScreenState extends State<UserVocabularyScreen> with Single
   Color _getLegacyTypeColor(String type) {
     if (type == VocabularyItem.typeVerb) return Colors.blue;
     if (type == VocabularyItem.typeNoun) return Colors.green;
+    if (type == VocabularyItem.typeAdverb) return Colors.purple;
     return Colors.orange;
   }
 

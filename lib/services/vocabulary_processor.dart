@@ -89,29 +89,29 @@ class VocabularyButtonsContentState extends State<VocabularyButtonsContent> {
         debugPrint('Vocabulary processor: Successfully parsed JSON response');
         // Process structured JSON response
         _processLanguageResponse(languageResponse);
-      } else {
-        // Check if message content contains any string with "vocabulary_breakdown"
-        if (content.contains('vocabulary_breakdown')) {
-          debugPrint('Vocabulary processor: Found vocabulary_breakdown in content, but failed to parse JSON');
-          // Try a more aggressive JSON extraction
-          final String potentialJson = _extractJsonAggressively(content);
-          if (potentialJson.isNotEmpty) {
-            try {
-              final extractedResponse = LanguageResponse.fromJson(json.decode(potentialJson));
-              debugPrint('Vocabulary processor: Successfully parsed JSON with aggressive extraction');
-              _processLanguageResponse(extractedResponse);
-              return;
-            } catch (e) {
-              debugPrint('Vocabulary processor: Aggressive JSON extraction failed: $e');
-            }
+        return;
+      }
+      
+      // If direct parsing failed, try more aggressive extraction
+      if (content.contains('vocabulary_breakdown')) {
+        debugPrint('Vocabulary processor: Found vocabulary_breakdown in content, trying aggressive extraction');
+        final String potentialJson = _extractJsonAggressively(content);
+        if (potentialJson.isNotEmpty) {
+          try {
+            final extractedResponse = LanguageResponse.fromJson(json.decode(potentialJson));
+            debugPrint('Vocabulary processor: Successfully parsed JSON with aggressive extraction');
+            _processLanguageResponse(extractedResponse);
+            return;
+          } catch (e) {
+            debugPrint('Vocabulary processor: Aggressive JSON extraction failed: $e');
           }
         }
-        
-        // If not JSON, display empty state
-        debugPrint('Vocabulary processor: No structured JSON found in response');
-        if (mounted) {
-          setState(() => _isLoading = false);
-        }
+      }
+      
+      // If all parsing attempts failed, display empty state
+      debugPrint('Vocabulary processor: No structured JSON found in response');
+      if (mounted) {
+        setState(() => _isLoading = false);
       }
     } catch (e) {
       debugPrint('Vocabulary processor: Error processing message: $e');
@@ -226,7 +226,9 @@ class VocabularyButtonsContentState extends State<VocabularyButtonsContent> {
         final String lowerWordType = wordType.toLowerCase();
         
         if (lowerWordType.contains('verb')) {
-          _verbs[word] = translationText;
+          // Use base form for verbs instead of the conjugated form
+          final String verbKey = baseForm.isNotEmpty ? baseForm : word;
+          _verbs[verbKey] = translationText;
           
           // Process verb conjugations
           Map<String, dynamic> conjugationMap = {};
@@ -234,8 +236,8 @@ class VocabularyButtonsContentState extends State<VocabularyButtonsContent> {
             String key = i == 0 ? 'infinitive' : 'form$i';
             conjugationMap[key] = forms[i];
           }
-          _conjugations[word] = conjugationMap;
-          debugPrint('Added verb: $word with ${conjugationMap.length} conjugations');
+          _conjugations[verbKey] = conjugationMap;
+          debugPrint('Added verb: $verbKey (base form) with ${conjugationMap.length} conjugations');
           
         } else if (lowerWordType.contains('noun')) {
           _nouns[word] = translationText;
@@ -380,7 +382,7 @@ class VocabularyChipState extends State<VocabularyChip> {
       if (_isAdded) return Colors.green.shade700;
       if (isVerb) return Colors.blue.shade700;
       if (isNoun) return Colors.green.shade700;
-      if (isAdverb) return Colors.red.shade700;
+      if (isAdverb) return Colors.purple.shade700;
       return Colors.grey.shade700;
     }
     
@@ -388,7 +390,7 @@ class VocabularyChipState extends State<VocabularyChip> {
       if (_isAdded) return Colors.green.shade50;
       if (isVerb) return Colors.blue.shade50;
       if (isNoun) return Colors.green.shade50;
-      if (isAdverb) return Colors.red.shade50;
+      if (isAdverb) return Colors.purple.shade50;
       return Colors.grey.shade50;
     }
     

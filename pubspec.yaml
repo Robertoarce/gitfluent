@@ -30,6 +30,7 @@ dependencies:
   uuid: ^4.2.1
   # UI enhancements
   flutter_secure_storage: ^9.0.0
+  shadcn_ui: ^0.26.5
   # JSON serialization
   json_annotation: ^4.8.1
 
