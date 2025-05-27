@@ -28,6 +28,8 @@ dependencies:
   crypto: ^3.0.3
   email_validator: ^2.1.17
   uuid: ^4.2.1
+  # Supabase
+  supabase_flutter: ^2.3.4
   # UI enhancements
   flutter_secure_storage: ^9.0.0
   shadcn_ui: ^0.26.5

@@ -2,17 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'services/chat_service.dart';
 import 'services/settings_service.dart';
 import 'services/language_settings_service.dart';
 import 'services/vocabulary_service.dart';
 import 'services/user_service.dart';
-import 'services/local_auth_service.dart';
-import 'services/local_database_service.dart';
+import 'services/supabase_auth_service.dart';
+import 'services/supabase_database_service.dart';
 import 'models/user.dart' as app_user;
 import 'screens/chat_screen.dart';
 import 'screens/auth_screen.dart';
 import 'screens/user_vocabulary_screen.dart';
+import 'config/supabase_config.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -22,6 +24,17 @@ void main() async {
     debugPrint('Environment loaded successfully');
   } catch (e) {
     debugPrint('Error loading .env file: $e');
+  }
+
+  // Initialize Supabase
+  try {
+    await Supabase.initialize(
+      url: SupabaseConfig.projectUrl,
+      anonKey: SupabaseConfig.anonKey,
+    );
+    debugPrint('Supabase initialized successfully');
+  } catch (e) {
+    debugPrint('Error initializing Supabase: $e');
   }
 
   runApp(const MyApp());
@@ -51,21 +64,20 @@ class MyApp extends StatelessWidget {
         ),
         
         // User system services
-        Provider<LocalAuthService>(
+        Provider<SupabaseAuthService>(
           create: (_) {
-            final authService = LocalAuthService();
-            // Initialize and create demo users immediately
-            _initializeDemoUsers(authService);
+            final authService = SupabaseAuthService();
+            authService.initialize();
             return authService;
           },
         ),
-        Provider<LocalDatabaseService>(
-          create: (_) => LocalDatabaseService(),
+        Provider<SupabaseDatabaseService>(
+          create: (_) => SupabaseDatabaseService(),
         ),
-        ChangeNotifierProxyProvider2<LocalAuthService, LocalDatabaseService, UserService>(
+        ChangeNotifierProxyProvider2<SupabaseAuthService, SupabaseDatabaseService, UserService>(
           create: (context) => UserService(
-            authService: context.read<LocalAuthService>(),
-            databaseService: context.read<LocalDatabaseService>(),
+            authService: context.read<SupabaseAuthService>(),
+            databaseService: context.read<SupabaseDatabaseService>(),
           ),
           update: (context, authService, databaseService, previous) =>
               previous ?? UserService(
@@ -151,19 +163,6 @@ class MyApp extends StatelessWidget {
     }
   }
 
-  // Helper method to initialize demo users
-  static Future<void> _initializeDemoUsers(LocalAuthService authService) async {
-    try {
-      await authService.initialize();
-      await authService.createTestRegularUser();
-      await authService.createTestPremiumUser();
-      authService.printDebugInfo();
-      debugPrint('Demo users created successfully');
-    } catch (e) {
-      debugPrint('Error creating demo users: $e');
-    }
-  }
-
   Widget _buildHome(UserService userService) {
     // Show loading while checking auth state
     if (userService.isLoading) {
@@ -204,10 +203,6 @@ class _AppHomeState extends State<AppHome> {
     if (!vocabularyService.isInitialized) {
       await vocabularyService.init();
     }
-    
-    // Print debug info
-    context.read<LocalAuthService>().printDebugInfo();
-    context.read<LocalDatabaseService>().printDebugInfo();
   }
 
   @override
@@ -249,74 +244,30 @@ class _AppHomeState extends State<AppHome> {
         ],
       ),
       body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.lock_outline,
-                size: 80,
-                color: Colors.grey[400],
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Text(
+              'Upgrade to Premium',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
               ),
-              const SizedBox(height: 24),
-              Text(
-                'Premium Feature',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.grey[700],
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'AI-powered language learning is available for premium users only.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Colors.grey[600],
-                ),
-              ),
-              const SizedBox(height: 32),
-              ElevatedButton.icon(
-                onPressed: () async {
-                  await context.read<UserService>().upgradeToPremium();
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Congratulations! You are now a premium user!'),
-                        backgroundColor: Colors.green,
-                      ),
-                    );
-                  }
-                },
-                icon: const Icon(Icons.star),
-                label: const Text('Upgrade to Premium'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.amber,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-                ),
-              ),
-              const SizedBox(height: 16),
-              TextButton(
-                onPressed: () {
-                  _showVocabularyHistory(context);
-                },
-                child: const Text('View Vocabulary History'),
-              ),
-            ],
-          ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Get access to AI-powered chat features',
+              style: TextStyle(fontSize: 16),
+            ),
+            const SizedBox(height: 32),
+            ElevatedButton(
+              onPressed: () {
+                // TODO: Implement premium upgrade flow
+              },
+              child: const Text('Upgrade Now'),
+            ),
+          ],
         ),
-      ),
-    );
-  }
-
-  void _showVocabularyHistory(BuildContext context) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => const UserVocabularyScreen(),
       ),
     );
   }

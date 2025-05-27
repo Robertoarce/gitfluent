@@ -1,0 +1,36 @@
+# Changelog
+
+## [Unreleased]
+
+### Added
+- Initial setup of Supabase integration
+  - Added Supabase configuration file (`lib/config/supabase_config.dart`)
+  - Added Supabase authentication service (`lib/services/supabase_auth_service.dart`)
+  - Added Supabase database service (`lib/services/supabase_database_service.dart`)
+  - Added Supabase dependencies to `pubspec.yaml`
+
+### Changed
+- Migrated authentication from Firebase to Supabase
+  - Updated `main.dart` to initialize Supabase
+  - Replaced Firebase auth service with Supabase auth service
+  - Updated user authentication methods to use Supabase
+- Migrated database operations from Firebase to Supabase
+  - Replaced Firebase database service with Supabase database service
+  - Updated database operations to use Supabase tables and queries
+  - Updated user and vocabulary models to work with Supabase
+- Updated provider setup in `main.dart` to use Supabase services
+- Simplified non-premium home screen UI
+
+### Removed
+- Firebase dependencies and configuration files (commented out for reference)
+- Local authentication and database services
+- Demo user creation functionality
+- Debug info printing
+
+### Security
+- Added Supabase environment variables
+- Configured Supabase authentication providers
+- Set up Row Level Security (RLS) policies in Supabase
+
+## [Previous Version]
+- Initial Firebase implementation 
