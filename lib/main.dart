@@ -261,8 +261,8 @@ class _AppHomeState extends State<AppHome> {
             ),
             const SizedBox(height: 32),
             ElevatedButton(
-              onPressed: () {
-                // TODO: Implement premium upgrade flow
+              onPressed: () async {
+                await context.read<UserService>().upgradeToPremium();
               },
               child: const Text('Upgrade Now'),
             ),

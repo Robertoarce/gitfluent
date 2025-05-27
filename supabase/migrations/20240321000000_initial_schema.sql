@@ -87,6 +87,20 @@ CREATE POLICY "Users can update own profile"
   ON users FOR UPDATE
   USING (auth.uid() = id);
 
+CREATE POLICY "Users can insert own profile"
+  ON users FOR INSERT
+  WITH CHECK (auth.uid() = id);
+
+CREATE POLICY "Users can delete own profile"
+  ON users FOR DELETE
+  USING (auth.uid() = id);
+
+-- Allow service role to manage users (for premium upgrades)
+CREATE POLICY "Service role can manage users"
+  ON users
+  USING (auth.role() = 'service_role')
+  WITH CHECK (auth.role() = 'service_role');
+
 -- Vocabulary table policies
 CREATE POLICY "Users can view own vocabulary"
   ON user_vocabulary FOR SELECT

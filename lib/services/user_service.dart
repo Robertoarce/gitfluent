@@ -99,7 +99,7 @@ class UserService extends ChangeNotifier {
       final authResult = await _authService.createUserWithEmailAndPassword(email, password, firstName, lastName);
       
       if (authResult.success && authResult.user != null) {
-        // Create user in database
+        // Upsert user in database (prevents duplicate key errors)
         final user = User(
           id: authResult.user!.id,
           email: email,
@@ -110,10 +110,8 @@ class UserService extends ChangeNotifier {
           preferences: UserPreferences(),
           statistics: UserStatistics(),
         );
-
-        await _databaseService.createUser(user);
+        await _databaseService.createUser(user); // This is now upsert
         _currentUser = user;
-        
         return AuthResult.success(user);
       } else {
         _error = authResult.error;

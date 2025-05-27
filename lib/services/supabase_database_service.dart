@@ -51,10 +51,9 @@ class SupabaseDatabaseService implements DatabaseService {
     try {
       final response = await _supabase
           .from(SupabaseConfig.usersTable)
-          .insert(user.toSupabase())
+          .upsert(user.toSupabase(), onConflict: 'id')
           .select()
           .single();
-      
       return response['id'];
     } catch (e) {
       debugPrint('Error creating user: $e');
@@ -268,7 +267,12 @@ class SupabaseDatabaseService implements DatabaseService {
   @override
   Future<void> updatePremiumStatus(String userId, bool isPremium) async {
     try {
-      await _supabase
+      // Use the service role client for premium updates
+      final serviceClient = SupabaseClient(
+        SupabaseConfig.projectUrl,
+        SupabaseConfig.serviceRoleKey,
+      );
+      await serviceClient
           .from(SupabaseConfig.usersTable)
           .update({'is_premium': isPremium})
           .eq('id', userId);

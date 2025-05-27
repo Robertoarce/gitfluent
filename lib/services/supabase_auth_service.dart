@@ -225,7 +225,13 @@ class SupabaseAuthService implements AuthService {
     try {
       if (_currentUser?.id == null) return;
       
-      await _supabase
+      // Use the service role client for premium updates
+      final serviceClient = SupabaseClient(
+        SupabaseConfig.projectUrl,
+        SupabaseConfig.serviceRoleKey,
+      );
+      
+      await serviceClient
           .from(SupabaseConfig.usersTable)
           .update({'is_premium': isPremium})
           .eq('id', _currentUser!.id);

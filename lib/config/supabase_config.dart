@@ -3,6 +3,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 class SupabaseConfig {
   static String get projectUrl => dotenv.env['SUPABASE_URL'] ?? '';
   static String get anonKey => dotenv.env['SUPABASE_ANON_KEY'] ?? '';
+  static String get serviceRoleKey => dotenv.env['SUPABASE_SERVICE_ROLE_KEY'] ?? '';
   
   // Collection names
   static const String usersTable = 'users';
@@ -11,7 +12,7 @@ class SupabaseConfig {
   static const String chatHistoryTable = 'chat_history';
   
   // Storage buckets
-  static const String profileImagesBucket = 'profile_images';
+  static const String profileImagesBucket = 'profile-images';
   
   // RLS Policies
   static const String usersPolicy = 'users_policy';

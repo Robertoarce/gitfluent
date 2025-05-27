@@ -1,4 +1,5 @@
 import 'package:json_annotation/json_annotation.dart';
+import 'dart:convert'; // Added for jsonEncode
 
 part 'user.g.dart';
 
@@ -62,31 +63,29 @@ class User {
   }
 
   factory User.fromSupabase(Map<String, dynamic> data) {
-    // Handle Supabase timestamp format
-    if (data['created_at'] is String) {
-      data['created_at'] = DateTime.parse(data['created_at']);
+    // Debug logs for tracing
+    print('[User.fromSupabase] Raw data: ' + data.toString());
+    print('[User.fromSupabase] created_at type: ' + (data['created_at']?.runtimeType.toString() ?? 'null'));
+    print('[User.fromSupabase] last_login_at type: ' + (data['last_login_at']?.runtimeType.toString() ?? 'null'));
+    // Always convert to ISO String for the generated fromJson
+    if (data['created_at'] != null && data['created_at'] is! String) {
+      print('[User.fromSupabase] Converting created_at to String');
+      data['created_at'] = (data['created_at'] as DateTime).toIso8601String();
     }
-    if (data['last_login_at'] is String) {
-      data['last_login_at'] = DateTime.parse(data['last_login_at']);
+    if (data['last_login_at'] != null && data['last_login_at'] is! String) {
+      print('[User.fromSupabase] Converting last_login_at to String');
+      data['last_login_at'] = (data['last_login_at'] as DateTime).toIso8601String();
     }
-    
-    // Parse nested objects
-    if (data['preferences'] is String) {
-      data['preferences'] = UserPreferences.fromJson(data['preferences']);
-    } else if (data['preferences'] is Map) {
-      data['preferences'] = UserPreferences.fromMap(data['preferences']);
-    } else {
-      data['preferences'] = UserPreferences();
+    // Always pass preferences/statistics as JSON strings
+    if (data['preferences'] is! String) {
+      print('[User.fromSupabase] Converting preferences to JSON string');
+      data['preferences'] = jsonEncode(data['preferences']);
     }
-    
-    if (data['statistics'] is String) {
-      data['statistics'] = UserStatistics.fromJson(data['statistics']);
-    } else if (data['statistics'] is Map) {
-      data['statistics'] = UserStatistics.fromMap(data['statistics']);
-    } else {
-      data['statistics'] = UserStatistics();
+    if (data['statistics'] is! String) {
+      print('[User.fromSupabase] Converting statistics to JSON string');
+      data['statistics'] = jsonEncode(data['statistics']);
     }
-    
+    print('[User.fromSupabase] Final data for fromJson: ' + data.toString());
     return User.fromJson(data);
   }
 
