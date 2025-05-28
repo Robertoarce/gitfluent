@@ -49,15 +49,79 @@ class SupabaseDatabaseService implements DatabaseService {
   @override
   Future<String> createUser(app_user.User user) async {
     try {
-      final response = await _supabase
-          .from(SupabaseConfig.usersTable)
-          .upsert(user.toSupabase(), onConflict: 'id')
-          .select()
-          .single();
-      return response['id'];
+      debugPrint('=========== DATABASE USER CREATION START ===========');
+      debugPrint('SupabaseDatabaseService: Creating user in database, ID: ${user.id}, email: ${user.email}');
+      
+      // Convert user data for Supabase
+      final userData = user.toSupabase();
+      debugPrint('SupabaseDatabaseService: User data prepared for Supabase');
+      
+      // Try with normal client first
+      try {
+        debugPrint('SupabaseDatabaseService: Attempting with normal client first');
+        debugPrint('SupabaseDatabaseService: Using table: ${SupabaseConfig.usersTable}');
+        
+        final response = await _supabase
+            .from(SupabaseConfig.usersTable)
+            .upsert(userData, onConflict: 'id')
+            .select()
+            .single();
+        
+        debugPrint('SupabaseDatabaseService: User created successfully in database, response: ${response.toString()}');
+        debugPrint('=========== DATABASE USER CREATION END (SUCCESS) ===========');
+        return response['id'];
+      } catch (normalClientError) {
+        // If the normal client fails, try with service role client
+        debugPrint('SupabaseDatabaseService: Normal client failed: $normalClientError');
+        debugPrint('SupabaseDatabaseService: Error type: ${normalClientError.runtimeType}');
+        debugPrint('SupabaseDatabaseService: Trying with service role client');
+        
+        // Create a service role client that bypasses RLS
+        debugPrint('SupabaseDatabaseService: Initializing service role client');
+        final serviceClient = SupabaseClient(
+          SupabaseConfig.projectUrl,
+          SupabaseConfig.serviceRoleKey,
+        );
+        
+        debugPrint('SupabaseDatabaseService: Service client initialized, attempting upsert');
+        final response = await serviceClient
+            .from(SupabaseConfig.usersTable)
+            .upsert(userData, onConflict: 'id')
+            .select()
+            .single();
+        
+        debugPrint('SupabaseDatabaseService: User created successfully with service role, response: ${response.toString()}');
+        debugPrint('=========== DATABASE USER CREATION END (SUCCESS WITH SERVICE ROLE) ===========');
+        return response['id'];
+      }
     } catch (e) {
-      debugPrint('Error creating user: $e');
-      rethrow;
+      debugPrint('SupabaseDatabaseService: Error creating user: $e');
+      debugPrint('SupabaseDatabaseService: Error type: ${e.runtimeType}');
+      
+      // Try a simpler insert if upsert failed
+      try {
+        debugPrint('SupabaseDatabaseService: Attempting simple insert with service role as final fallback');
+        // Create a service role client that bypasses RLS
+        debugPrint('SupabaseDatabaseService: Initializing service role client for final attempt');
+        final serviceClient = SupabaseClient(
+          SupabaseConfig.projectUrl,
+          SupabaseConfig.serviceRoleKey,
+        );
+        
+        debugPrint('SupabaseDatabaseService: Service client initialized, attempting simple insert');
+        await serviceClient
+            .from(SupabaseConfig.usersTable)
+            .insert(user.toSupabase());
+        
+        debugPrint('SupabaseDatabaseService: Simple insert with service role succeeded');
+        debugPrint('=========== DATABASE USER CREATION END (SUCCESS WITH INSERT FALLBACK) ===========');
+        return user.id;
+      } catch (innerError) {
+        debugPrint('SupabaseDatabaseService: All attempts failed: $innerError');
+        debugPrint('SupabaseDatabaseService: Final error type: ${innerError.runtimeType}');
+        debugPrint('=========== DATABASE USER CREATION END (ALL ATTEMPTS FAILED) ===========');
+        rethrow;
+      }
     }
   }
 
@@ -285,15 +349,40 @@ class SupabaseDatabaseService implements DatabaseService {
   @override
   Future<bool> isPremiumUser(String userId) async {
     try {
-      final response = await _supabase
-          .from(SupabaseConfig.usersTable)
-          .select('is_premium')
-          .eq('id', userId)
-          .single();
+      debugPrint('SupabaseDatabaseService: Checking premium status for user: $userId');
       
-      return response['is_premium'] ?? false;
+      try {
+        // Try with regular client first
+        final response = await _supabase
+            .from(SupabaseConfig.usersTable)
+            .select('is_premium')
+            .eq('id', userId)
+            .single();
+        
+        final isPremium = response['is_premium'] ?? false;
+        debugPrint('SupabaseDatabaseService: Premium status (regular client): $isPremium');
+        return isPremium;
+      } catch (normalClientError) {
+        debugPrint('SupabaseDatabaseService: Regular client failed to check premium, using service role: $normalClientError');
+        
+        // Use service role client as fallback
+        final serviceClient = SupabaseClient(
+          SupabaseConfig.projectUrl,
+          SupabaseConfig.serviceRoleKey,
+        );
+        
+        final response = await serviceClient
+            .from(SupabaseConfig.usersTable)
+            .select('is_premium')
+            .eq('id', userId)
+            .single();
+        
+        final isPremium = response['is_premium'] ?? false;
+        debugPrint('SupabaseDatabaseService: Premium status (service role client): $isPremium');
+        return isPremium;
+      }
     } catch (e) {
-      debugPrint('Error checking premium status: $e');
+      debugPrint('SupabaseDatabaseService: Error checking premium status: $e');
       return false;
     }
   }

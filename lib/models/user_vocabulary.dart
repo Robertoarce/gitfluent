@@ -76,16 +76,44 @@ class UserVocabularyItem {
   }
 
   factory UserVocabularyItem.fromSupabase(Map<String, dynamic> data) {
-    if (data['last_seen'] is String) {
-      data['last_seen'] = DateTime.parse(data['last_seen']);
+    // Create a copy of the data to avoid modifying the original
+    final Map<String, dynamic> processedData = Map<String, dynamic>.from(data);
+    
+    // Handle DateTime fields more robustly
+    if (processedData['last_seen'] != null) {
+      if (processedData['last_seen'] is String) {
+        processedData['last_seen'] = DateTime.parse(processedData['last_seen']);
+      } else if (processedData['last_seen'] is DateTime) {
+        // Keep as is - it's already a DateTime
+      } else {
+        // Convert to string then parse to ensure compatibility
+        processedData['last_seen'] = DateTime.parse(processedData['last_seen'].toString());
+      }
     }
-    if (data['first_learned'] is String) {
-      data['first_learned'] = DateTime.parse(data['first_learned']);
+    
+    if (processedData['first_learned'] != null) {
+      if (processedData['first_learned'] is String) {
+        processedData['first_learned'] = DateTime.parse(processedData['first_learned']);
+      } else if (processedData['first_learned'] is DateTime) {
+        // Keep as is - it's already a DateTime
+      } else {
+        // Convert to string then parse to ensure compatibility
+        processedData['first_learned'] = DateTime.parse(processedData['first_learned'].toString());
+      }
     }
-    if (data['next_review'] is String) {
-      data['next_review'] = DateTime.parse(data['next_review']);
+    
+    if (processedData['next_review'] != null) {
+      if (processedData['next_review'] is String) {
+        processedData['next_review'] = DateTime.parse(processedData['next_review']);
+      } else if (processedData['next_review'] is DateTime) {
+        // Keep as is - it's already a DateTime
+      } else {
+        // Convert to string then parse to ensure compatibility
+        processedData['next_review'] = DateTime.parse(processedData['next_review'].toString());
+      }
     }
-    return UserVocabularyItem.fromJson(data);
+    
+    return UserVocabularyItem.fromJson(processedData);
   }
 
   // Firebase-specific methods
@@ -239,10 +267,22 @@ class UserVocabularyStats {
   }
 
   factory UserVocabularyStats.fromSupabase(Map<String, dynamic> data) {
-    if (data['last_updated'] is String) {
-      data['last_updated'] = DateTime.parse(data['last_updated']);
+    // Create a copy of the data to avoid modifying the original
+    final Map<String, dynamic> processedData = Map<String, dynamic>.from(data);
+    
+    // Handle DateTime fields more robustly
+    if (processedData['last_updated'] != null) {
+      if (processedData['last_updated'] is String) {
+        processedData['last_updated'] = DateTime.parse(processedData['last_updated']);
+      } else if (processedData['last_updated'] is DateTime) {
+        // Keep as is - it's already a DateTime
+      } else {
+        // Convert to string then parse to ensure compatibility
+        processedData['last_updated'] = DateTime.parse(processedData['last_updated'].toString());
+      }
     }
-    return UserVocabularyStats.fromJson(data);
+    
+    return UserVocabularyStats.fromJson(processedData);
   }
 
   // Firebase-specific methods

@@ -1,5 +1,6 @@
 import 'package:json_annotation/json_annotation.dart';
 import 'dart:convert'; // Added for jsonEncode
+import 'package:flutter/foundation.dart';
 
 part 'user.g.dart';
 
@@ -53,40 +54,83 @@ class User {
 
   // Supabase-specific methods
   Map<String, dynamic> toSupabase() {
-    final json = toJson();
+    debugPrint('=========== USER TOSUPABASE START ===========');
+    // Create a copy of the JSON data
+    final json = Map<String, dynamic>.from(toJson());
+    
     // Convert DateTime to ISO strings for Supabase
+    debugPrint('User.toSupabase: Converting created_at: ${createdAt}');
     json['created_at'] = createdAt.toIso8601String();
-    json['last_login_at'] = lastLoginAt?.toIso8601String();
-    json['preferences'] = preferences.toJson();
-    json['statistics'] = statistics.toJson();
+    
+    if (lastLoginAt != null) {
+      debugPrint('User.toSupabase: Converting last_login_at: ${lastLoginAt}');
+      json['last_login_at'] = lastLoginAt!.toIso8601String();
+    }
+    
+    // Make sure preferences and statistics are JSON strings
+    if (json['preferences'] is! String) {
+      debugPrint('User.toSupabase: Converting preferences to JSON string');
+      json['preferences'] = preferences.toJson();
+    }
+    
+    if (json['statistics'] is! String) {
+      debugPrint('User.toSupabase: Converting statistics to JSON string');
+      json['statistics'] = statistics.toJson();
+    }
+    
+    // Log the final data for debugging
+    debugPrint('User.toSupabase: Data fields: ${json.keys.join(', ')}');
+    debugPrint('User.toSupabase: ID: ${json['id']}, email: ${json['email']}');
+    debugPrint('User.toSupabase: is_premium: ${json['is_premium']}');
+    debugPrint('=========== USER TOSUPABASE END ===========');
     return json;
   }
 
   factory User.fromSupabase(Map<String, dynamic> data) {
+    // Create a copy of the data to avoid modifying the original
+    final Map<String, dynamic> processedData = Map<String, dynamic>.from(data);
+    
     // Debug logs for tracing
-    print('[User.fromSupabase] Raw data: ' + data.toString());
-    print('[User.fromSupabase] created_at type: ' + (data['created_at']?.runtimeType.toString() ?? 'null'));
-    print('[User.fromSupabase] last_login_at type: ' + (data['last_login_at']?.runtimeType.toString() ?? 'null'));
-    // Always convert to ISO String for the generated fromJson
-    if (data['created_at'] != null && data['created_at'] is! String) {
-      print('[User.fromSupabase] Converting created_at to String');
-      data['created_at'] = (data['created_at'] as DateTime).toIso8601String();
+    print('[User.fromSupabase] Raw data: ' + processedData.toString());
+    print('[User.fromSupabase] created_at type: ' + (processedData['created_at']?.runtimeType.toString() ?? 'null'));
+    print('[User.fromSupabase] last_login_at type: ' + (processedData['last_login_at']?.runtimeType.toString() ?? 'null'));
+    
+    // Handle DateTime fields
+    if (processedData['created_at'] != null) {
+      if (processedData['created_at'] is String) {
+        // Already a string, no conversion needed
+      } else if (processedData['created_at'] is DateTime) {
+        processedData['created_at'] = (processedData['created_at'] as DateTime).toIso8601String();
+      } else {
+        // Convert to string
+        processedData['created_at'] = processedData['created_at'].toString();
+      }
     }
-    if (data['last_login_at'] != null && data['last_login_at'] is! String) {
-      print('[User.fromSupabase] Converting last_login_at to String');
-      data['last_login_at'] = (data['last_login_at'] as DateTime).toIso8601String();
+    
+    if (processedData['last_login_at'] != null) {
+      if (processedData['last_login_at'] is String) {
+        // Already a string, no conversion needed
+      } else if (processedData['last_login_at'] is DateTime) {
+        processedData['last_login_at'] = (processedData['last_login_at'] as DateTime).toIso8601String();
+      } else {
+        // Convert to string
+        processedData['last_login_at'] = processedData['last_login_at'].toString();
+      }
     }
+    
     // Always pass preferences/statistics as JSON strings
-    if (data['preferences'] is! String) {
+    if (processedData['preferences'] is! String) {
       print('[User.fromSupabase] Converting preferences to JSON string');
-      data['preferences'] = jsonEncode(data['preferences']);
+      processedData['preferences'] = jsonEncode(processedData['preferences']);
     }
-    if (data['statistics'] is! String) {
+    
+    if (processedData['statistics'] is! String) {
       print('[User.fromSupabase] Converting statistics to JSON string');
-      data['statistics'] = jsonEncode(data['statistics']);
+      processedData['statistics'] = jsonEncode(processedData['statistics']);
     }
-    print('[User.fromSupabase] Final data for fromJson: ' + data.toString());
-    return User.fromJson(data);
+    
+    print('[User.fromSupabase] Final data for fromJson: ' + processedData.toString());
+    return User.fromJson(processedData);
   }
 
   // Firebase-specific methods

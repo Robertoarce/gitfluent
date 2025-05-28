@@ -22,12 +22,32 @@ void main() async {
   try {
     await dotenv.load(fileName: ".env");
     debugPrint('Environment loaded successfully');
+    
+    // Check if required environment variables are present
+    final url = dotenv.env['SUPABASE_URL'];
+    final anonKey = dotenv.env['SUPABASE_ANON_KEY'];
+    final serviceKey = dotenv.env['SUPABASE_SERVICE_ROLE_KEY'];
+    
+    debugPrint('Environment check:');
+    debugPrint(' - SUPABASE_URL: ${url != null ? 'present' : 'MISSING!'}');
+    debugPrint(' - SUPABASE_ANON_KEY: ${anonKey != null ? 'present' : 'MISSING!'}');
+    debugPrint(' - SUPABASE_SERVICE_ROLE_KEY: ${serviceKey != null ? 'present' : 'MISSING!'}');
+    
+    if (url == null || anonKey == null || serviceKey == null) {
+      debugPrint('WARNING: One or more required environment variables are missing!');
+      debugPrint('This will cause issues with Supabase functionality.');
+    }
   } catch (e) {
     debugPrint('Error loading .env file: $e');
+    debugPrint('This will cause issues with Supabase functionality.');
   }
+
+  // Log Supabase configuration
+  SupabaseConfig.logConfigInfo();
 
   // Initialize Supabase
   try {
+    debugPrint('Initializing Supabase...');
     await Supabase.initialize(
       url: SupabaseConfig.projectUrl,
       anonKey: SupabaseConfig.anonKey,
@@ -202,6 +222,31 @@ class _AppHomeState extends State<AppHome> {
     final vocabularyService = context.read<VocabularyService>();
     if (!vocabularyService.isInitialized) {
       await vocabularyService.init();
+    }
+
+    // Load user vocabulary from Supabase if logged in
+    final userService = context.read<UserService>();
+    if (userService.isLoggedIn) {
+      debugPrint('Loading vocabulary for user: ${userService.currentUser?.email}');
+      
+      // Check premium status from database to ensure it's up to date
+      if (userService.currentUser != null) {
+        final isPremium = await context.read<SupabaseDatabaseService>()
+            .isPremiumUser(userService.currentUser!.id);
+        if (isPremium != userService.isPremium) {
+          debugPrint('Updating premium status from database: $isPremium');
+          // This will update the user model and trigger UI refresh
+          await userService.upgradeToPremium();
+        }
+      }
+      
+      // Load user vocabulary
+      try {
+        final items = await vocabularyService.getUserVocabulary();
+        debugPrint('Loaded ${items.length} vocabulary items from Supabase');
+      } catch (e) {
+        debugPrint('Error loading vocabulary from Supabase: $e');
+      }
     }
   }
 

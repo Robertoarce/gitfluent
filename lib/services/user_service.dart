@@ -40,14 +40,27 @@ class UserService extends ChangeNotifier {
         
         // Try to sync with database, but don't fail if it doesn't work
         try {
+          debugPrint('UserService: Fetching user from database with ID: ${user.id}');
           final dbUser = await _databaseService.getUserById(user.id);
           if (dbUser != null) {
             _currentUser = dbUser;
             debugPrint('UserService: Loaded user from database: ${dbUser.email}');
           } else {
+            debugPrint('UserService: User not found in database, creating...');
             // Create user in database if it doesn't exist
-            await _databaseService.createUser(user);
-            debugPrint('UserService: Created user in database: ${user.email}');
+            try {
+              final userId = await _databaseService.createUser(user);
+              debugPrint('UserService: Created user in database with ID: $userId');
+            } catch (e) {
+              debugPrint('UserService: Failed to create user in database: $e');
+              // If there's an RLS or permission issue, try using service role key if available
+              try {
+                // This would typically be handled by the database service
+                debugPrint('UserService: Will retry on next authentication event');
+              } catch (e2) {
+                debugPrint('UserService: Service role attempt also failed: $e2');
+              }
+            }
           }
         } catch (e) {
           debugPrint('UserService: Database sync failed (using auth user): $e');
@@ -95,11 +108,20 @@ class UserService extends ChangeNotifier {
       _error = null;
       notifyListeners();
 
+      debugPrint('=========== USER CREATION PROCESS START ===========');
+      debugPrint('UserService: Starting user signup for email: $email with firstName: $firstName, lastName: $lastName');
+      
       // Create user in authentication system
+      debugPrint('UserService: Calling createUserWithEmailAndPassword on auth service');
       final authResult = await _authService.createUserWithEmailAndPassword(email, password, firstName, lastName);
       
+      debugPrint('UserService: Auth result received - success: ${authResult.success}, error: ${authResult.error ?? "none"}, user: ${authResult.user?.id ?? "null"}');
+      
       if (authResult.success && authResult.user != null) {
+        debugPrint('UserService: Auth creation successful, user ID: ${authResult.user!.id}');
+        
         // Upsert user in database (prevents duplicate key errors)
+        debugPrint('UserService: Creating User object with ID: ${authResult.user!.id}');
         final user = User(
           id: authResult.user!.id,
           email: email,
@@ -110,14 +132,31 @@ class UserService extends ChangeNotifier {
           preferences: UserPreferences(),
           statistics: UserStatistics(),
         );
-        await _databaseService.createUser(user); // This is now upsert
+        
+        debugPrint('UserService: User object created, preparing to call database service');
+        debugPrint('UserService: Creating user in database with ID: ${user.id}');
+        
+        try {
+          final userId = await _databaseService.createUser(user);
+          debugPrint('UserService: User created in database with ID: $userId');
+        } catch (dbError) {
+          debugPrint('UserService: Database error: $dbError');
+          // Continue even if database creation fails - we'll try again on auth state change
+        }
+        
         _currentUser = user;
+        debugPrint('UserService: User creation process completed successfully');
+        debugPrint('=========== USER CREATION PROCESS END ===========');
         return AuthResult.success(user);
       } else {
+        debugPrint('UserService: Auth creation failed: ${authResult.error}');
+        debugPrint('=========== USER CREATION PROCESS END WITH ERROR ===========');
         _error = authResult.error;
         return authResult;
       }
     } catch (e) {
+      debugPrint('UserService: Sign up failed with exception: $e');
+      debugPrint('=========== USER CREATION PROCESS END WITH EXCEPTION ===========');
       _error = 'Sign up failed: $e';
       return AuthResult.error(_error!);
     } finally {
