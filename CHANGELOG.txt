@@ -43,6 +43,16 @@ All notable changes to this project will be documented in this file.
   - Added fallback to service role client when normal client fails
   - Improved premium status checking during app initialization
   - Added detailed logging for premium status updates
+- Fixed premium status detection issues
+  - Enhanced User.fromSupabase method to properly handle different data types for premium status
+  - Added robust type conversion for boolean premium status field
+  - Added fallback for missing premium status field
+- Fixed vocabulary loading issues
+  - Added service role client fallback for vocabulary retrieval
+  - Enhanced error handling in getUserVocabulary and getVocabularyDueForReview methods
+  - Improved UserVocabularyItem.fromSupabase parsing with robust error handling
+  - Added data validation and fallbacks for vocabulary item fields
+  - Provided default values for required fields
 
 ### Removed
 - Removed Firebase dependencies

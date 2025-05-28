@@ -94,6 +94,7 @@ class User {
     print('[User.fromSupabase] Raw data: ' + processedData.toString());
     print('[User.fromSupabase] created_at type: ' + (processedData['created_at']?.runtimeType.toString() ?? 'null'));
     print('[User.fromSupabase] last_login_at type: ' + (processedData['last_login_at']?.runtimeType.toString() ?? 'null'));
+    print('[User.fromSupabase] is_premium value: ' + (processedData['is_premium']?.toString() ?? 'null'));
     
     // Handle DateTime fields
     if (processedData['created_at'] != null) {
@@ -118,15 +119,29 @@ class User {
       }
     }
     
+    // Ensure premium status is properly set
+    if (processedData.containsKey('is_premium')) {
+      // Ensure proper boolean conversion - Supabase might return it as a string or number
+      if (processedData['is_premium'] is String) {
+        processedData['is_premium'] = processedData['is_premium'].toLowerCase() == 'true';
+      } else if (processedData['is_premium'] is num) {
+        processedData['is_premium'] = processedData['is_premium'] != 0;
+      }
+      print('[User.fromSupabase] Processed is_premium: ${processedData['is_premium']}');
+    } else {
+      print('[User.fromSupabase] is_premium field missing, defaulting to false');
+      processedData['is_premium'] = false;
+    }
+    
     // Always pass preferences/statistics as JSON strings
     if (processedData['preferences'] is! String) {
       print('[User.fromSupabase] Converting preferences to JSON string');
-      processedData['preferences'] = jsonEncode(processedData['preferences']);
+      processedData['preferences'] = jsonEncode(processedData['preferences'] ?? {});
     }
     
     if (processedData['statistics'] is! String) {
       print('[User.fromSupabase] Converting statistics to JSON string');
-      processedData['statistics'] = jsonEncode(processedData['statistics']);
+      processedData['statistics'] = jsonEncode(processedData['statistics'] ?? {});
     }
     
     print('[User.fromSupabase] Final data for fromJson: ' + processedData.toString());

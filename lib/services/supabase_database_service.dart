@@ -212,19 +212,48 @@ class SupabaseDatabaseService implements DatabaseService {
   @override
   Future<List<UserVocabularyItem>> getUserVocabulary(String userId, {String? language}) async {
     try {
-      var query = _supabase
-          .from(SupabaseConfig.vocabularyTable)
-          .select()
-          .eq('user_id', userId);
+      debugPrint('SupabaseDatabaseService: Getting vocabulary for user: $userId, language: ${language ?? "all"}');
       
-      if (language != null) {
-        query = query.eq('language', language);
+      try {
+        // Try with regular client first
+        var query = _supabase
+            .from(SupabaseConfig.vocabularyTable)
+            .select()
+            .eq('user_id', userId);
+        
+        if (language != null) {
+          query = query.eq('language', language);
+        }
+        
+        final response = await query;
+        debugPrint('SupabaseDatabaseService: Found ${response.length} vocabulary items with regular client');
+        return response.map((item) => UserVocabularyItem.fromSupabase(item)).toList();
+      } catch (normalClientError) {
+        // If the normal client fails, try with service role client
+        debugPrint('SupabaseDatabaseService: Regular client failed getting vocabulary: $normalClientError');
+        debugPrint('SupabaseDatabaseService: Trying with service role client');
+        
+        final serviceClient = SupabaseClient(
+          SupabaseConfig.projectUrl,
+          SupabaseConfig.serviceRoleKey,
+        );
+        
+        var query = serviceClient
+            .from(SupabaseConfig.vocabularyTable)
+            .select()
+            .eq('user_id', userId);
+        
+        if (language != null) {
+          query = query.eq('language', language);
+        }
+        
+        final response = await query;
+        debugPrint('SupabaseDatabaseService: Found ${response.length} vocabulary items with service role client');
+        return response.map((item) => UserVocabularyItem.fromSupabase(item)).toList();
       }
-      
-      final response = await query;
-      return response.map((item) => UserVocabularyItem.fromSupabase(item)).toList();
     } catch (e) {
-      debugPrint('Error getting user vocabulary: $e');
+      debugPrint('SupabaseDatabaseService: Error getting user vocabulary: $e');
+      debugPrint('SupabaseDatabaseService: Error type: ${e.runtimeType}');
       return [];
     }
   }
@@ -232,20 +261,50 @@ class SupabaseDatabaseService implements DatabaseService {
   @override
   Future<List<UserVocabularyItem>> getVocabularyDueForReview(String userId, {String? language}) async {
     try {
-      var query = _supabase
-          .from(SupabaseConfig.vocabularyTable)
-          .select()
-          .eq('user_id', userId)
-          .lte('next_review', DateTime.now().toIso8601String());
+      debugPrint('SupabaseDatabaseService: Getting vocabulary due for review for user: $userId, language: ${language ?? "all"}');
       
-      if (language != null) {
-        query = query.eq('language', language);
+      try {
+        // Try with regular client first
+        var query = _supabase
+            .from(SupabaseConfig.vocabularyTable)
+            .select()
+            .eq('user_id', userId)
+            .lte('next_review', DateTime.now().toIso8601String());
+        
+        if (language != null) {
+          query = query.eq('language', language);
+        }
+        
+        final response = await query;
+        debugPrint('SupabaseDatabaseService: Found ${response.length} vocabulary items due for review with regular client');
+        return response.map((item) => UserVocabularyItem.fromSupabase(item)).toList();
+      } catch (normalClientError) {
+        // If the normal client fails, try with service role client
+        debugPrint('SupabaseDatabaseService: Regular client failed getting vocabulary due for review: $normalClientError');
+        debugPrint('SupabaseDatabaseService: Trying with service role client');
+        
+        final serviceClient = SupabaseClient(
+          SupabaseConfig.projectUrl,
+          SupabaseConfig.serviceRoleKey,
+        );
+        
+        var query = serviceClient
+            .from(SupabaseConfig.vocabularyTable)
+            .select()
+            .eq('user_id', userId)
+            .lte('next_review', DateTime.now().toIso8601String());
+        
+        if (language != null) {
+          query = query.eq('language', language);
+        }
+        
+        final response = await query;
+        debugPrint('SupabaseDatabaseService: Found ${response.length} vocabulary items due for review with service role client');
+        return response.map((item) => UserVocabularyItem.fromSupabase(item)).toList();
       }
-      
-      final response = await query;
-      return response.map((item) => UserVocabularyItem.fromSupabase(item)).toList();
     } catch (e) {
-      debugPrint('Error getting vocabulary due for review: $e');
+      debugPrint('SupabaseDatabaseService: Error getting vocabulary due for review: $e');
+      debugPrint('SupabaseDatabaseService: Error type: ${e.runtimeType}');
       return [];
     }
   }
