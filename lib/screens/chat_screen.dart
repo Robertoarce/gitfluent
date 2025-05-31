@@ -11,10 +11,12 @@ import '../services/vocabulary_service.dart';
 import '../services/nlp_service.dart';
 import '../services/vocabulary_processor.dart';
 import '../services/llm_output_formatter.dart';
+import '../services/user_service.dart';
 import '../models/vocabulary_item.dart';
 import '../models/language_response.dart';
 import 'settings_screen.dart';
 import 'vocabulary_review_screen.dart';
+import 'user_vocabulary_screen.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -112,6 +114,12 @@ class _ChatScreenState extends State<ChatScreen> {
               icon: const Icon(Icons.delete_outline),
               onPressed: () {
                 context.read<ChatService>().clearChat();
+              },
+            ),
+            IconButton(
+              icon: const Icon(Icons.logout),
+              onPressed: () async {
+                await context.read<UserService>().signOut();
               },
             ),
           ],

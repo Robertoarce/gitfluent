@@ -1,0 +1,68 @@
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+## [Unreleased]
+
+### Added
+- Initial Supabase integration setup
+  - Added Supabase configuration file (`lib/config/supabase_config.dart`)
+  - Added Supabase authentication service (`lib/services/supabase_auth_service.dart`)
+  - Added Supabase database service (`lib/services/supabase_database_service.dart`)
+  - Added initial database schema with tables and RLS policies
+  - Added service role support for premium status updates
+
+### Changed
+- Migrated authentication from Firebase to Supabase
+  - Updated auth service to use Supabase client
+  - Implemented OAuth providers (Google, Apple)
+  - Added proper error handling for auth operations
+- Migrated database operations from Firebase to Supabase
+  - Updated database service to use Supabase client
+  - Implemented CRUD operations for users, vocabulary, and chat
+  - Added proper error handling for database operations
+- Updated main.dart to use Supabase services
+  - Removed Firebase initialization
+  - Added Supabase initialization
+  - Updated provider setup
+  - Simplified non-premium home screen
+
+### Fixed
+- Fixed user creation process with Supabase
+  - Added detailed logging for debugging auth and database operations
+  - Fixed data type handling for DateTime fields in User and UserVocabulary models
+  - Added fallback mechanisms for database operations to handle errors
+  - Improved error handling in sign-up flow
+  - Enhanced debug information for Supabase configuration
+- Fixed premium status update with Supabase
+  - Added service role key support for premium status updates
+  - Fixed data loading on app initialization
+- Improved premium status verification during login
+  - Enhanced SupabaseAuthService to verify premium status directly from database on login
+  - Added background premium status verification in _convertSupabaseUser method
+  - Added fallback to service role client when normal client fails
+  - Improved premium status checking during app initialization
+  - Added detailed logging for premium status updates
+- Fixed premium status detection issues
+  - Enhanced User.fromSupabase method to properly handle different data types for premium status
+  - Added robust type conversion for boolean premium status field
+  - Added fallback for missing premium status field
+- Fixed vocabulary loading issues
+  - Added service role client fallback for vocabulary retrieval
+  - Enhanced error handling in getUserVocabulary and getVocabularyDueForReview methods
+  - Improved UserVocabularyItem.fromSupabase parsing with robust error handling
+  - Added data validation and fallbacks for vocabulary item fields
+  - Provided default values for required fields
+
+### Removed
+- Removed Firebase dependencies
+- Removed local services (LocalAuthService, LocalDatabaseService)
+- Removed Firebase configuration files
+
+### Security
+- Added Row Level Security (RLS) policies for all tables
+- Added service role support for premium status updates
+- Added proper environment variable handling for Supabase credentials
+
+## [Previous Version]
+- Initial Firebase implementation 

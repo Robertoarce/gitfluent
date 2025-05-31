@@ -1,16 +1,17 @@
 // import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'user_vocabulary.dart'; // Import UserVocabularyItem
 
 class VocabularyItem {
   final String word;
-  final String type;  // 'verb', 'noun', or 'adverb'
+  final String type; // 'verb', 'noun', or 'adverb'
   final String translation;
   final String? definition;
-  final Map<String, dynamic>? conjugations;  // For verbs
+  final Map<String, dynamic>? conjugations; // For verbs
   final DateTime dateAdded;
-  final int addedCount;  // Changed from reviewCount
-  final DateTime? lastAdded;  // Changed from lastReviewed
-  final String? lastConversationId;  // Added to track unique conversations
+  final int addedCount; // Changed from reviewCount
+  final DateTime? lastAdded; // Changed from lastReviewed
+  final String? lastConversationId; // Added to track unique conversations
 
   static const String typeVerb = 'verb';
   static const String typeNoun = 'noun';
@@ -26,8 +27,41 @@ class VocabularyItem {
     this.addedCount = 0,
     this.lastAdded,
     this.lastConversationId,
-  }) : assert(type == typeVerb || type == typeNoun || type == typeAdverb),
-       dateAdded = dateAdded ?? DateTime.now();
+  })  : assert(type == typeVerb || type == typeNoun || type == typeAdverb),
+        dateAdded = dateAdded ?? DateTime.now();
+
+  factory VocabularyItem.fromUserVocabularyItem(UserVocabularyItem userItem) {
+    // Map wordType from UserVocabularyItem to type in VocabularyItem
+    // This assumes that wordType values in UserVocabularyItem (e.g., 'verb', 'noun')
+    // are compatible with VocabularyItem.typeVerb, VocabularyItem.typeNoun, etc.
+    // or a direct string match is intended.
+    String itemType = userItem.wordType;
+    // Basic validation or mapping if necessary, for example:
+    if (userItem.wordType == 'verb')
+      itemType = VocabularyItem.typeVerb;
+    else if (userItem.wordType == 'noun')
+      itemType = VocabularyItem.typeNoun;
+    else if (userItem.wordType == 'adverb')
+      itemType = VocabularyItem.typeAdverb;
+    // Add more mappings or a fallback if UserVocabularyItem.wordType has other values
+    // that need to be represented in VocabularyItem
+
+    return VocabularyItem(
+      word: userItem.word,
+      type: itemType,
+      translation: userItem.translations.isNotEmpty
+          ? userItem.translations.first
+          : '', // Takes the first translation
+      definition: userItem.exampleSentences.isNotEmpty
+          ? userItem.exampleSentences.first
+          : null, // Uses first example sentence as definition
+      // conjugations:  // UserVocabularyItem has 'forms' (List<String>), VocabularyItem has 'conjugations' (Map<String, dynamic>). Needs mapping logic if required.
+      dateAdded: userItem.firstLearned,
+      addedCount: userItem.timesSeen, // Mapping timesSeen to addedCount
+      lastAdded: userItem.lastSeen, // Mapping lastSeen to lastAdded
+      lastConversationId: userItem.sourceMessageId,
+    );
+  }
 
   factory VocabularyItem.fromJson(Map<String, dynamic> json) {
     return VocabularyItem(
@@ -38,7 +72,7 @@ class VocabularyItem {
       conjugations: json['conjugations'] as Map<String, dynamic>?,
       dateAdded: DateTime.parse(json['dateAdded'] as String),
       addedCount: json['addedCount'] as int? ?? 0,
-      lastAdded: json['lastAdded'] != null 
+      lastAdded: json['lastAdded'] != null
           ? DateTime.parse(json['lastAdded'] as String)
           : null,
       lastConversationId: json['lastConversationId'] as String?,
@@ -101,7 +135,7 @@ class VocabularyItem {
       case typeNoun:
         return const Color(0xFF4CAF50); // Green
       case typeAdverb:
-        return const Color(0xFFF44336); // Red
+        return const Color(0xFF9C27B0); // Purple
       default:
         return const Color(0xFF9E9E9E); // Grey
     }
@@ -119,4 +153,4 @@ class VocabularyItem {
         return Icons.help_outline;
     }
   }
-} 
+}

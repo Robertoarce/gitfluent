@@ -141,7 +141,7 @@ class VocabularyReviewScreen extends StatelessWidget {
       case VocabularyItem.typeNoun:
         return Colors.green.shade100;
       case VocabularyItem.typeAdverb:
-        return Colors.red.shade100;
+        return Colors.purple.shade100;
       default:
         return Theme.of(context).colorScheme.surfaceVariant;
     }
@@ -154,7 +154,7 @@ class VocabularyReviewScreen extends StatelessWidget {
       case VocabularyItem.typeNoun:
         return Colors.green.shade700;
       case VocabularyItem.typeAdverb:
-        return Colors.red.shade700;
+        return Colors.purple.shade700;
       default:
         return Theme.of(context).colorScheme.onSurfaceVariant;
     }

@@ -164,10 +164,45 @@ class ChatService extends ChangeNotifier {
     super.dispose();
   }
 
+  // Add method to update system prompt with current language settings
+  Future<void> _updateSystemPromptWithLanguages() async {
+    try {
+      final languageSettings = _settings.languageSettings;
+      if (languageSettings == null) return;
+
+      final variables = {
+        'target_language': languageSettings.targetLanguage?.code ?? 'it',
+        'native_language': languageSettings.nativeLanguage?.code ?? 'en',
+        'support_language_1': languageSettings.supportLanguage1?.code ?? 'es',
+        'support_language_2': languageSettings.supportLanguage2?.code ?? 'fr',
+      };
+
+      debugPrint('Updating system prompt with language variables: $variables');
+      
+      final promptType = _config?.systemPromptType ?? 'default';
+      _systemPrompt = Prompts.getPrompt(promptType, variables: variables);
+      
+      // Update system message in chat history
+      if (_chatHistory.isNotEmpty && _chatHistory.first.type == MessageType.system) {
+        _chatHistory[0] = ChatMessage.system(_systemPrompt);
+      } else {
+        _chatHistory.insert(0, ChatMessage.system(_systemPrompt));
+      }
+      
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error updating system prompt with languages: $e');
+    }
+  }
+
+  // Update _initializeAI to use the new method
   void _initializeAI() {
     try {
       final provider = _settings.currentProvider;
       debugPrint('Initializing AI provider: ${provider.name}');
+      
+      // Update system prompt with current language settings
+      _updateSystemPromptWithLanguages();
       
       switch (provider) {
         case AIProvider.openai:
