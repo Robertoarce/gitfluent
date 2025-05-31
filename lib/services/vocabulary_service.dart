@@ -33,11 +33,23 @@ class VocabularyService extends ChangeNotifier {
       final String? storedItems = _prefs.getString(_storageKey);
       if (storedItems != null) {
         final List<dynamic> decodedItems = jsonDecode(storedItems);
-        _items = decodedItems
-            .map((item) => VocabularyItem.fromJson(item))
-            .toList();
-        _sortItems();
+        _items =
+            decodedItems.map((item) => VocabularyItem.fromJson(item)).toList();
       }
+
+      // Fetch from user service if logged in
+      if (_userService != null && _userService!.isLoggedIn) {
+        final userVocabulary = await _userService!.getUserVocabulary();
+        if (userVocabulary.isNotEmpty) {
+          // Convert UserVocabularyItem to VocabularyItem and merge
+          // For simplicity, we'll overwrite local items with server items.
+          _items = userVocabulary
+              .map(
+                  (userItem) => VocabularyItem.fromUserVocabularyItem(userItem))
+              .toList();
+        }
+      }
+      _sortItems();
     } catch (e) {
       debugPrint('Error loading items: $e');
       _items = [];
@@ -50,7 +62,8 @@ class VocabularyService extends ChangeNotifier {
 
   Future<void> _saveItems() async {
     try {
-      final String encodedItems = jsonEncode(_items.map((e) => e.toJson()).toList());
+      final String encodedItems =
+          jsonEncode(_items.map((e) => e.toJson()).toList());
       await _prefs.setString(_storageKey, encodedItems);
     } catch (e) {
       debugPrint('Error saving items: $e');
@@ -72,16 +85,16 @@ class VocabularyService extends ChangeNotifier {
 
     try {
       // Save to local storage (legacy support)
-      await _saveToLocalStorage(word, type, translation, 
-          definition: definition, 
-          conjugations: conjugations, 
+      await _saveToLocalStorage(word, type, translation,
+          definition: definition,
+          conjugations: conjugations,
           conversationId: conversationId);
 
       // Save to user system if available
       if (_userService != null && _userService!.isLoggedIn) {
-        await _saveToUserSystem(word, type, translation, 
-            definition: definition, 
-            conjugations: conjugations, 
+        await _saveToUserSystem(word, type, translation,
+            definition: definition,
+            conjugations: conjugations,
             conversationId: conversationId);
       }
 
@@ -100,24 +113,25 @@ class VocabularyService extends ChangeNotifier {
     Map<String, dynamic>? conjugations,
     String? conversationId,
   }) async {
-    final index = _items.indexWhere((item) => 
-        item.word.toLowerCase() == word.toLowerCase() && 
-        item.type == type);
+    final index = _items.indexWhere((item) =>
+        item.word.toLowerCase() == word.toLowerCase() && item.type == type);
 
     final now = DateTime.now();
-    
+
     if (index >= 0) {
       // Update existing item
       final existingItem = _items[index];
       // Only increment count if this is from a different conversation
-      final shouldIncrement = conversationId != null && 
+      final shouldIncrement = conversationId != null &&
           existingItem.lastConversationId != conversationId;
-          
+
       _items[index] = existingItem.copyWith(
         translation: translation,
         definition: definition,
         conjugations: conjugations,
-        addedCount: shouldIncrement ? existingItem.addedCount + 1 : existingItem.addedCount,
+        addedCount: shouldIncrement
+            ? existingItem.addedCount + 1
+            : existingItem.addedCount,
         lastAdded: shouldIncrement ? now : existingItem.lastAdded,
         lastConversationId: conversationId,
       );
@@ -152,7 +166,7 @@ class VocabularyService extends ChangeNotifier {
     try {
       final user = _userService!.currentUser!;
       final now = DateTime.now();
-      
+
       // Convert type to match UserVocabularyItem expectations
       String wordType = type;
       if (type == VocabularyItem.typeVerb) {
@@ -198,9 +212,8 @@ class VocabularyService extends ChangeNotifier {
     if (!_isInitialized) return;
 
     try {
-      _items.removeWhere((item) => 
-          item.word.toLowerCase() == word.toLowerCase() && 
-          item.type == type);
+      _items.removeWhere((item) =>
+          item.word.toLowerCase() == word.toLowerCase() && item.type == type);
       await _saveItems();
       notifyListeners();
     } catch (e) {
@@ -212,9 +225,8 @@ class VocabularyService extends ChangeNotifier {
     if (!_isInitialized) return;
 
     try {
-      final index = _items.indexWhere((item) => 
-          item.word.toLowerCase() == word.toLowerCase() && 
-          item.type == type);
+      final index = _items.indexWhere((item) =>
+          item.word.toLowerCase() == word.toLowerCase() && item.type == type);
 
       if (index >= 0) {
         _items[index] = _items[index].copyWith(
@@ -237,7 +249,8 @@ class VocabularyService extends ChangeNotifier {
   VocabularyItem? getItem(String word, String type) {
     try {
       return _items.firstWhere(
-        (item) => item.word.toLowerCase() == word.toLowerCase() && item.type == type,
+        (item) =>
+            item.word.toLowerCase() == word.toLowerCase() && item.type == type,
       );
     } catch (e) {
       return null;
@@ -249,7 +262,7 @@ class VocabularyService extends ChangeNotifier {
     if (_userService == null || !_userService!.isLoggedIn) {
       return [];
     }
-    
+
     try {
       return await _userService!.getUserVocabulary(language: language);
     } catch (e) {
@@ -257,4 +270,4 @@ class VocabularyService extends ChangeNotifier {
       return [];
     }
   }
-} 
+}
