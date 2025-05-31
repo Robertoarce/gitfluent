@@ -12,13 +12,64 @@ class VocabularyService extends ChangeNotifier {
   List<VocabularyItem> _items = [];
   bool _isInitialized = false;
   UserService? _userService;
+  VoidCallback? _userAuthListener;
 
   bool get isInitialized => _isInitialized;
   List<VocabularyItem> get items => List.unmodifiable(_items);
 
   // Set the user service for integration
   void setUserService(UserService userService) {
+    // If there's an old listener and an old user service, remove it
+    if (_userService != null && _userAuthListener != null) {
+      _userService!.removeListener(_userAuthListener!);
+    }
+
     _userService = userService;
+
+    // Define the listener function
+    _userAuthListener = () {
+      // When UserService notifies, it means auth state might have changed
+      _handleUserChange();
+    };
+
+    // Add the listener to the new UserService
+    _userService!.addListener(_userAuthListener!);
+
+    // Immediately handle the current user state, especially if a user is already logged in
+    // or if switching users while the app is running.
+    if (_isInitialized) {
+      // Ensure prefs is available if _handleUserChange needs it immediately
+      _handleUserChange();
+    }
+  }
+
+  Future<void> _handleUserChange() async {
+    debugPrint(
+        'VocabularyService: Detected user change. Clearing local data and reloading.');
+    _items = []; // Clear in-memory items
+    if (_isInitialized) {
+      // Ensure _prefs is available
+      try {
+        await _prefs.remove(_storageKey); // Clear from SharedPreferences
+      } catch (e) {
+        debugPrint('Error removing SharedPreferences key \$_storageKey: \$e');
+      }
+    }
+
+    // Reload items (which will fetch for the new user if logged in, or load empty if not)
+    // _loadItems also calls _sortItems and should be followed by notifyListeners
+    // if it doesn't call it internally on all paths.
+    // Since init calls _loadItems and then notifyListeners, we'll follow that pattern.
+    if (_isInitialized) {
+      await _loadItems();
+      notifyListeners(); // Notify UI to rebuild
+    } else {
+      // If not initialized, init() will call _loadItems eventually.
+      // However, if setUserService is called before init, _isInitialized will be false.
+      // This state should ideally be handled by ensuring init() is called after setUserService or
+      // by ensuring _loadItems can be safely called even if _prefs is not ready (which it can't currently).
+      // For now, we assume init() runs and sets _isInitialized true before user changes become critical.
+    }
   }
 
   Future<void> init() async {
@@ -269,5 +320,13 @@ class VocabularyService extends ChangeNotifier {
       debugPrint('Error getting user vocabulary: $e');
       return [];
     }
+  }
+
+  @override
+  void dispose() {
+    if (_userService != null && _userAuthListener != null) {
+      _userService!.removeListener(_userAuthListener!);
+    }
+    super.dispose();
   }
 }
