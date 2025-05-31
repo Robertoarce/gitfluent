@@ -14,27 +14,32 @@ import 'models/user.dart' as app_user;
 import 'screens/chat_screen.dart';
 import 'screens/auth_screen.dart';
 import 'screens/user_vocabulary_screen.dart';
+import 'screens/vocabulary_screen.dart';
+import 'screens/conversation_screen.dart';
 import 'config/supabase_config.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   try {
     await dotenv.load(fileName: ".env");
     debugPrint('Environment loaded successfully');
-    
+
     // Check if required environment variables are present
     final url = dotenv.env['SUPABASE_URL'];
     final anonKey = dotenv.env['SUPABASE_ANON_KEY'];
     final serviceKey = dotenv.env['SUPABASE_SERVICE_ROLE_KEY'];
-    
+
     debugPrint('Environment check:');
     debugPrint(' - SUPABASE_URL: ${url != null ? 'present' : 'MISSING!'}');
-    debugPrint(' - SUPABASE_ANON_KEY: ${anonKey != null ? 'present' : 'MISSING!'}');
-    debugPrint(' - SUPABASE_SERVICE_ROLE_KEY: ${serviceKey != null ? 'present' : 'MISSING!'}');
-    
+    debugPrint(
+        ' - SUPABASE_ANON_KEY: ${anonKey != null ? 'present' : 'MISSING!'}');
+    debugPrint(
+        ' - SUPABASE_SERVICE_ROLE_KEY: ${serviceKey != null ? 'present' : 'MISSING!'}');
+
     if (url == null || anonKey == null || serviceKey == null) {
-      debugPrint('WARNING: One or more required environment variables are missing!');
+      debugPrint(
+          'WARNING: One or more required environment variables are missing!');
       debugPrint('This will cause issues with Supabase functionality.');
     }
   } catch (e) {
@@ -82,7 +87,7 @@ class MyApp extends StatelessWidget {
             return languageSettings;
           },
         ),
-        
+
         // User system services
         Provider<SupabaseAuthService>(
           create: (_) {
@@ -94,18 +99,20 @@ class MyApp extends StatelessWidget {
         Provider<SupabaseDatabaseService>(
           create: (_) => SupabaseDatabaseService(),
         ),
-        ChangeNotifierProxyProvider2<SupabaseAuthService, SupabaseDatabaseService, UserService>(
+        ChangeNotifierProxyProvider2<SupabaseAuthService,
+            SupabaseDatabaseService, UserService>(
           create: (context) => UserService(
             authService: context.read<SupabaseAuthService>(),
             databaseService: context.read<SupabaseDatabaseService>(),
           ),
           update: (context, authService, databaseService, previous) =>
-              previous ?? UserService(
+              previous ??
+              UserService(
                 authService: authService,
                 databaseService: databaseService,
               ),
         ),
-        
+
         // Vocabulary service that depends on user service
         ChangeNotifierProxyProvider<UserService, VocabularyService>(
           create: (context) {
@@ -124,11 +131,13 @@ class MyApp extends StatelessWidget {
             }
           },
         ),
-        
+
         // Chat service depends on settings service
         ChangeNotifierProxyProvider<SettingsService, ChatService>(
-          create: (context) => ChatService(settings: context.read<SettingsService>()),
-          update: (context, settings, previous) => ChatService(settings: settings),
+          create: (context) =>
+              ChatService(settings: context.read<SettingsService>()),
+          update: (context, settings, previous) =>
+              ChatService(settings: settings),
         ),
       ],
       child: Consumer<UserService>(
@@ -164,7 +173,8 @@ class MyApp extends StatelessWidget {
   }
 
   // Helper method to initialize settings service
-  static Future<void> _initializeSettingsService(SettingsService settingsService) async {
+  static Future<void> _initializeSettingsService(
+      SettingsService settingsService) async {
     try {
       await settingsService.init();
       debugPrint('SettingsService initialized successfully');
@@ -174,7 +184,8 @@ class MyApp extends StatelessWidget {
   }
 
   // Helper method to initialize language settings
-  static Future<void> _initializeLanguageSettings(LanguageSettings languageSettings) async {
+  static Future<void> _initializeLanguageSettings(
+      LanguageSettings languageSettings) async {
     try {
       await languageSettings.init();
       debugPrint('LanguageSettings initialized successfully');
@@ -203,6 +214,11 @@ class MyApp extends StatelessWidget {
   }
 }
 
+// Import TranslationScreen if not already imported
+// import './screens/vocabulary_screen.dart'; // Updated comment
+// Import ConversationScreen later
+// import './screens/conversation_screen.dart';
+
 class AppHome extends StatefulWidget {
   const AppHome({super.key});
 
@@ -211,6 +227,13 @@ class AppHome extends StatefulWidget {
 }
 
 class _AppHomeState extends State<AppHome> {
+  // Add a key for the Scaffold to allow opening the drawer programmatically if needed
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+
+  // State to manage which screen is currently displayed in the body
+  // For now, default to ChatScreen. We can make this more dynamic later.
+  Widget _currentScreen = const ChatScreen();
+
   @override
   void initState() {
     super.initState();
@@ -227,59 +250,45 @@ class _AppHomeState extends State<AppHome> {
     // Load user vocabulary from Supabase if logged in
     final userService = context.read<UserService>();
     if (userService.isLoggedIn) {
-      debugPrint('Loading vocabulary for user: ${userService.currentUser?.email}');
-      
+      debugPrint(
+          'Loading vocabulary for user: ${userService.currentUser?.email}');
+
       // Check premium status from database to ensure it's up to date
       if (userService.currentUser != null) {
-        final isPremium = await context.read<SupabaseDatabaseService>()
+        final isPremium = await context
+            .read<SupabaseDatabaseService>()
             .isPremiumUser(userService.currentUser!.id);
         if (isPremium != userService.isPremium) {
           debugPrint('Updating premium status from database: $isPremium');
           // This will update the user model and trigger UI refresh
-          await userService.upgradeToPremium();
+          await userService
+              .upgradeToPremium(); // or a method to just update the status
         }
       }
-      
-      // Load user vocabulary
+
+      // Load user vocabulary (this was already here, seems fine)
       try {
-        final items = await vocabularyService.getUserVocabulary();
-        debugPrint('Loaded ${items.length} vocabulary items from Supabase');
+        // final items = await vocabularyService.getUserVocabulary(); // This now happens in vocab service init
+        // debugPrint('Loaded ${items.length} vocabulary items from Supabase');
       } catch (e) {
         debugPrint('Error loading vocabulary from Supabase: $e');
       }
+    }
+    // Ensure the UI rebuilds if needed after services are initialized
+    if (mounted) {
+      setState(() {});
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Consumer<UserService>(
-        builder: (context, userService, child) {
-          final user = userService.currentUser;
-          
-          if (user == null) {
-            return const AuthScreen();
-          }
-
-          // Check if user is premium for AI features
-          if (!user.isPremium) {
-            return _buildNonPremiumHome(user);
-          }
-
-          // Premium user gets full chat functionality
-          return const ChatScreen();
-        },
-      ),
-    );
-  }
-
-  Widget _buildNonPremiumHome(app_user.User user) {
-    return Scaffold(
+      key: _scaffoldKey, // Assign the key
       appBar: AppBar(
-        title: Text('Welcome, ${user.firstName}!'),
-        backgroundColor: const Color.fromARGB(255, 71, 175, 227),
-        foregroundColor: Colors.white,
+        title: const Text('GitFluent'),
+        // Leading hamburger icon is added automatically if a drawer is present
         actions: [
+          // You can add other AppBar actions here if needed
           IconButton(
             icon: const Icon(Icons.logout),
             onPressed: () async {
@@ -288,32 +297,70 @@ class _AppHomeState extends State<AppHome> {
           ),
         ],
       ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Text(
-              'Upgrade to Premium',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
+      drawer: Drawer(
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: <Widget>[
+            const DrawerHeader(
+              decoration: BoxDecoration(
+                color: Colors.blue, // Or use Theme.of(context).primaryColor
+              ),
+              child: Text(
+                'Menu',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 24,
+                ),
               ),
             ),
-            const SizedBox(height: 16),
-            const Text(
-              'Get access to AI-powered chat features',
-              style: TextStyle(fontSize: 16),
-            ),
-            const SizedBox(height: 32),
-            ElevatedButton(
-              onPressed: () async {
-                await context.read<UserService>().upgradeToPremium();
+            ListTile(
+              leading: const Icon(Icons.chat_bubble_outline), // Icon for Chat
+              title: const Text('Chat'),
+              onTap: () {
+                Navigator.pop(context); // Close the drawer
+                setState(() {
+                  _currentScreen = const ChatScreen(); // Switch to ChatScreen
+                });
               },
-              child: const Text('Upgrade Now'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.translate),
+              title: const Text('Vocabulary'),
+              onTap: () {
+                Navigator.pop(context); // Close the drawer
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) => const VocabularyScreen()),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.speaker_notes), // Icon for Conversation
+              title: const Text('Conversation'),
+              onTap: () {
+                Navigator.pop(context); // Close the drawer
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) => const ConversationScreen()),
+                );
+              },
             ),
           ],
         ),
       ),
+      body: _currentScreen, // Display the currently selected screen
     );
   }
-} 
+}
+
+// REMOVE the following if AppHome is now the main scaffold.
+// We will keep home_screen.dart for now, but it might not be directly used in main.dart routes.
+// Ensure correct imports at the top of main.dart
+// import 'screens/home_screen.dart'; // This line might be removed or changed
+// import 'screens/chat_screen.dart'; // Already there
+// import 'screens/vocabulary_screen.dart'; // Updated comment
+
+
+// ... The rest of your main.dart code ... 
