@@ -21,7 +21,9 @@ import 'vocabulary_screen.dart';
 // import '../widgets/message_composer.dart'; // Commented out to fix missing file error
 
 class ChatScreen extends StatefulWidget {
-  const ChatScreen({super.key});
+  final GlobalKey<ScaffoldState>? scaffoldKey;
+
+  const ChatScreen({super.key, this.scaffoldKey});
 
   @override
   State<ChatScreen> createState() => _ChatScreenState();
@@ -77,6 +79,14 @@ class _ChatScreenState extends State<ChatScreen> {
       child: Scaffold(
         backgroundColor: Colors.black38,
         appBar: AppBar(
+          leading: widget.scaffoldKey != null
+              ? IconButton(
+                  icon: const Icon(Icons.menu),
+                  onPressed: () {
+                    widget.scaffoldKey!.currentState?.openDrawer();
+                  },
+                )
+              : null,
           backgroundColor: const Color.fromARGB(255, 71, 175, 227),
           title: Text(title),
           actions: [

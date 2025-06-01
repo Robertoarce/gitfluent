@@ -232,7 +232,9 @@ class _AppHomeState extends State<AppHome> {
 
   // State to manage which screen is currently displayed in the body
   // For now, default to ChatScreen. We can make this more dynamic later.
-  Widget _currentScreen = const ChatScreen();
+  Widget _currentScreen() {
+    return ChatScreen(scaffoldKey: _scaffoldKey);
+  }
 
   @override
   void initState() {
@@ -284,19 +286,6 @@ class _AppHomeState extends State<AppHome> {
   Widget build(BuildContext context) {
     return Scaffold(
       key: _scaffoldKey, // Assign the key
-      appBar: AppBar(
-        title: const Text('GitFluent'),
-        // Leading hamburger icon is added automatically if a drawer is present
-        actions: [
-          // You can add other AppBar actions here if needed
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () async {
-              await context.read<UserService>().signOut();
-            },
-          ),
-        ],
-      ),
       drawer: Drawer(
         child: ListView(
           padding: EdgeInsets.zero,
@@ -319,7 +308,8 @@ class _AppHomeState extends State<AppHome> {
               onTap: () {
                 Navigator.pop(context); // Close the drawer
                 setState(() {
-                  _currentScreen = const ChatScreen(); // Switch to ChatScreen
+                  // _currentScreen = const ChatScreen(); // Switch to ChatScreen
+                  // No need to change _currentScreen as it's now a method returning ChatScreen with key
                 });
               },
             ),
@@ -350,7 +340,7 @@ class _AppHomeState extends State<AppHome> {
           ],
         ),
       ),
-      body: _currentScreen, // Display the currently selected screen
+      body: _currentScreen(), // Display the currently selected screen
     );
   }
 }
