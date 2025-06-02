@@ -228,12 +228,38 @@ class AppHome extends StatefulWidget {
 
 class _AppHomeState extends State<AppHome> {
   // Add a key for the Scaffold to allow opening the drawer programmatically if needed
-  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  // final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>(); // Removed
 
   // State to manage which screen is currently displayed in the body
-  // For now, default to ChatScreen. We can make this more dynamic later.
-  Widget _currentScreen() {
-    return ChatScreen(scaffoldKey: _scaffoldKey);
+  int _selectedIndex = 0; // 0 for Chat, 1 for Vocabulary
+  bool _isConversationScreenActive = false;
+
+  // Screens to be displayed in the body
+  static final List<Widget> _widgetOptions = <Widget>[
+    const ChatScreen(), // Removed scaffoldKey
+    const VocabularyScreen(),
+  ];
+
+  void _onItemTapped(int index) {
+    if (index == 2) {
+      // Conversation tab
+      setState(() {
+        _isConversationScreenActive = true;
+      });
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const ConversationScreen()),
+      ).then((_) {
+        // When ConversationScreen is popped, set _isConversationScreenActive back to false
+        setState(() {
+          _isConversationScreenActive = false;
+        });
+      });
+    } else {
+      setState(() {
+        _selectedIndex = index;
+      });
+    }
   }
 
   @override
@@ -285,62 +311,87 @@ class _AppHomeState extends State<AppHome> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      key: _scaffoldKey, // Assign the key
-      drawer: Drawer(
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: <Widget>[
-            const DrawerHeader(
-              decoration: BoxDecoration(
-                color: Colors.blue, // Or use Theme.of(context).primaryColor
-              ),
-              child: Text(
-                'Menu',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 24,
-                ),
-              ),
-            ),
-            ListTile(
-              leading: const Icon(Icons.chat_bubble_outline), // Icon for Chat
-              title: const Text('Chat'),
-              onTap: () {
-                Navigator.pop(context); // Close the drawer
-                setState(() {
-                  // _currentScreen = const ChatScreen(); // Switch to ChatScreen
-                  // No need to change _currentScreen as it's now a method returning ChatScreen with key
-                });
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.translate),
-              title: const Text('Vocabulary'),
-              onTap: () {
-                Navigator.pop(context); // Close the drawer
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (context) => const VocabularyScreen()),
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.speaker_notes), // Icon for Conversation
-              title: const Text('Conversation'),
-              onTap: () {
-                Navigator.pop(context); // Close the drawer
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (context) => const ConversationScreen()),
-                );
-              },
-            ),
-          ],
-        ),
+      // key: _scaffoldKey, // Assign the key // Removed
+      // drawer: Drawer( // Removed Drawer
+      //   child: ListView(
+      //     padding: EdgeInsets.zero,
+      //     children: <Widget>[
+      //       const DrawerHeader(
+      //         decoration: BoxDecoration(
+      //           color: Colors.blue, // Or use Theme.of(context).primaryColor
+      //         ),
+      //         child: Text(
+      //           'Menu',
+      //           style: TextStyle(
+      //             color: Colors.white,
+      //             fontSize: 24,
+      //           ),
+      //         ),
+      //       ),
+      //       ListTile(
+      //         leading: const Icon(Icons.chat_bubble_outline), // Icon for Chat
+      //         title: const Text('Chat'),
+      //         onTap: () {
+      //           Navigator.pop(context); // Close the drawer
+      //           setState(() {
+      //             // _currentScreen = const ChatScreen(); // Switch to ChatScreen
+      //             // No need to change _currentScreen as it's now a method returning ChatScreen with key
+      //           });
+      //         },
+      //       ),
+      //       ListTile(
+      //         leading: const Icon(Icons.translate),
+      //         title: const Text('Vocabulary'),
+      //         onTap: () {
+      //           Navigator.pop(context); // Close the drawer
+      //           Navigator.push(
+      //             context,
+      //             MaterialPageRoute(
+      //                 builder: (context) => const VocabularyScreen()),
+      //           );
+      //         },
+      //       ),
+      //       ListTile(
+      //         leading: const Icon(Icons.speaker_notes), // Icon for Conversation
+      //         title: const Text('Conversation'),
+      //         onTap: () {
+      //           Navigator.pop(context); // Close the drawer
+      //           Navigator.push(
+      //             context,
+      //             MaterialPageRoute(
+      //                 builder: (context) => const ConversationScreen()),
+      //           );
+      //         },
+      //       ),
+      //     ],
+      //   ),
+      // ),
+      body: IndexedStack(
+        // Use IndexedStack to keep state of screens
+        index: _selectedIndex,
+        children: _widgetOptions,
       ),
-      body: _currentScreen(), // Display the currently selected screen
+      bottomNavigationBar: _isConversationScreenActive
+          ? null // Hide BottomNavigationBar when ConversationScreen is active
+          : BottomNavigationBar(
+              items: const <BottomNavigationBarItem>[
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.chat_bubble_outline),
+                  label: 'Chat',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.translate),
+                  label: 'Vocabulary',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.speaker_notes),
+                  label: 'Conversation',
+                ),
+              ],
+              currentIndex: _selectedIndex,
+              selectedItemColor: Theme.of(context).primaryColor,
+              onTap: _onItemTapped,
+            ),
     );
   }
 }
