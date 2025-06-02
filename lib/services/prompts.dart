@@ -240,6 +240,17 @@ Generate a **single JSON object** that strictly adheres to the following schema.
             "type": "string",
             "description": "Definition of the word in this context."
           },
+          "base_form": {
+            "type": "string",
+            "description": "Infinitive or base form of the word."
+          },
+          "forms": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of different forms (e.g., conjugations, plural forms). Each form is a string. Incase of a verb, include the infinitive, present, past, and future forms as well as the pronouns separated by commas."
+          },
           "examples": {
             "type": "array",
             "items": {
@@ -247,7 +258,8 @@ Generate a **single JSON object** that strictly adheres to the following schema.
             },
             "description": "Example sentences using this definition."
           }
-        }
+        },
+        "required": ["part_of_speech", "meaning", "base_form", "forms", "examples"]
       },
       "description": "Various definitions of the word."
     },
@@ -519,10 +531,11 @@ Generate a **single JSON object** that strictly adheres to the following schema.
 
   static String getPrompt(String type, {Map<String, String>? variables}) {
     debugPrint('Getting prompt for type: $type');
-    
+
     // Map legacy prompt types to structured versions
-    final mappedType = _legacyToStructuredMap[type.toLowerCase()] ?? type.toLowerCase();
-    
+    final mappedType =
+        _legacyToStructuredMap[type.toLowerCase()] ?? type.toLowerCase();
+
     // Get the prompt template
     final prompt = _promptMap[mappedType];
     if (prompt == null) {
@@ -536,7 +549,7 @@ Generate a **single JSON object** that strictly adheres to the following schema.
   // Helper method to format a prompt with variables
   static String _formatPrompt(String prompt, Map<String, String>? variables) {
     if (variables == null) return prompt;
-    
+
     // Replace variables in the prompt with their values
     String formattedPrompt = prompt;
     variables.forEach((key, value) {
@@ -566,4 +579,4 @@ Generate a **single JSON object** that strictly adheres to the following schema.
     'structured_conversation': structuredConversationPrompt,
     'structured_writing': structuredWritingPrompt,
   };
-} 
+}
