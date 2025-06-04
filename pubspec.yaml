@@ -16,7 +16,7 @@ dependencies:
   flutter_markdown: ^0.6.18
   flutter_dotenv: ^5.1.0
   google_generative_ai: ^0.2.0
-  langchain: ^0.3.0
+  langchain: ^0.3.1+1
   langchain_openai: ^0.3.0
   langchain_google: ^0.2.2+1 
   ffi: ^2.1.0

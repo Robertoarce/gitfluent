@@ -10,6 +10,7 @@ import 'services/vocabulary_service.dart';
 import 'services/user_service.dart';
 import 'services/supabase_auth_service.dart';
 import 'services/supabase_database_service.dart';
+import 'services/conversation_service.dart';
 import 'models/user.dart' as app_user;
 import 'screens/chat_screen.dart';
 import 'screens/auth_screen.dart';
@@ -138,6 +139,13 @@ class MyApp extends StatelessWidget {
               ChatService(settings: context.read<SettingsService>()),
           update: (context, settings, previous) =>
               ChatService(settings: settings),
+        ),
+        // Add ConversationService provider
+        ChangeNotifierProxyProvider<SettingsService, ConversationService>(
+          create: (context) =>
+              ConversationService(settings: context.read<SettingsService>()),
+          update: (context, settings, previous) =>
+              ConversationService(settings: settings), // Or manage state update if needed
         ),
       ],
       child: Consumer<UserService>(

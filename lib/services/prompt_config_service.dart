@@ -11,7 +11,12 @@ class PromptConfig {
   final Map<String, String> defaultSettings;
   final String systemPromptType;
 
-  // This comes from the system prompt type
+  // New fields for conversation-specific settings
+  final String conversationModelName;
+  final double conversationTemperature;
+  final int conversationMaxTokens;
+  final String conversationSystemPromptType;
+
   PromptConfig({
     required this.modelName,
     required this.temperature,
@@ -19,13 +24,21 @@ class PromptConfig {
     required this.promptVariables,
     required this.defaultSettings,
     required this.systemPromptType,
+    // Initialize new fields
+    required this.conversationModelName,
+    required this.conversationTemperature,
+    required this.conversationMaxTokens,
+    required this.conversationSystemPromptType,
   });
 
   factory PromptConfig.fromYaml(dynamic yaml) {
-    // Convert YamlMap to regular Map
     final Map<String, dynamic> model = Map<String, dynamic>.from(yaml['model']);
     final Map<String, dynamic> promptVars = Map<String, dynamic>.from(yaml['prompt_variables']);
     final Map<String, dynamic> defaultSettings = Map<String, dynamic>.from(yaml['default_settings']);
+
+    // Parse conversation-specific settings
+    final Map<String, dynamic> conversationConfig = Map<String, dynamic>.from(yaml['conversation']);
+    final Map<String, dynamic> conversationModel = Map<String, dynamic>.from(conversationConfig['model']);
 
     return PromptConfig(
       modelName: model['name'].toString(),
@@ -34,6 +47,11 @@ class PromptConfig {
       promptVariables: promptVars.map((key, value) => MapEntry(key.toString(), value.toString())),
       defaultSettings: defaultSettings.map((key, value) => MapEntry(key.toString(), value.toString())),
       systemPromptType: yaml['system_prompt_type'].toString().trim(),
+      // Assign parsed conversation settings
+      conversationModelName: conversationModel['name'].toString(),
+      conversationTemperature: (conversationModel['temperature'] as num).toDouble(),
+      conversationMaxTokens: (conversationModel['max_tokens'] as num).toInt(),
+      conversationSystemPromptType: conversationConfig['system_prompt_type'].toString().trim(),
     );
   }
 
@@ -47,6 +65,15 @@ class PromptConfig {
       'prompt_variables': promptVariables,
       'default_settings': defaultSettings,
       'system_prompt_type': systemPromptType,
+      // Add conversation settings to JSON
+      'conversation': {
+        'model': {
+          'name': conversationModelName,
+          'temperature': conversationTemperature,
+          'max_tokens': conversationMaxTokens,
+        },
+        'system_prompt_type': conversationSystemPromptType,
+      },
     };
   }
 }
@@ -106,6 +133,11 @@ class PromptConfigService {
     Map<String, String>? promptVariables,
     Map<String, String>? defaultSettings,
     String? systemPromptType,
+    // Add conversation params to updateConfig
+    String? conversationModelName,
+    double? conversationTemperature,
+    int? conversationMaxTokens,
+    String? conversationSystemPromptType,
   }) async {
     final currentConfig = await loadConfig();
     
@@ -116,6 +148,11 @@ class PromptConfigService {
       promptVariables: promptVariables ?? currentConfig.promptVariables,
       defaultSettings: defaultSettings ?? currentConfig.defaultSettings,
       systemPromptType: systemPromptType ?? currentConfig.systemPromptType,
+      // Update conversation settings
+      conversationModelName: conversationModelName ?? currentConfig.conversationModelName,
+      conversationTemperature: conversationTemperature ?? currentConfig.conversationTemperature,
+      conversationMaxTokens: conversationMaxTokens ?? currentConfig.conversationMaxTokens,
+      conversationSystemPromptType: conversationSystemPromptType ?? currentConfig.conversationSystemPromptType,
     );
 
     await _saveConfig();
@@ -149,5 +186,26 @@ class PromptConfigService {
   static Future<String> getSystemPromptType() async {
     final config = await loadConfig();
     return config.systemPromptType;
+  }
+
+  // New getters for conversation-specific settings
+  static Future<String> getConversationModelName() async {
+    final config = await loadConfig();
+    return config.conversationModelName;
+  }
+
+  static Future<double> getConversationTemperature() async {
+    final config = await loadConfig();
+    return config.conversationTemperature;
+  }
+
+  static Future<int> getConversationMaxTokens() async {
+    final config = await loadConfig();
+    return config.conversationMaxTokens;
+  }
+
+  static Future<String> getConversationSystemPromptType() async {
+    final config = await loadConfig();
+    return config.conversationSystemPromptType;
   }
 } 

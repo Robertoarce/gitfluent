@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart'; // Import Provider
+import '../services/conversation_service.dart'; // Import ConversationService
 
-// Placeholder for chat message model - will need to define this properly
+// ChatMessage model is now used by ConversationService, so it's defined there or in a common place.
+// For this example, we assume ConversationService exposes List<ChatMessage> where ChatMessage is this class.
+// If ChatMessage in ConversationService is different, adapt accordingly.
 class ChatMessage {
   final String id;
   final String text;
@@ -19,54 +23,39 @@ class ConversationScreen extends StatefulWidget {
 
 class _ConversationScreenState extends State<ConversationScreen> {
   final TextEditingController _textController = TextEditingController();
-  final List<ChatMessage> _messages = [];
+  // final List<ChatMessage> _messages = []; // Removed local messages list
   final ScrollController _scrollController = ScrollController();
+  late ConversationService _conversationService; // To store the service instance
 
   @override
   void initState() {
     super.initState();
-    // Add an initial prompt from the LLM to start the conversation
-    _addInitialLLMPrompt();
-  }
-
-  void _addInitialLLMPrompt() {
-    // You can make this prompt more dynamic or configurable later
-    final initialPrompt = ChatMessage(
-        id: 'llm_initial_prompt_${DateTime.now().millisecondsSinceEpoch}',
-        text:
-            "Hello! I'm your helpful assistant. What can I help you with today?",
-        isUser: false);
-    setState(() {
-      _messages.add(initialPrompt);
+    // Get the service instance, but don't listen here as Consumer will handle it
+    _conversationService = Provider.of<ConversationService>(context, listen: false);
+    // _addInitialLLMPrompt(); // Removed, initial prompt handled by service
+    // Listen to message changes to scroll to bottom
+    // Adding a listener directly to the service to scroll
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) { // Check if the widget is still in the tree
+            _conversationService.addListener(_scrollToBottomIfNecessary);
+        }
     });
-    // No need to scroll here as it's the first message
   }
 
-  // Placeholder for sending a message (will be implemented later with LLM logic)
+  // void _addInitialLLMPrompt() { ... } // Removed
+
   void _sendMessage(String text) {
     if (text.trim().isEmpty) return;
-
-    final userMessage = ChatMessage(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
-        text: text,
-        isUser: true);
-    setState(() {
-      _messages.add(userMessage);
-    });
+    _conversationService.sendMessage(text);
     _textController.clear();
-    _scrollToBottom();
+    // Scrolling will be handled by the listener on the service
+  }
 
-    // Simulate LLM response (replace with actual LLM call later)
-    Future.delayed(const Duration(seconds: 1), () {
-      final llmResponse = ChatMessage(
-          id: (DateTime.now().millisecondsSinceEpoch + 1).toString(),
-          text: "I am a placeholder LLM response to: \"${userMessage.text}\"",
-          isUser: false);
-      setState(() {
-        _messages.add(llmResponse);
-      });
+  void _scrollToBottomIfNecessary() {
+    // Check if there are messages and if the scroll controller is attached
+    if (_conversationService.messages.isNotEmpty && _scrollController.hasClients) {
       _scrollToBottom();
-    });
+    }
   }
 
   void _scrollToBottom() {
@@ -83,6 +72,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
 
   @override
   void dispose() {
+    _conversationService.removeListener(_scrollToBottomIfNecessary); // Clean up listener
     _textController.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -97,22 +87,44 @@ class _ConversationScreenState extends State<ConversationScreen> {
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.of(context).pop(),
         ),
-      ),
-      body: Column(
-        children: <Widget>[
-          Expanded(
-            child: ListView.builder(
-              controller: _scrollController,
-              padding: const EdgeInsets.all(8.0),
-              itemCount: _messages.length,
-              itemBuilder: (context, index) {
-                final message = _messages[index];
-                return _buildMessageBubble(message);
-              },
-            ),
-          ),
-          _buildMessageComposer(),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: () {
+              context.read<ConversationService>().clearChat();
+            },
+            tooltip: 'Clear Chat',
+          )
         ],
+      ),
+      body: Consumer<ConversationService>(
+        builder: (context, conversationService, child) {
+          // Call _scrollToBottom after the build phase if messages have changed
+          // This is now handled by the listener in initState
+          // WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+
+          return Column(
+            children: <Widget>[
+              Expanded(
+                child: ListView.builder(
+                  controller: _scrollController,
+                  padding: const EdgeInsets.all(8.0),
+                  itemCount: conversationService.messages.length,
+                  itemBuilder: (context, index) {
+                    final message = conversationService.messages[index];
+                    return _buildMessageBubble(message);
+                  },
+                ),
+              ),
+              if (conversationService.isLoading)
+                const Padding(
+                  padding: EdgeInsets.all(8.0),
+                  child: LinearProgressIndicator(),
+                ),
+              _buildMessageComposer(conversationService.isLoading),
+            ],
+          );
+        },
       ),
     );
   }
@@ -131,18 +143,16 @@ class _ConversationScreenState extends State<ConversationScreen> {
         ),
         child: Text(
           message.text,
-          style:
-              TextStyle(color: message.isUser ? Colors.white : Colors.black87),
+          style: TextStyle(color: message.isUser ? Colors.white : Colors.black87),
         ),
       ),
     );
   }
 
-  Widget _buildMessageComposer() {
+  Widget _buildMessageComposer(bool isLoading) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
-      color:
-          Theme.of(context).cardColor, // Or another suitable background color
+      color: Theme.of(context).cardColor,
       child: Row(
         children: <Widget>[
           Expanded(
@@ -159,13 +169,14 @@ class _ConversationScreenState extends State<ConversationScreen> {
                 contentPadding: const EdgeInsets.symmetric(
                     horizontal: 16.0, vertical: 10.0),
               ),
-              onSubmitted: _sendMessage, // Send on enter/submit
+              onSubmitted: isLoading ? null : _sendMessage,
+              enabled: !isLoading,
             ),
           ),
           const SizedBox(width: 8.0),
           IconButton(
             icon: const Icon(Icons.send),
-            onPressed: () => _sendMessage(_textController.text),
+            onPressed: isLoading ? null : () => _sendMessage(_textController.text),
             color: Theme.of(context).primaryColor,
           ),
         ],

@@ -3,6 +3,13 @@ model:
   temperature: 0.0
   max_tokens: 2048
 
+conversation:
+  model:
+    name: gemini-2.0-flash
+    temperature: 0.0
+    max_tokens: 2048
+  system_prompt_type: structured_conversation
+
 prompt_variables:
   target_language: target_language
   native_language: native_language
