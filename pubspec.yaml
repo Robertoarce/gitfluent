@@ -47,5 +47,7 @@ flutter:
   uses-material-design: true
   assets:
     - .env
+    - lib/config/prompt_config.yaml
+    - lib/config/conversation_starters.yaml
     - assets/dictionaries/
     - lib/config/ 
