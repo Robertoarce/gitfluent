@@ -33,25 +33,33 @@ class PromptConfig {
 
   factory PromptConfig.fromYaml(dynamic yaml) {
     final Map<String, dynamic> model = Map<String, dynamic>.from(yaml['model']);
-    final Map<String, dynamic> promptVars = Map<String, dynamic>.from(yaml['prompt_variables']);
-    final Map<String, dynamic> defaultSettings = Map<String, dynamic>.from(yaml['default_settings']);
+    final Map<String, dynamic> promptVars =
+        Map<String, dynamic>.from(yaml['prompt_variables']);
+    final Map<String, dynamic> defaultSettings =
+        Map<String, dynamic>.from(yaml['default_settings']);
 
     // Parse conversation-specific settings
-    final Map<String, dynamic> conversationConfig = Map<String, dynamic>.from(yaml['conversation']);
-    final Map<String, dynamic> conversationModel = Map<String, dynamic>.from(conversationConfig['model']);
+    final Map<String, dynamic> conversationConfig =
+        Map<String, dynamic>.from(yaml['conversation']);
+    final Map<String, dynamic> conversationModel =
+        Map<String, dynamic>.from(conversationConfig['model']);
 
     return PromptConfig(
       modelName: model['name'].toString(),
       temperature: (model['temperature'] as num).toDouble(),
       maxTokens: (model['max_tokens'] as num).toInt(),
-      promptVariables: promptVars.map((key, value) => MapEntry(key.toString(), value.toString())),
-      defaultSettings: defaultSettings.map((key, value) => MapEntry(key.toString(), value.toString())),
+      promptVariables: promptVars
+          .map((key, value) => MapEntry(key.toString(), value.toString())),
+      defaultSettings: defaultSettings
+          .map((key, value) => MapEntry(key.toString(), value.toString())),
       systemPromptType: yaml['system_prompt_type'].toString().trim(),
       // Assign parsed conversation settings
       conversationModelName: conversationModel['name'].toString(),
-      conversationTemperature: (conversationModel['temperature'] as num).toDouble(),
+      conversationTemperature:
+          (conversationModel['temperature'] as num).toDouble(),
       conversationMaxTokens: (conversationModel['max_tokens'] as num).toInt(),
-      conversationSystemPromptType: conversationConfig['system_prompt_type'].toString().trim(),
+      conversationSystemPromptType:
+          conversationConfig['system_prompt_type'].toString().trim(),
     );
   }
 
@@ -104,15 +112,14 @@ class PromptConfigService {
       }
 
       // If no saved config, load from YAML file
-      final String yamlString = await rootBundle.loadString('lib/config/prompt_config.yaml');
+      final String yamlString =
+          await rootBundle.loadString('lib/config/prompt_config.yaml');
       final dynamic yamlData = loadYaml(yamlString);
       _config = PromptConfig.fromYaml(yamlData);
 
-      
-      
       // Save the default config
       await _saveConfig();
-      
+
       return _config!;
     } catch (e) {
       throw Exception('Failed to load prompt configuration: $e');
@@ -140,7 +147,7 @@ class PromptConfigService {
     String? conversationSystemPromptType,
   }) async {
     final currentConfig = await loadConfig();
-    
+
     _config = PromptConfig(
       modelName: modelName ?? currentConfig.modelName,
       temperature: temperature ?? currentConfig.temperature,
@@ -149,10 +156,14 @@ class PromptConfigService {
       defaultSettings: defaultSettings ?? currentConfig.defaultSettings,
       systemPromptType: systemPromptType ?? currentConfig.systemPromptType,
       // Update conversation settings
-      conversationModelName: conversationModelName ?? currentConfig.conversationModelName,
-      conversationTemperature: conversationTemperature ?? currentConfig.conversationTemperature,
-      conversationMaxTokens: conversationMaxTokens ?? currentConfig.conversationMaxTokens,
-      conversationSystemPromptType: conversationSystemPromptType ?? currentConfig.conversationSystemPromptType,
+      conversationModelName:
+          conversationModelName ?? currentConfig.conversationModelName,
+      conversationTemperature:
+          conversationTemperature ?? currentConfig.conversationTemperature,
+      conversationMaxTokens:
+          conversationMaxTokens ?? currentConfig.conversationMaxTokens,
+      conversationSystemPromptType: conversationSystemPromptType ??
+          currentConfig.conversationSystemPromptType,
     );
 
     await _saveConfig();
@@ -208,4 +219,4 @@ class PromptConfigService {
     final config = await loadConfig();
     return config.conversationSystemPromptType;
   }
-} 
+}

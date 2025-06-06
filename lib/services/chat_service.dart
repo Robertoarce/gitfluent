@@ -11,11 +11,7 @@ import 'prompts.dart';
 import 'prompt_config_service.dart';
 import '../models/language_response.dart'; // Import the new model
 
-enum MessageType {
-  system,
-  user,
-  assistant
-}
+enum MessageType { system, user, assistant }
 
 class ChatMessage {
   final String content;
@@ -29,19 +25,19 @@ class ChatMessage {
   }) : timestamp = timestamp ?? DateTime.now();
 
   static ChatMessage system(String content) => ChatMessage(
-    content: content,
-    type: MessageType.system,
-  );
+        content: content,
+        type: MessageType.system,
+      );
 
   static ChatMessage user(String content) => ChatMessage(
-    content: content,
-    type: MessageType.user,
-  );
+        content: content,
+        type: MessageType.user,
+      );
 
   static ChatMessage assistant(String content) => ChatMessage(
-    content: content,
-    type: MessageType.assistant,
-  );
+        content: content,
+        type: MessageType.assistant,
+      );
 }
 
 class Message {
@@ -66,20 +62,21 @@ class ChatService extends ChangeNotifier {
   final List<ChatMessage> _chatHistory = [];
   final SettingsService _settings;
   GenerativeModel? get _activeGeminiModel => _geminiModel;
-  
+
   String _systemPrompt = Prompts.structuredBasePrompt;
   PromptConfig? _config;
-  
+
   String get systemPrompt => _systemPrompt;
-  
+
   // Update system prompt and context
   void updateSystemPrompt(String newPrompt) {
     _systemPrompt = newPrompt;
     // Add system message to chat history if it's empty or different
-    if (_chatHistory.isEmpty || 
-        (_chatHistory.first.type == MessageType.system && 
-         _chatHistory.first.content != newPrompt)) {
-      if (_chatHistory.isNotEmpty && _chatHistory.first.type == MessageType.system) {
+    if (_chatHistory.isEmpty ||
+        (_chatHistory.first.type == MessageType.system &&
+            _chatHistory.first.content != newPrompt)) {
+      if (_chatHistory.isNotEmpty &&
+          _chatHistory.first.type == MessageType.system) {
         _chatHistory.removeAt(0);
       }
       _chatHistory.insert(0, ChatMessage.system(newPrompt));
@@ -104,7 +101,7 @@ class ChatService extends ChangeNotifier {
       await PromptConfigService.init();
       PromptConfigService.clearCache();
       _config = await PromptConfigService.loadConfig();
-      
+
       // Set default provider to Gemini if not already set
       if (_settings.currentProvider != AIProvider.gemini) {
         _settings.setProvider(AIProvider.gemini);
@@ -112,20 +109,21 @@ class ChatService extends ChangeNotifier {
 
       // Get the prompt type and variables directly from config
       final promptType = _config?.systemPromptType ?? 'default';
-      final variables = _config?.defaultSettings ?? {
-        'target_language': 'it',
-        'native_language': 'en',
-        'support_language_1': 'es',
-        'support_language_2': 'fr',
-      };
-      
+      final variables = _config?.defaultSettings ??
+          {
+            'target_language': 'it',
+            'native_language': 'en',
+            'support_language_1': 'es',
+            'support_language_2': 'fr',
+          };
+
       debugPrint('Prompt type from config: $promptType');
       debugPrint('Language variables: $variables');
-      
+
       _systemPrompt = Prompts.getPrompt(promptType, variables: variables);
       debugPrint('Selected prompt type: $promptType');
       debugPrint('System prompt length: ${_systemPrompt.length}');
-      
+
       if (_chatHistory.isEmpty) {
         _chatHistory.add(ChatMessage.system(_systemPrompt));
       }
@@ -151,7 +149,7 @@ class ChatService extends ChangeNotifier {
       defaultSettings: defaultSettings,
       systemPromptType: systemPromptType,
     );
-    
+
     // Reload configuration
     await _initializeConfig();
     // Reinitialize AI with new settings
@@ -178,17 +176,18 @@ class ChatService extends ChangeNotifier {
       };
 
       debugPrint('Updating system prompt with language variables: $variables');
-      
+
       final promptType = _config?.systemPromptType ?? 'default';
       _systemPrompt = Prompts.getPrompt(promptType, variables: variables);
-      
+
       // Update system message in chat history
-      if (_chatHistory.isNotEmpty && _chatHistory.first.type == MessageType.system) {
+      if (_chatHistory.isNotEmpty &&
+          _chatHistory.first.type == MessageType.system) {
         _chatHistory[0] = ChatMessage.system(_systemPrompt);
       } else {
         _chatHistory.insert(0, ChatMessage.system(_systemPrompt));
       }
-      
+
       notifyListeners();
     } catch (e) {
       debugPrint('Error updating system prompt with languages: $e');
@@ -200,16 +199,17 @@ class ChatService extends ChangeNotifier {
     try {
       final provider = _settings.currentProvider;
       debugPrint('Initializing AI provider: ${provider.name}');
-      
+
       // Update system prompt with current language settings
       _updateSystemPromptWithLanguages();
-      
+
       switch (provider) {
         case AIProvider.openai:
           final apiKey = dotenv.env['OPENAI_API_KEY'];
           if (apiKey == null || apiKey.isEmpty) {
             _messages.add(Message(
-              content: 'Error: OpenAI API key not found in .env file. Please add OPENAI_API_KEY to your .env file.',
+              content:
+                  'Error: OpenAI API key not found in .env file. Please add OPENAI_API_KEY to your .env file.',
               isUser: false,
             ));
             notifyListeners();
@@ -229,7 +229,8 @@ class ChatService extends ChangeNotifier {
           final apiKey = dotenv.env['GEMINI_API_KEY'];
           if (apiKey == null || apiKey.isEmpty) {
             _messages.add(Message(
-              content: 'Error: Gemini API key not found in .env file. Please add GEMINI_API_KEY to your .env file.',
+              content:
+                  'Error: Gemini API key not found in .env file. Please add GEMINI_API_KEY to your .env file.',
               isUser: false,
             ));
             notifyListeners();
@@ -246,12 +247,11 @@ class ChatService extends ChangeNotifier {
           debugPrint('Gemini initialized successfully');
           break;
       }
-      
+
       // Initialize chat history with system prompt
       if (_chatHistory.isEmpty) {
         _chatHistory.add(ChatMessage.system(_systemPrompt));
       }
-      
     } catch (e) {
       debugPrint('Error initializing AI: $e');
       _messages.add(Message(
@@ -269,7 +269,7 @@ class ChatService extends ChangeNotifier {
     if (message.trim().isEmpty) return;
 
     // Add user message
-    
+
     _messages.add(Message(content: message, isUser: true, LLMjsonResponse: ''));
     _chatHistory.add(ChatMessage.user(message));
     notifyListeners();
@@ -280,42 +280,40 @@ class ChatService extends ChangeNotifier {
     try {
       String reply;
       String LLMjsonOutput;
-      
+
       switch (_settings.currentProvider) {
         case AIProvider.openai:
           if (_openAILlm == null) {
-            throw Exception('OpenAI not initialized. Please check your API key.');
-              }
-          
+            throw Exception(
+                'OpenAI not initialized. Please check your API key.');
+          }
+
           // generates prompt for the LLM (with history )
           final prompt = PromptValue.string('''
           ${_systemPrompt.trim()}
 
           Previous conversation context:
-          ${_chatHistory.where((msg) => msg.type != MessageType.system).map((msg) => 
-            "${msg.type == MessageType.user ? 'User' : 'Assistant'}: ${msg.content}"
-          ).join('\n')}
+          ${_chatHistory.where((msg) => msg.type != MessageType.system).map((msg) => "${msg.type == MessageType.user ? 'User' : 'Assistant'}: ${msg.content}").join('\n')}
 
           User: $message
           Assistant:''');
-          
+
           final response = await _openAILlm!.invoke(prompt);
           reply = response.firstOutput?.content ?? 'No response from AI';
           break;
-        
+
         case AIProvider.gemini:
           if (_geminiModel == null) {
-            throw Exception('Gemini not initialized. Please check your API key.');
+            throw Exception(
+                'Gemini not initialized. Please check your API key.');
           }
-          
+
           // For Gemini, we'll send both the system prompt and user message together
           final prompt = '''
             ${_systemPrompt.trim()}
 
             Previous conversation context:
-            ${_chatHistory.where((msg) => msg.type != MessageType.system).map((msg) => 
-              "${msg.type == MessageType.user ? 'User' : 'Assistant'}: ${msg.content}"
-            ).join('\n')}
+            ${_chatHistory.where((msg) => msg.type != MessageType.system).map((msg) => "${msg.type == MessageType.user ? 'User' : 'Assistant'}: ${msg.content}").join('\n')}
 
             User: $message
             Assistant:''';
@@ -326,23 +324,23 @@ class ChatService extends ChangeNotifier {
           debugPrint(prompt);
           debugPrint('----------------');
 
-          final response = await _geminiModel!.generateContent([
-            Content.text(prompt)
-          ]);
-          
+          final response =
+              await _geminiModel!.generateContent([Content.text(prompt)]);
+
           if (response.text == null) {
             throw Exception('No response received from Gemini');
-          }          
-          
+          }
+
           reply = response.text!;
           break;
       }
-      
+
       // Here is where we threat the response from the LLM
       // so we can extract the vocabulary items and add them to the vocabulary service
       (reply, LLMjsonOutput) = _getVocabFromLLMResponse(reply);
 
-      _messages.add(Message(content: reply, isUser: false, LLMjsonResponse: LLMjsonOutput));
+      _messages.add(Message(
+          content: reply, isUser: false, LLMjsonResponse: LLMjsonOutput));
       _chatHistory.add(ChatMessage.assistant(reply));
     } catch (e) {
       debugPrint('Error sending message: $e');
@@ -373,49 +371,53 @@ class ChatService extends ChangeNotifier {
     debugPrint('===============================');
     debugPrint('Processing JSON response:');
     debugPrint(response);
-    
+
     String jsonString = '';
-    
+
     try {
-      
       /////////////////////////////////
       /////// JSON EXTRACTION  ////////
       ////////////////////////////////
-      
+
       // Try to parse the response as JSON
-      
-      
+
       // Extract JSON if it's wrapped in text
       final jsonRegex = RegExp(r'(\{[\s\S]*\})');
       final match = jsonRegex.firstMatch(response);
-      
+
       if (match != null) {
         // Found JSON within text
         jsonString = match.group(1) ?? '';
-        debugPrint('Extracted JSON: ${jsonString.substring(0, min(100, jsonString.length))}...');
-      } 
-      else if (response.replaceAll('```json', '').replaceAll('```', '').trim().isNotEmpty) {
-        jsonString = response.replaceAll('```json', '').replaceAll('```', '').trim();
-      }
-      else {
+        debugPrint(
+            'Extracted JSON: ${jsonString.substring(0, min(100, jsonString.length))}...');
+      } else if (response
+          .replaceAll('```json', '')
+          .replaceAll('```', '')
+          .trim()
+          .isNotEmpty) {
+        jsonString =
+            response.replaceAll('```json', '').replaceAll('```', '').trim();
+      } else {
         // Try to parse the entire response as JSON
         jsonString = response;
       }
-      
+
       // Parse the JSON into our model
-      final languageResponse = LanguageResponse.fromJson(json.decode(jsonString));
+      final languageResponse =
+          LanguageResponse.fromJson(json.decode(jsonString));
       debugPrint('Successfully parsed JSON into LanguageResponse model');
-      debugPrint('Vocabulary items: ${languageResponse.vocabularyBreakdown.length}');
-      
-       ///////////////////////////////////////
+      debugPrint(
+          'Vocabulary items: ${languageResponse.vocabularyBreakdown.length}');
+
+      ///////////////////////////////////////
       /////// USING JSON FOR BUTTONS  ////////
       ////////////////////////////////////////
 
       // Format the response for display
-      final formattedResponse = _formatLanguageResponseToDisplayText(languageResponse);
+      final formattedResponse =
+          _formatLanguageResponseToDisplayText(languageResponse);
       debugPrint('Formatted response for display');
       return (formattedResponse, jsonString);
-      
     } catch (e) {
       debugPrint('Error parsing JSON response: $e');
       debugPrint('Returning original response');
@@ -423,28 +425,32 @@ class ChatService extends ChangeNotifier {
     }
   }
 
-  String _formatLanguageResponseToDisplayText(LanguageResponse languageResponse) {
+  String _formatLanguageResponseToDisplayText(
+      LanguageResponse languageResponse) {
     final StringBuffer output = StringBuffer();
-    
+
     // Extract parts from the language response
     final config = _config;
-    final String targetLang = config?.defaultSettings['target_language'] ?? 'Target language';
-    final String nativeLang = config?.defaultSettings['native_language'] ?? 'Native language';
-    
+    final String targetLang =
+        config?.defaultSettings['target_language'] ?? 'Target language';
+    final String nativeLang =
+        config?.defaultSettings['native_language'] ?? 'Native language';
+
     // Target language sentence
     output.writeln('$targetLang:');
     output.writeln(languageResponse.targetLanguageSentence);
     output.writeln();
-    
+
     // Translation
     output.writeln('$nativeLang Translation:');
     output.writeln(languageResponse.nativeLanguageTranslation);
     output.writeln();
-    
+
     // Corrections
     output.writeln('Corrections:');
-    if (languageResponse.corrections.isEmpty || 
-        (languageResponse.corrections.length == 1 && languageResponse.corrections[0] == 'None.')) {
+    if (languageResponse.corrections.isEmpty ||
+        (languageResponse.corrections.length == 1 &&
+            languageResponse.corrections[0] == 'None.')) {
       output.writeln('None.');
     } else {
       for (final correction in languageResponse.corrections) {
@@ -452,7 +458,7 @@ class ChatService extends ChangeNotifier {
       }
     }
     output.writeln();
-    
+
     // Vocabulary breakdown
     output.writeln('Vocabulary Breakdown:');
     for (final word in languageResponse.vocabularyBreakdown) {
@@ -468,14 +474,14 @@ class ChatService extends ChangeNotifier {
       }
       output.writeln();
     }
-    
+
     // Additional context (if provided)
-    if (languageResponse.additionalContext != null && 
+    if (languageResponse.additionalContext != null &&
         languageResponse.additionalContext!.isNotEmpty) {
       output.writeln('Additional Context:');
       output.writeln(languageResponse.additionalContext);
     }
-    
+
     return output.toString();
   }
-} 
+}

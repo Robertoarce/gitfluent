@@ -36,31 +36,33 @@ class LanguageSettings extends ChangeNotifier {
   Language? _supportLanguage1;
   Language? _supportLanguage2;
 
-
   // Getters
   Language? get targetLanguage => _targetLanguage;
   Language? get nativeLanguage => _nativeLanguage;
   Language? get supportLanguage1 => _supportLanguage1;
   Language? get supportLanguage2 => _supportLanguage2;
 
-
   // Initialize preferences
   Future<void> init() async {
     _prefs = await SharedPreferences.getInstance();
     _loadLanguages();
-    
+
     // Set default languages if none are set
     if (_targetLanguage == null) {
-      await setTargetLanguage(availableLanguages.firstWhere((l) => l.code == 'it'));
+      await setTargetLanguage(
+          availableLanguages.firstWhere((l) => l.code == 'it'));
     }
     if (_nativeLanguage == null) {
-      await setNativeLanguage(availableLanguages.firstWhere((l) => l.code == 'en'));
+      await setNativeLanguage(
+          availableLanguages.firstWhere((l) => l.code == 'en'));
     }
     if (_supportLanguage1 == null) {
-      await setSupportLanguage1(availableLanguages.firstWhere((l) => l.code == 'es'));
+      await setSupportLanguage1(
+          availableLanguages.firstWhere((l) => l.code == 'es'));
     }
     if (_supportLanguage2 == null) {
-      await setSupportLanguage2(availableLanguages.firstWhere((l) => l.code == 'fr'));
+      await setSupportLanguage2(
+          availableLanguages.firstWhere((l) => l.code == 'fr'));
     }
   }
 
@@ -70,12 +72,10 @@ class LanguageSettings extends ChangeNotifier {
     final support1Code = _prefs.getString('support_language_1');
     final support2Code = _prefs.getString('support_language_2');
 
-
     _targetLanguage = _findLanguageByCode(targetCode);
     _nativeLanguage = _findLanguageByCode(nativeCode);
     _supportLanguage1 = _findLanguageByCode(support1Code);
     _supportLanguage2 = _findLanguageByCode(support2Code);
-
 
     notifyListeners();
   }
@@ -121,5 +121,4 @@ class LanguageSettings extends ChangeNotifier {
     }
     notifyListeners();
   }
-
-} 
+}

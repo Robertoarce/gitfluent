@@ -11,19 +11,23 @@ abstract class DatabaseService {
   Future<void> deleteUser(String userId);
 
   // Vocabulary management
-  Future<List<UserVocabularyItem>> getUserVocabulary(String userId, {String? language});
+  Future<List<UserVocabularyItem>> getUserVocabulary(String userId,
+      {String? language});
   Future<UserVocabularyItem> saveVocabularyItem(UserVocabularyItem item);
   Future<void> updateVocabularyItem(UserVocabularyItem item);
   Future<void> deleteVocabularyItem(String itemId);
-  Future<List<UserVocabularyItem>> getVocabularyDueForReview(String userId, {String? language});
-  
+  Future<List<UserVocabularyItem>> getVocabularyDueForReview(String userId,
+      {String? language});
+
   // Statistics
-  Future<UserVocabularyStats?> getUserVocabularyStats(String userId, String language);
+  Future<UserVocabularyStats?> getUserVocabularyStats(
+      String userId, String language);
   Future<void> updateVocabularyStats(UserVocabularyStats stats);
 
   // Chat history (for premium users)
   Future<void> saveChatMessage(String userId, Map<String, dynamic> message);
-  Future<List<Map<String, dynamic>>> getChatHistory(String userId, {int limit = 50});
+  Future<List<Map<String, dynamic>>> getChatHistory(String userId,
+      {int limit = 50});
   Future<void> deleteChatHistory(String userId);
 
   // Premium features
@@ -32,4 +36,4 @@ abstract class DatabaseService {
 
   // Cleanup and maintenance
   Future<void> cleanup();
-} 
+}

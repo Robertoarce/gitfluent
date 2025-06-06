@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart'; // Import Provider
 import '../services/conversation_service.dart'; // Import ConversationService
 import '../services/conversation_starter_service.dart';
+import 'settings_screen.dart';
 
 // ChatMessage model is now used by ConversationService, so it's defined there or in a common place.
 // For this example, we assume ConversationService exposes List<ChatMessage> where ChatMessage is this class.
@@ -162,6 +163,16 @@ class _ConversationScreenState extends State<ConversationScreen> {
       appBar: AppBar(
         title: const Text('Conversation Practice'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.settings),
+            tooltip: 'Settings',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const SettingsScreen()),
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.refresh),
             tooltip: 'Clear Chat',

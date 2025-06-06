@@ -144,8 +144,8 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProxyProvider<SettingsService, ConversationService>(
           create: (context) =>
               ConversationService(settings: context.read<SettingsService>()),
-          update: (context, settings, previous) =>
-              ConversationService(settings: settings), // Or manage state update if needed
+          update: (context, settings, previous) => ConversationService(
+              settings: settings), // Or manage state update if needed
         ),
       ],
       child: Consumer<UserService>(

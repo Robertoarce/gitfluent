@@ -11,12 +11,12 @@ class SettingsService extends ChangeNotifier {
   static const String _providerKey = 'ai_provider';
   static const String _maxVerbsKey = 'max_verbs';
   static const String _maxNounsKey = 'max_nouns';
-  
+
   static const int defaultMaxVerbs = 5;
   static const int defaultMaxNouns = 10;
-  static const int maxVerbsLimit = 15;  // 3x default
-  static const int maxNounsLimit = 30;  // 3x default
-  
+  static const int maxVerbsLimit = 15; // 3x default
+  static const int maxNounsLimit = 30; // 3x default
+
   late SharedPreferences _prefs;
   AIProvider _currentProvider = AIProvider.gemini;
   int _maxVerbs = defaultMaxVerbs;
@@ -50,10 +50,10 @@ class SettingsService extends ChangeNotifier {
         orElse: () => AIProvider.gemini,
       );
     }
-    
+
     _maxVerbs = _prefs.getInt(_maxVerbsKey) ?? defaultMaxVerbs;
     _maxNouns = _prefs.getInt(_maxNounsKey) ?? defaultMaxNouns;
-    
+
     notifyListeners();
   }
 
@@ -96,4 +96,4 @@ class SettingsService extends ChangeNotifier {
         return 'OPENAI_API_KEY';
     }
   }
-} 
+}
