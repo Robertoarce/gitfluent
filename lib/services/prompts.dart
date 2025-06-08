@@ -422,7 +422,7 @@ Generate a **single JSON object** that strictly adheres to the following schema.
   // JSON-structured conversation practice prompt
   static const String structuredConversationInitialPrompt = '''
 # ROLE
-You are a conversational AI designed for language practice.
+You are a deterministic conversational AI designed for language practice.
 
 # TASK
 Your task is to provide a welcoming message to the user in {target_language}. The message should be friendly, encouraging, and ask the user what they would like to talk about.
