@@ -4,10 +4,12 @@ import 'package:gotrue/gotrue.dart' as supabase_auth;
 import '../models/user.dart' as app_user;
 import 'auth_service.dart';
 import '../config/supabase_config.dart';
+import 'logging_service.dart';
 
 class SupabaseAuthService implements AuthService {
   final SupabaseClient _supabase = Supabase.instance.client;
   app_user.User? _currentUser;
+  final LoggingService _logger = LoggingService();
 
   @override
   app_user.User? get currentUser => _currentUser;
@@ -29,104 +31,129 @@ class SupabaseAuthService implements AuthService {
   @override
   Future<void> initialize() async {
     try {
-      debugPrint('SupabaseAuthService: Initializing Supabase Auth');
+      _logger.log(LogCategory.supabase,
+          'SupabaseAuthService: Initializing Supabase Auth');
       final session = _supabase.auth.currentSession;
       if (session != null) {
-        debugPrint('SupabaseAuthService: Found existing session, user ID: ${session.user.id}');
+        _logger.log(LogCategory.supabase,
+            'SupabaseAuthService: Found existing session, user ID: ${session.user.id}');
         _currentUser = _convertSupabaseUser(session.user);
-        
+
         // Fetch complete user data including premium status
         try {
-          debugPrint('SupabaseAuthService: Fetching complete user data during initialization');
+          _logger.log(LogCategory.supabase,
+              'SupabaseAuthService: Fetching complete user data during initialization');
           final dbUser = await _supabase
               .from(SupabaseConfig.usersTable)
               .select('*')
               .eq('id', _currentUser!.id)
               .single();
-          
+
           if (dbUser != null) {
             final isPremium = dbUser['is_premium'] ?? false;
             _currentUser = _currentUser!.copyWith(isPremium: isPremium);
-            debugPrint('SupabaseAuthService: Set premium status to $isPremium during initialization');
+            _logger.log(LogCategory.supabase,
+                'SupabaseAuthService: Set premium status to $isPremium during initialization');
           }
         } catch (dbError) {
-          debugPrint('SupabaseAuthService: Error fetching user data during initialization: $dbError');
+          _logger.log(LogCategory.supabase,
+              'SupabaseAuthService: Error fetching user data during initialization: $dbError',
+              isError: true);
           // Try with service role client if regular client fails
           try {
-            debugPrint('SupabaseAuthService: Attempting with service role client');
+            _logger.log(LogCategory.supabase,
+                'SupabaseAuthService: Attempting with service role client');
             final serviceClient = SupabaseClient(
               SupabaseConfig.projectUrl,
               SupabaseConfig.serviceRoleKey,
             );
-            
+
             final dbUser = await serviceClient
                 .from(SupabaseConfig.usersTable)
                 .select('*')
                 .eq('id', _currentUser!.id)
                 .single();
-            
+
             if (dbUser != null) {
               final isPremium = dbUser['is_premium'] ?? false;
               _currentUser = _currentUser!.copyWith(isPremium: isPremium);
-              debugPrint('SupabaseAuthService: Set premium status to $isPremium with service role');
+              _logger.log(LogCategory.supabase,
+                  'SupabaseAuthService: Set premium status to $isPremium with service role');
             }
           } catch (serviceError) {
-            debugPrint('SupabaseAuthService: Service role attempt also failed: $serviceError');
+            _logger.log(LogCategory.supabase,
+                'SupabaseAuthService: Service role attempt also failed: $serviceError',
+                isError: true);
             // Continue with auth user if all database fetches fail
           }
         }
       } else {
-        debugPrint('SupabaseAuthService: No active session found');
+        _logger.log(LogCategory.supabase,
+            'SupabaseAuthService: No active session found');
       }
     } catch (e) {
-      debugPrint('Error initializing Supabase Auth: $e');
+      _logger.log(LogCategory.supabase, 'Error initializing Supabase Auth: $e',
+          isError: true);
     }
   }
 
   @override
-  Future<AuthResult> signInWithEmailAndPassword(String email, String password) async {
+  Future<AuthResult> signInWithEmailAndPassword(
+      String email, String password) async {
     try {
-      debugPrint('SupabaseAuthService: Signing in user with email: $email');
+      _logger.log(LogCategory.supabase,
+          'SupabaseAuthService: Signing in user with email: $email');
       final response = await _supabase.auth.signInWithPassword(
         email: email,
         password: password,
       );
 
       if (response.user != null) {
-        debugPrint('SupabaseAuthService: Sign in successful for: $email');
+        _logger.log(LogCategory.supabase,
+            'SupabaseAuthService: Sign in successful for: $email');
         _currentUser = _convertSupabaseUser(response.user!);
-        
+
         // Attempt to fetch the complete user data including premium status
         try {
-          debugPrint('SupabaseAuthService: Fetching complete user data from database');
+          _logger.log(LogCategory.supabase,
+              'SupabaseAuthService: Fetching complete user data from database');
           final dbUser = await _supabase
               .from(SupabaseConfig.usersTable)
               .select('*')
               .eq('id', _currentUser!.id)
               .single();
-          
+
           if (dbUser != null) {
             // Update premium status from database
             final isPremium = dbUser['is_premium'] ?? false;
             _currentUser = _currentUser!.copyWith(isPremium: isPremium);
-            debugPrint('SupabaseAuthService: Set premium status to $isPremium from database');
+            _logger.log(LogCategory.supabase,
+                'SupabaseAuthService: Set premium status to $isPremium from database');
           }
         } catch (dbError) {
-          debugPrint('SupabaseAuthService: Error fetching user data from database: $dbError');
+          _logger.log(LogCategory.supabase,
+              'SupabaseAuthService: Error fetching user data from database: $dbError',
+              isError: true);
           // Continue with auth user if database fetch fails
           // Premium status will be fetched in background by _fetchAndUpdatePremiumStatus
         }
-        
+
         return AuthResult.success(_currentUser!);
       } else {
-        debugPrint('SupabaseAuthService: Sign in failed - no user returned');
+        _logger.log(LogCategory.supabase,
+            'SupabaseAuthService: Sign in failed - no user returned',
+            isError: true);
         return AuthResult.error('Sign in failed');
       }
     } on AuthException catch (e) {
-      debugPrint('SupabaseAuthService: Auth exception: ${e.message}');
+      _logger.log(LogCategory.supabase,
+          'SupabaseAuthService: Auth exception: ${e.message}',
+          isError: true);
       return AuthResult.error(_getErrorMessage(e));
     } catch (e) {
-      debugPrint('SupabaseAuthService: Unexpected error: $e');
+      _logger.log(
+          LogCategory.supabase, 'SupabaseAuthService: Unexpected error: $e',
+          isError: true);
       return AuthResult.error('An unexpected error occurred: $e');
     }
   }
@@ -139,11 +166,15 @@ class SupabaseAuthService implements AuthService {
     String lastName,
   ) async {
     try {
-      debugPrint('=========== SUPABASE AUTH SIGNUP START ===========');
-      debugPrint('SupabaseAuthService: Starting signUp for email: $email');
-      debugPrint('SupabaseAuthService: Using firstName: $firstName, lastName: $lastName');
-      
-      debugPrint('SupabaseAuthService: Calling supabase.auth.signUp');
+      _logger.log(LogCategory.supabase,
+          '=========== SUPABASE AUTH SIGNUP START ===========');
+      _logger.log(LogCategory.supabase,
+          'SupabaseAuthService: Starting signUp for email: $email');
+      _logger.log(LogCategory.supabase,
+          'SupabaseAuthService: Using firstName: $firstName, lastName: $lastName');
+
+      _logger.log(LogCategory.supabase,
+          'SupabaseAuthService: Calling supabase.auth.signUp');
       final response = await _supabase.auth.signUp(
         email: email,
         password: password,
@@ -153,32 +184,53 @@ class SupabaseAuthService implements AuthService {
         },
       );
 
-      debugPrint('SupabaseAuthService: Auth signUp response received');
-      debugPrint('SupabaseAuthService: User ID: ${response.user?.id ?? 'null'}');
-      debugPrint('SupabaseAuthService: Session: ${response.session != null ? 'active' : 'null'}');
-      debugPrint('SupabaseAuthService: Email confirmed: ${response.user?.emailConfirmedAt != null ? 'yes' : 'no'}');
-      
+      _logger.log(LogCategory.supabase,
+          'SupabaseAuthService: Auth signUp response received');
+      _logger.log(LogCategory.supabase,
+          'SupabaseAuthService: User ID: ${response.user?.id ?? 'null'}');
+      _logger.log(LogCategory.supabase,
+          'SupabaseAuthService: Session: ${response.session != null ? 'active' : 'null'}');
+      _logger.log(LogCategory.supabase,
+          'SupabaseAuthService: Email confirmed: ${response.user?.emailConfirmedAt != null ? 'yes' : 'no'}');
+
       if (response.user != null) {
         _currentUser = _convertSupabaseUser(response.user!);
-        debugPrint('SupabaseAuthService: User created successfully: ${_currentUser!.id}');
-        debugPrint('SupabaseAuthService: User metadata: ${response.user!.userMetadata}');
-        debugPrint('SupabaseAuthService: User app metadata: ${response.user!.appMetadata}');
-        debugPrint('=========== SUPABASE AUTH SIGNUP END (SUCCESS) ===========');
+        _logger.log(LogCategory.supabase,
+            'SupabaseAuthService: User created successfully: ${_currentUser!.id}');
+        _logger.log(LogCategory.supabase,
+            'SupabaseAuthService: User metadata: ${response.user!.userMetadata}');
+        _logger.log(LogCategory.supabase,
+            'SupabaseAuthService: User app metadata: ${response.user!.appMetadata}');
+        _logger.log(LogCategory.supabase,
+            '=========== SUPABASE AUTH SIGNUP END (SUCCESS) ===========');
         return AuthResult.success(_currentUser!);
       } else {
-        debugPrint('SupabaseAuthService: Account creation failed - no user returned');
-        debugPrint('=========== SUPABASE AUTH SIGNUP END (FAILURE) ===========');
+        _logger.log(LogCategory.supabase,
+            'SupabaseAuthService: Account creation failed - no user returned',
+            isError: true);
+        _logger.log(LogCategory.supabase,
+            '=========== SUPABASE AUTH SIGNUP END (FAILURE) ===========');
         return AuthResult.error('Account creation failed');
       }
     } on AuthException catch (e) {
-      debugPrint('SupabaseAuthService: Auth exception: ${e.message}, statusCode: ${e.statusCode}');
-      debugPrint('SupabaseAuthService: Error details: ${e.toString()}');
-      debugPrint('=========== SUPABASE AUTH SIGNUP END (AUTH EXCEPTION) ===========');
+      _logger.log(LogCategory.supabase,
+          'SupabaseAuthService: Auth exception: ${e.message}, statusCode: ${e.statusCode}',
+          isError: true);
+      _logger.log(LogCategory.supabase,
+          'SupabaseAuthService: Error details: ${e.toString()}',
+          isError: true);
+      _logger.log(LogCategory.supabase,
+          '=========== SUPABASE AUTH SIGNUP END (AUTH EXCEPTION) ===========');
       return AuthResult.error(_getErrorMessage(e));
     } catch (e) {
-      debugPrint('SupabaseAuthService: Unexpected error: $e');
-      debugPrint('SupabaseAuthService: Error type: ${e.runtimeType}');
-      debugPrint('=========== SUPABASE AUTH SIGNUP END (UNEXPECTED EXCEPTION) ===========');
+      _logger.log(
+          LogCategory.supabase, 'SupabaseAuthService: Unexpected error: $e',
+          isError: true);
+      _logger.log(LogCategory.supabase,
+          'SupabaseAuthService: Error type: ${e.runtimeType}',
+          isError: true);
+      _logger.log(LogCategory.supabase,
+          '=========== SUPABASE AUTH SIGNUP END (UNEXPECTED EXCEPTION) ===========');
       return AuthResult.error('An unexpected error occurred: $e');
     }
   }
@@ -189,7 +241,7 @@ class SupabaseAuthService implements AuthService {
       await _supabase.auth.signOut();
       _currentUser = null;
     } catch (e) {
-      debugPrint('Error signing out: $e');
+      _logger.log(LogCategory.supabase, 'Error signing out: $e', isError: true);
       rethrow;
     }
   }
@@ -197,49 +249,61 @@ class SupabaseAuthService implements AuthService {
   @override
   Future<AuthResult> signInWithGoogle() async {
     try {
-      debugPrint('SupabaseAuthService: Starting Google sign in flow');
+      _logger.log(LogCategory.supabase,
+          'SupabaseAuthService: Starting Google sign in flow');
       await _supabase.auth.signInWithOAuth(
         OAuthProvider.google,
         redirectTo: 'io.supabase.flutter://login-callback/',
       );
-      
+
       // The OAuth flow will be handled by the platform
       // After the flow completes, the auth state change listener will update the user
       // Check if the user is logged in
       final session = _supabase.auth.currentSession;
       if (session != null && session.user != null) {
-        debugPrint('SupabaseAuthService: Google sign in successful');
+        _logger.log(LogCategory.supabase,
+            'SupabaseAuthService: Google sign in successful');
         _currentUser = _convertSupabaseUser(session.user);
-        
+
         // Try to fetch premium status directly
         try {
-          debugPrint('SupabaseAuthService: Fetching premium status after Google sign in');
+          _logger.log(LogCategory.supabase,
+              'SupabaseAuthService: Fetching premium status after Google sign in');
           final dbUser = await _supabase
               .from(SupabaseConfig.usersTable)
               .select('is_premium')
               .eq('id', _currentUser!.id)
               .single();
-          
+
           if (dbUser != null) {
             final isPremium = dbUser['is_premium'] ?? false;
             _currentUser = _currentUser!.copyWith(isPremium: isPremium);
-            debugPrint('SupabaseAuthService: Set premium status to $isPremium after Google sign in');
+            _logger.log(LogCategory.supabase,
+                'SupabaseAuthService: Set premium status to $isPremium after Google sign in');
           }
         } catch (dbError) {
-          debugPrint('SupabaseAuthService: Error fetching premium status after Google sign in: $dbError');
+          _logger.log(LogCategory.supabase,
+              'SupabaseAuthService: Error fetching premium status after Google sign in: $dbError',
+              isError: true);
           // Continue with auth user if database fetch fails
         }
-        
+
         return AuthResult.success(_currentUser!);
       } else {
-        debugPrint('SupabaseAuthService: Google sign in - no session or user found');
+        _logger.log(LogCategory.supabase,
+            'SupabaseAuthService: Google sign in - no session or user found',
+            isError: true);
         return AuthResult.error('Google sign in failed');
       }
     } on AuthException catch (e) {
-      debugPrint('SupabaseAuthService: Google sign in auth exception: ${e.message}');
+      _logger.log(LogCategory.supabase,
+          'SupabaseAuthService: Google sign in auth exception: ${e.message}',
+          isError: true);
       return AuthResult.error(_getErrorMessage(e));
     } catch (e) {
-      debugPrint('SupabaseAuthService: Google sign in unexpected error: $e');
+      _logger.log(LogCategory.supabase,
+          'SupabaseAuthService: Google sign in unexpected error: $e',
+          isError: true);
       return AuthResult.error('Google sign in failed: $e');
     }
   }
@@ -251,7 +315,7 @@ class SupabaseAuthService implements AuthService {
         OAuthProvider.apple,
         redirectTo: 'io.supabase.flutter://login-callback/',
       );
-      
+
       // The OAuth flow will be handled by the platform
       // The auth state change listener will update the user
       return AuthResult.success(_currentUser!);
@@ -332,16 +396,17 @@ class SupabaseAuthService implements AuthService {
   Future<bool> isPremiumUser() async {
     try {
       if (_currentUser?.id == null) return false;
-      
+
       final response = await _supabase
           .from(SupabaseConfig.usersTable)
           .select('is_premium')
           .eq('id', _currentUser!.id)
           .single();
-      
+
       return response['is_premium'] ?? false;
     } catch (e) {
-      debugPrint('Error checking premium status: $e');
+      _logger.log(LogCategory.supabase, 'Error checking premium status: $e',
+          isError: true);
       return false;
     }
   }
@@ -350,18 +415,17 @@ class SupabaseAuthService implements AuthService {
   Future<void> updatePremiumStatus(bool isPremium) async {
     try {
       if (_currentUser?.id == null) return;
-      
+
       // Use the service role client for premium updates
       final serviceClient = SupabaseClient(
         SupabaseConfig.projectUrl,
         SupabaseConfig.serviceRoleKey,
       );
-      
+
       await serviceClient
           .from(SupabaseConfig.usersTable)
-          .update({'is_premium': isPremium})
-          .eq('id', _currentUser!.id);
-      
+          .update({'is_premium': isPremium}).eq('id', _currentUser!.id);
+
       if (_currentUser != null) {
         _currentUser = _currentUser!.copyWith(isPremium: isPremium);
       }
@@ -378,7 +442,7 @@ class SupabaseAuthService implements AuthService {
   // Helper methods
   app_user.User _convertSupabaseUser(supabase_auth.User user) {
     final userData = user.userMetadata ?? {};
-    
+
     // Create the user with default premium status
     final newUser = app_user.User(
       id: user.id,
@@ -386,7 +450,8 @@ class SupabaseAuthService implements AuthService {
       firstName: userData['first_name'] ?? '',
       lastName: userData['last_name'] ?? '',
       createdAt: DateTime.parse(user.createdAt),
-      lastLoginAt: user.lastSignInAt != null ? DateTime.parse(user.lastSignInAt!) : null,
+      lastLoginAt:
+          user.lastSignInAt != null ? DateTime.parse(user.lastSignInAt!) : null,
       profileImageUrl: userData['avatar_url'],
       authProvider: user.appMetadata['provider'] ?? 'email',
       providerId: user.id,
@@ -398,53 +463,62 @@ class SupabaseAuthService implements AuthService {
 
     // Immediately try to fetch premium status in the background
     _fetchAndUpdatePremiumStatus(newUser.id);
-    
+
     return newUser;
   }
 
   // Fetch premium status and update current user
   Future<void> _fetchAndUpdatePremiumStatus(String userId) async {
     try {
-      debugPrint('SupabaseAuthService: Fetching premium status for user: $userId');
-      
+      _logger.log(LogCategory.supabase,
+          'SupabaseAuthService: Fetching premium status for user: $userId');
+
       final response = await _supabase
           .from(SupabaseConfig.usersTable)
           .select('is_premium')
           .eq('id', userId)
           .single();
-      
+
       final isPremium = response['is_premium'] ?? false;
-      debugPrint('SupabaseAuthService: Premium status from database: $isPremium');
-      
+      _logger.log(LogCategory.supabase,
+          'SupabaseAuthService: Premium status from database: $isPremium');
+
       if (_currentUser != null && _currentUser!.id == userId) {
         _currentUser = _currentUser!.copyWith(isPremium: isPremium);
-        debugPrint('SupabaseAuthService: Updated user premium status to: $isPremium');
+        _logger.log(LogCategory.supabase,
+            'SupabaseAuthService: Updated user premium status to: $isPremium');
       }
     } catch (e) {
-      debugPrint('SupabaseAuthService: Error fetching premium status: $e');
-      
+      _logger.log(LogCategory.supabase,
+          'SupabaseAuthService: Error fetching premium status: $e',
+          isError: true);
+
       // Try with service role client if regular client fails
       try {
         final serviceClient = SupabaseClient(
           SupabaseConfig.projectUrl,
           SupabaseConfig.serviceRoleKey,
         );
-        
+
         final response = await serviceClient
             .from(SupabaseConfig.usersTable)
             .select('is_premium')
             .eq('id', userId)
             .single();
-        
+
         final isPremium = response['is_premium'] ?? false;
-        debugPrint('SupabaseAuthService: Premium status from service role client: $isPremium');
-        
+        _logger.log(LogCategory.supabase,
+            'SupabaseAuthService: Premium status from service role client: $isPremium');
+
         if (_currentUser != null && _currentUser!.id == userId) {
           _currentUser = _currentUser!.copyWith(isPremium: isPremium);
-          debugPrint('SupabaseAuthService: Updated user premium status to: $isPremium');
+          _logger.log(LogCategory.supabase,
+              'SupabaseAuthService: Updated user premium status to: $isPremium');
         }
       } catch (serviceError) {
-        debugPrint('SupabaseAuthService: Error fetching premium status with service role: $serviceError');
+        _logger.log(LogCategory.supabase,
+            'SupabaseAuthService: Error fetching premium status with service role: $serviceError',
+            isError: true);
       }
     }
   }
@@ -469,4 +543,4 @@ class SupabaseAuthService implements AuthService {
         return e.message;
     }
   }
-} 
+}

@@ -4,6 +4,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'services/chat_service.dart';
+import 'services/logging_service.dart';
 import 'services/settings_service.dart';
 import 'services/language_settings_service.dart';
 import 'services/vocabulary_service.dart';
@@ -22,30 +23,41 @@ import 'config/supabase_config.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Initialize LoggingService early
+  await LoggingService().init();
+  final logger = LoggingService();
+
   try {
     await dotenv.load(fileName: ".env");
-    debugPrint('Environment loaded successfully');
+    logger.log(LogCategory.appLifecycle, 'Environment loaded successfully');
 
     // Check if required environment variables are present
     final url = dotenv.env['SUPABASE_URL'];
     final anonKey = dotenv.env['SUPABASE_ANON_KEY'];
     final serviceKey = dotenv.env['SUPABASE_SERVICE_ROLE_KEY'];
 
-    debugPrint('Environment check:');
-    debugPrint(' - SUPABASE_URL: ${url != null ? 'present' : 'MISSING!'}');
-    debugPrint(
+    logger.log(LogCategory.appLifecycle, 'Environment check:');
+    logger.log(LogCategory.appLifecycle,
+        ' - SUPABASE_URL: ${url != null ? 'present' : 'MISSING!'}');
+    logger.log(LogCategory.appLifecycle,
         ' - SUPABASE_ANON_KEY: ${anonKey != null ? 'present' : 'MISSING!'}');
-    debugPrint(
+    logger.log(LogCategory.appLifecycle,
         ' - SUPABASE_SERVICE_ROLE_KEY: ${serviceKey != null ? 'present' : 'MISSING!'}');
 
     if (url == null || anonKey == null || serviceKey == null) {
-      debugPrint(
-          'WARNING: One or more required environment variables are missing!');
-      debugPrint('This will cause issues with Supabase functionality.');
+      logger.log(LogCategory.appLifecycle,
+          'WARNING: One or more required environment variables are missing!',
+          isError: true);
+      logger.log(LogCategory.appLifecycle,
+          'This will cause issues with Supabase functionality.',
+          isError: true);
     }
   } catch (e) {
-    debugPrint('Error loading .env file: $e');
-    debugPrint('This will cause issues with Supabase functionality.');
+    logger.log(LogCategory.appLifecycle, 'Error loading .env file: $e',
+        isError: true);
+    logger.log(LogCategory.appLifecycle,
+        'This will cause issues with Supabase functionality.',
+        isError: true);
   }
 
   // Log Supabase configuration
@@ -53,14 +65,16 @@ void main() async {
 
   // Initialize Supabase
   try {
-    debugPrint('Initializing Supabase...');
+    logger.log(LogCategory.supabase, 'Initializing Supabase...');
     await Supabase.initialize(
       url: SupabaseConfig.projectUrl,
       anonKey: SupabaseConfig.anonKey,
+      debug: false,
     );
-    debugPrint('Supabase initialized successfully');
+    logger.log(LogCategory.supabase, 'Supabase initialized successfully');
   } catch (e) {
-    debugPrint('Error initializing Supabase: $e');
+    logger.log(LogCategory.supabase, 'Error initializing Supabase: $e',
+        isError: true);
   }
 
   runApp(const MyApp());
@@ -183,22 +197,30 @@ class MyApp extends StatelessWidget {
   // Helper method to initialize settings service
   static Future<void> _initializeSettingsService(
       SettingsService settingsService) async {
+    final logger = LoggingService();
     try {
       await settingsService.init();
-      debugPrint('SettingsService initialized successfully');
+      logger.log(LogCategory.settingsService,
+          'SettingsService initialized successfully');
     } catch (e) {
-      debugPrint('Error initializing SettingsService: $e');
+      logger.log(
+          LogCategory.settingsService, 'Error initializing SettingsService: $e',
+          isError: true);
     }
   }
 
   // Helper method to initialize language settings
   static Future<void> _initializeLanguageSettings(
       LanguageSettings languageSettings) async {
+    final logger = LoggingService();
     try {
       await languageSettings.init();
-      debugPrint('LanguageSettings initialized successfully');
+      logger.log(LogCategory.settingsService,
+          'LanguageSettings initialized successfully');
     } catch (e) {
-      debugPrint('Error initializing LanguageSettings: $e');
+      logger.log(LogCategory.settingsService,
+          'Error initializing LanguageSettings: $e',
+          isError: true);
     }
   }
 
@@ -286,7 +308,7 @@ class _AppHomeState extends State<AppHome> {
     // Load user vocabulary from Supabase if logged in
     final userService = context.read<UserService>();
     if (userService.isLoggedIn) {
-      debugPrint(
+      logger.log(LogCategory.appLifecycle,
           'Loading vocabulary for user: ${userService.currentUser?.email}');
 
       // Check premium status from database to ensure it's up to date
@@ -295,7 +317,8 @@ class _AppHomeState extends State<AppHome> {
             .read<SupabaseDatabaseService>()
             .isPremiumUser(userService.currentUser!.id);
         if (isPremium != userService.isPremium) {
-          debugPrint('Updating premium status from database: $isPremium');
+          logger.log(LogCategory.appLifecycle,
+              'Updating premium status from database: $isPremium');
           // This will update the user model and trigger UI refresh
           await userService
               .upgradeToPremium(); // or a method to just update the status
@@ -307,7 +330,8 @@ class _AppHomeState extends State<AppHome> {
         // final items = await vocabularyService.getUserVocabulary(); // This now happens in vocab service init
         // debugPrint('Loaded ${items.length} vocabulary items from Supabase');
       } catch (e) {
-        debugPrint('Error loading vocabulary from Supabase: $e');
+        logger.log(LogCategory.appLifecycle,
+            'Error loading vocabulary from Supabase: $e');
       }
     }
     // Ensure the UI rebuilds if needed after services are initialized

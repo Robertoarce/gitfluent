@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:llm_chat_app/services/logging_service.dart';
 
 class Prompts {
   // Structured JSON output schema
@@ -331,14 +332,15 @@ Generate a **single JSON object** that strictly adheres to the following schema.
   // JSON-structured conversation practice prompt
   static const String structuredConversationPrompt = '''
 # ROLE
-You are a conversation partner for language practice. Your primary goal is to provide a structured JSON response.
+You are a conversational AI designed for language practice.
 
 # TASK
-1. Engage in natural conversation
-2. Use appropriate vocabulary for the user's level
-3. Introduce new words or phrases
-4. Correct major errors while maintaining conversation flow
-5. Ask follow-up questions to encourage dialogue
+Engage in a natural conversation with the user in {target_language}.
+Provide a response that includes:
+1. A direct reply to the user's message.
+2. A gentle correction of any errors in the user's message.
+3. A definition of any new vocabulary introduced.
+4. A follow-up question to keep the conversation going.
 
 # OUTPUT FORMAT
 Generate a **single JSON object** that strictly adheres to the following schema. Do NOT include any other text.
@@ -348,32 +350,11 @@ Generate a **single JSON object** that strictly adheres to the following schema.
   "properties": {
     "response": {
       "type": "string",
-      "description": "Your natural conversational response in the target language."
+      "description": "Your reply to the user in {target_language}."
     },
     "translation": {
       "type": "string",
-      "description": "Translation of your response into the user's native language."
-    },
-    "new_vocabulary": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "properties": {
-          "word": {
-            "type": "string",
-            "description": "A new word or phrase introduced in your response."
-          },
-          "meaning": {
-            "type": "string",
-            "description": "Definition or explanation of the word/phrase."
-          },
-          "example": {
-            "type": "string",
-            "description": "An additional example sentence using this word/phrase."
-          }
-        }
-      },
-      "description": "New vocabulary items introduced in the conversation."
+      "description": "The English translation of your response."
     },
     "corrections": {
       "type": "array",
@@ -382,7 +363,7 @@ Generate a **single JSON object** that strictly adheres to the following schema.
         "properties": {
           "incorrect": {
             "type": "string",
-            "description": "Incorrect word or phrase from the user's message."
+            "description": "The incorrect part of the user's message."
           },
           "correct": {
             "type": "string",
@@ -390,29 +371,75 @@ Generate a **single JSON object** that strictly adheres to the following schema.
           },
           "explanation": {
             "type": "string",
-            "description": "Brief explanation of the correction."
+            "description": "A brief explanation of the correction."
           }
         }
       },
-      "description": "Corrections for errors in the user's message."
+      "description": "A list of corrections. Empty if no errors."
+    },
+    "new_vocabulary": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "word": {
+            "type": "string",
+            "description": "A new vocabulary word you introduced."
+          },
+          "meaning": {
+            "type": "string",
+            "description": "The definition of the new word."
+          },
+          "example": {
+            "type": "string",
+            "description": "An example sentence using the new word."
+          }
+        }
+      },
+      "description": "A list of new vocabulary words. Empty if none."
     },
     "follow_up_question": {
       "type": "string",
-      "description": "A relevant question to continue the conversation."
+      "description": "A question to ask the user to continue the conversation."
     }
   },
   "required": [
     "response",
     "translation",
+    "corrections",
+    "new_vocabulary",
     "follow_up_question"
   ]
 }
 
 # RULES
-- Keep the conversation flowing naturally
-- Only correct major errors that impede understanding
-- Use vocabulary appropriate for the user's proficiency level
-- Ask questions that are relevant to the current topic
+- Keep the conversation natural and engaging.
+- Make corrections gently and provide clear explanations.
+- Introduce new vocabulary that is relevant to the conversation.
+- Your follow-up question should encourage the user to practice more.
+''';
+
+  // JSON-structured conversation practice prompt
+  static const String structuredConversationInitialPrompt = '''
+# ROLE
+You are a conversational AI designed for language practice.
+
+# TASK
+Your task is to provide a welcoming message to the user in {target_language}. The message should be friendly, encouraging, and ask the user what they would like to talk about.
+
+# OUTPUT FORMAT
+Generate a **single JSON object** that strictly adheres to the following schema. Do NOT include any other text.
+
+{
+  "type": "object",
+  "properties": {
+    "response": {
+      "type": "string",
+      "description": "Your welcoming message to the user in {target_language}."
+    }
+  },
+  "required": ["response"]
+}
 ''';
 
   // JSON-structured writing feedback prompt
@@ -529,54 +556,69 @@ Generate a **single JSON object** that strictly adheres to the following schema.
 - Balance criticism with positive observations
 ''';
 
-  static String getPrompt(String type, {Map<String, String>? variables}) {
-    debugPrint('Getting prompt for type: $type');
+  // Base prompt for general chat
+  static const String basePrompt = '''
+# ROLE
+You are a friendly and helpful language learning assistant.
 
-    // Map legacy prompt types to structured versions
-    final mappedType =
-        _legacyToStructuredMap[type.toLowerCase()] ?? type.toLowerCase();
+# TASK
+Respond to the user in a conversational and encouraging manner. Help them practice their language skills.
 
-    // Get the prompt template
-    final prompt = _promptMap[mappedType];
-    if (prompt == null) {
-      debugPrint('Prompt not found, using structured base prompt');
-      return _formatPrompt(structuredBasePrompt, variables);
+# RULES
+- Be patient and supportive
+- Keep responses concise and easy to understand
+- Ask questions to encourage conversation
+''';
+
+  // Default fallback prompt
+  static const String defaultPrompt = '''
+Please provide a helpful response.
+''';
+
+  static const String initialBotMessage =
+      "Hello! I'm your conversation partner. How can I help you practice today?";
+
+  static final LoggingService _logger = LoggingService();
+
+  static String getPrompt(String type,
+      {Map<String, String> variables = const {}}) {
+    _logger.log(LogCategory.llm, 'Getting prompt for type: $type');
+    String prompt;
+
+    switch (type.toLowerCase()) {
+      case 'structured_base':
+      case 'structured':
+        prompt = structuredBasePrompt;
+        break;
+      case 'structured_grammar':
+        prompt = structuredGrammarPrompt;
+        break;
+      case 'structured_vocabulary':
+        prompt = structuredVocabularyPrompt;
+        break;
+      case 'structured_conversation':
+        prompt = structuredConversationPrompt;
+        break;
+      case 'structured_conversation_initial':
+        prompt = structuredConversationInitialPrompt;
+        break;
+      case 'base':
+        prompt = basePrompt;
+        break;
+      default:
+        _logger.log(
+            LogCategory.llm, 'Prompt not found, using structured base prompt',
+            isError: true);
+        prompt = structuredBasePrompt;
     }
 
-    return _formatPrompt(prompt, variables);
+    if (variables.isNotEmpty) {
+      variables.forEach((key, value) {
+        prompt = prompt.replaceAll('{$key}', value);
+      });
+      _logger.log(LogCategory.llm, 'Formatted prompt with variables');
+    }
+
+    return prompt;
   }
-
-  // Helper method to format a prompt with variables
-  static String _formatPrompt(String prompt, Map<String, String>? variables) {
-    if (variables == null) return prompt;
-
-    // Replace variables in the prompt with their values
-    String formattedPrompt = prompt;
-    variables.forEach((key, value) {
-      formattedPrompt = formattedPrompt.replaceAll('{$key}', value);
-    });
-
-    debugPrint('Formatted prompt with variables');
-    return formattedPrompt;
-  }
-
-  // Map of legacy prompt types to their structured equivalents
-  static final Map<String, String> _legacyToStructuredMap = {
-    'base': 'structured_base',
-    'grammar': 'structured_grammar',
-    'vocabulary': 'structured_vocabulary',
-    'conversation': 'structured_conversation',
-    'writing': 'structured_writing',
-    'example': 'structured_base',
-    'exampleprompt': 'structured_base',
-  };
-
-  // Only include structured JSON prompts
-  static final Map<String, String> _promptMap = {
-    'structured_base': structuredBasePrompt,
-    'structured_grammar': structuredGrammarPrompt,
-    'structured_vocabulary': structuredVocabularyPrompt,
-    'structured_conversation': structuredConversationPrompt,
-    'structured_writing': structuredWritingPrompt,
-  };
 }

@@ -1,16 +1,21 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:llm_chat_app/services/logging_service.dart';
 
 class SupabaseConfig {
+  static final LoggingService _logger = LoggingService();
+
   static String get projectUrl {
     final url = dotenv.env['SUPABASE_URL'] ?? '';
-    debugPrint('SupabaseConfig: Using project URL: $url');
+    _logger.log(
+        LogCategory.supabase, 'SupabaseConfig: Using project URL: $url');
     return url;
   }
 
   static String get anonKey {
     final key = dotenv.env['SUPABASE_ANON_KEY'] ?? '';
-    debugPrint('SupabaseConfig: Anon key length: ${key.length}');
+    _logger.log(
+        LogCategory.supabase, 'SupabaseConfig: Anon key length: ${key.length}');
     return key;
   }
 
@@ -18,18 +23,22 @@ class SupabaseConfig {
     final key = dotenv.env['SUPABASE_SERVICE_ROLE_KEY'] ?? '';
     final keyLength = key.length;
 
-    debugPrint('SupabaseConfig: Service role key length: $keyLength');
+    _logger.log(LogCategory.supabase,
+        'SupabaseConfig: Service role key length: $keyLength');
     if (keyLength == 0) {
-      debugPrint(
-          'WARNING: SUPABASE_SERVICE_ROLE_KEY is empty! This will prevent user creation.');
+      _logger.log(LogCategory.supabase,
+          'WARNING: SUPABASE_SERVICE_ROLE_KEY is empty! This will prevent user creation.',
+          isError: true);
     } else if (keyLength < 10) {
-      debugPrint(
-          'WARNING: SUPABASE_SERVICE_ROLE_KEY seems too short! It may be invalid.');
+      _logger.log(LogCategory.supabase,
+          'WARNING: SUPABASE_SERVICE_ROLE_KEY seems too short! It may be invalid.',
+          isError: true);
     } else {
       // Just show a few characters to avoid logging the entire key
       final keyStart = key.substring(0, 5);
       final keyEnd = key.substring(key.length - 3);
-      debugPrint('SupabaseConfig: Service role key: $keyStart...$keyEnd');
+      _logger.log(LogCategory.supabase,
+          'SupabaseConfig: Service role key: $keyStart...$keyEnd');
     }
 
     return key;
@@ -51,11 +60,13 @@ class SupabaseConfig {
 
   // Debug Supabase configuration
   static void logConfigInfo() {
-    debugPrint('SupabaseConfig: Project URL: $projectUrl');
-    debugPrint(
+    _logger.log(
+        LogCategory.supabase, 'SupabaseConfig: Project URL: $projectUrl');
+    _logger.log(LogCategory.supabase,
         'SupabaseConfig: Tables: $usersTable, $vocabularyTable, $vocabularyStatsTable, $chatHistoryTable');
-    debugPrint('SupabaseConfig: Anon key available: ${anonKey.isNotEmpty}');
-    debugPrint(
+    _logger.log(LogCategory.supabase,
+        'SupabaseConfig: Anon key available: ${anonKey.isNotEmpty}');
+    _logger.log(LogCategory.supabase,
         'SupabaseConfig: Service role key available: ${serviceRoleKey.isNotEmpty}');
   }
 }

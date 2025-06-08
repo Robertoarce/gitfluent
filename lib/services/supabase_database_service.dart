@@ -4,9 +4,11 @@ import '../models/user.dart' as app_user;
 import '../models/user_vocabulary.dart';
 import 'database_service.dart';
 import '../config/supabase_config.dart';
+import 'logging_service.dart';
 
 class SupabaseDatabaseService implements DatabaseService {
   final SupabaseClient _supabase = Supabase.instance.client;
+  final LoggingService _logger = LoggingService();
 
   @override
   Future<app_user.User?> getUserById(String userId) async {
@@ -22,7 +24,8 @@ class SupabaseDatabaseService implements DatabaseService {
       }
       return null;
     } catch (e) {
-      debugPrint('Error getting user by ID: $e');
+      _logger.log(LogCategory.database, 'Error getting user by ID: $e',
+          isError: true);
       return null;
     }
   }
@@ -41,7 +44,8 @@ class SupabaseDatabaseService implements DatabaseService {
       }
       return null;
     } catch (e) {
-      debugPrint('Error getting user by email: $e');
+      _logger.log(LogCategory.database, 'Error getting user by email: $e',
+          isError: true);
       return null;
     }
   }
@@ -49,19 +53,21 @@ class SupabaseDatabaseService implements DatabaseService {
   @override
   Future<String> createUser(app_user.User user) async {
     try {
-      debugPrint('=========== DATABASE USER CREATION START ===========');
-      debugPrint(
+      _logger.log(LogCategory.database,
+          '=========== DATABASE USER CREATION START ===========');
+      _logger.log(LogCategory.database,
           'SupabaseDatabaseService: Creating user in database, ID: ${user.id}, email: ${user.email}');
 
       // Convert user data for Supabase
       final userData = user.toSupabase();
-      debugPrint('SupabaseDatabaseService: User data prepared for Supabase');
+      _logger.log(LogCategory.database,
+          'SupabaseDatabaseService: User data prepared for Supabase');
 
       // Try with normal client first
       try {
-        debugPrint(
+        _logger.log(LogCategory.database,
             'SupabaseDatabaseService: Attempting with normal client first');
-        debugPrint(
+        _logger.log(LogCategory.database,
             'SupabaseDatabaseService: Using table: ${SupabaseConfig.usersTable}');
 
         final response = await _supabase
@@ -70,27 +76,31 @@ class SupabaseDatabaseService implements DatabaseService {
             .select()
             .single();
 
-        debugPrint(
+        _logger.log(LogCategory.database,
             'SupabaseDatabaseService: User created successfully in database, response: ${response.toString()}');
-        debugPrint(
+        _logger.log(LogCategory.database,
             '=========== DATABASE USER CREATION END (SUCCESS) ===========');
         return response['id'];
       } catch (normalClientError) {
         // If the normal client fails, try with service role client
-        debugPrint(
-            'SupabaseDatabaseService: Normal client failed: $normalClientError');
-        debugPrint(
-            'SupabaseDatabaseService: Error type: ${normalClientError.runtimeType}');
-        debugPrint('SupabaseDatabaseService: Trying with service role client');
+        _logger.log(LogCategory.database,
+            'SupabaseDatabaseService: Normal client failed: $normalClientError',
+            isError: true);
+        _logger.log(LogCategory.database,
+            'SupabaseDatabaseService: Error type: ${normalClientError.runtimeType}',
+            isError: true);
+        _logger.log(LogCategory.database,
+            'SupabaseDatabaseService: Trying with service role client');
 
         // Create a service role client that bypasses RLS
-        debugPrint('SupabaseDatabaseService: Initializing service role client');
+        _logger.log(LogCategory.database,
+            'SupabaseDatabaseService: Initializing service role client');
         final serviceClient = SupabaseClient(
           SupabaseConfig.projectUrl,
           SupabaseConfig.serviceRoleKey,
         );
 
-        debugPrint(
+        _logger.log(LogCategory.database,
             'SupabaseDatabaseService: Service client initialized, attempting upsert');
         final response = await serviceClient
             .from(SupabaseConfig.usersTable)
@@ -98,44 +108,51 @@ class SupabaseDatabaseService implements DatabaseService {
             .select()
             .single();
 
-        debugPrint(
+        _logger.log(LogCategory.database,
             'SupabaseDatabaseService: User created successfully with service role, response: ${response.toString()}');
-        debugPrint(
+        _logger.log(LogCategory.database,
             '=========== DATABASE USER CREATION END (SUCCESS WITH SERVICE ROLE) ===========');
         return response['id'];
       }
     } catch (e) {
-      debugPrint('SupabaseDatabaseService: Error creating user: $e');
-      debugPrint('SupabaseDatabaseService: Error type: ${e.runtimeType}');
+      _logger.log(LogCategory.database,
+          'SupabaseDatabaseService: Error creating user: $e',
+          isError: true);
+      _logger.log(LogCategory.database,
+          'SupabaseDatabaseService: Error type: ${e.runtimeType}',
+          isError: true);
 
       // Try a simpler insert if upsert failed
       try {
-        debugPrint(
+        _logger.log(LogCategory.database,
             'SupabaseDatabaseService: Attempting simple insert with service role as final fallback');
         // Create a service role client that bypasses RLS
-        debugPrint(
+        _logger.log(LogCategory.database,
             'SupabaseDatabaseService: Initializing service role client for final attempt');
         final serviceClient = SupabaseClient(
           SupabaseConfig.projectUrl,
           SupabaseConfig.serviceRoleKey,
         );
 
-        debugPrint(
+        _logger.log(LogCategory.database,
             'SupabaseDatabaseService: Service client initialized, attempting simple insert');
         await serviceClient
             .from(SupabaseConfig.usersTable)
             .insert(user.toSupabase());
 
-        debugPrint(
+        _logger.log(LogCategory.database,
             'SupabaseDatabaseService: Simple insert with service role succeeded');
-        debugPrint(
+        _logger.log(LogCategory.database,
             '=========== DATABASE USER CREATION END (SUCCESS WITH INSERT FALLBACK) ===========');
         return user.id;
       } catch (innerError) {
-        debugPrint('SupabaseDatabaseService: All attempts failed: $innerError');
-        debugPrint(
-            'SupabaseDatabaseService: Final error type: ${innerError.runtimeType}');
-        debugPrint(
+        _logger.log(LogCategory.database,
+            'SupabaseDatabaseService: All attempts failed: $innerError',
+            isError: true);
+        _logger.log(LogCategory.database,
+            'SupabaseDatabaseService: Final error type: ${innerError.runtimeType}',
+            isError: true);
+        _logger.log(LogCategory.database,
             '=========== DATABASE USER CREATION END (ALL ATTEMPTS FAILED) ===========');
         rethrow;
       }
@@ -150,7 +167,8 @@ class SupabaseDatabaseService implements DatabaseService {
           .update(user.toSupabase())
           .eq('id', user.id);
     } catch (e) {
-      debugPrint('Error updating user: $e');
+      _logger.log(LogCategory.database, 'Error updating user: $e',
+          isError: true);
       rethrow;
     }
   }
@@ -179,7 +197,8 @@ class SupabaseDatabaseService implements DatabaseService {
       // Delete user
       await _supabase.from(SupabaseConfig.usersTable).delete().eq('id', userId);
     } catch (e) {
-      debugPrint('Error deleting user: $e');
+      _logger.log(LogCategory.database, 'Error deleting user: $e',
+          isError: true);
       rethrow;
     }
   }
@@ -192,7 +211,8 @@ class SupabaseDatabaseService implements DatabaseService {
           .upsert(item.toSupabase());
       return item;
     } catch (e) {
-      debugPrint('Error saving vocabulary item: $e');
+      _logger.log(LogCategory.database, 'Error saving vocabulary item: $e',
+          isError: true);
       rethrow;
     }
   }
@@ -205,7 +225,8 @@ class SupabaseDatabaseService implements DatabaseService {
           .update(item.toSupabase())
           .eq('id', item.id);
     } catch (e) {
-      debugPrint('Error updating vocabulary item: $e');
+      _logger.log(LogCategory.database, 'Error updating vocabulary item: $e',
+          isError: true);
       rethrow;
     }
   }
@@ -218,7 +239,8 @@ class SupabaseDatabaseService implements DatabaseService {
           .delete()
           .eq('id', itemId);
     } catch (e) {
-      debugPrint('Error deleting vocabulary item: $e');
+      _logger.log(LogCategory.database, 'Error deleting vocabulary item: $e',
+          isError: true);
       rethrow;
     }
   }
@@ -227,7 +249,7 @@ class SupabaseDatabaseService implements DatabaseService {
   Future<List<UserVocabularyItem>> getUserVocabulary(String userId,
       {String? language}) async {
     try {
-      debugPrint(
+      _logger.log(LogCategory.database,
           'SupabaseDatabaseService: Getting vocabulary for user: $userId, language: ${language ?? "all"}');
 
       try {
@@ -242,16 +264,18 @@ class SupabaseDatabaseService implements DatabaseService {
         }
 
         final response = await query;
-        debugPrint(
+        _logger.log(LogCategory.database,
             'SupabaseDatabaseService: Found ${response.length} vocabulary items with regular client');
         return response
             .map((item) => UserVocabularyItem.fromSupabase(item))
             .toList();
       } catch (normalClientError) {
         // If the normal client fails, try with service role client
-        debugPrint(
-            'SupabaseDatabaseService: Regular client failed getting vocabulary: $normalClientError');
-        debugPrint('SupabaseDatabaseService: Trying with service role client');
+        _logger.log(LogCategory.database,
+            'SupabaseDatabaseService: Regular client failed getting vocabulary: $normalClientError',
+            isError: true);
+        _logger.log(LogCategory.database,
+            'SupabaseDatabaseService: Trying with service role client');
 
         final serviceClient = SupabaseClient(
           SupabaseConfig.projectUrl,
@@ -268,15 +292,19 @@ class SupabaseDatabaseService implements DatabaseService {
         }
 
         final response = await query;
-        debugPrint(
+        _logger.log(LogCategory.database,
             'SupabaseDatabaseService: Found ${response.length} vocabulary items with service role client');
         return response
             .map((item) => UserVocabularyItem.fromSupabase(item))
             .toList();
       }
     } catch (e) {
-      debugPrint('SupabaseDatabaseService: Error getting user vocabulary: $e');
-      debugPrint('SupabaseDatabaseService: Error type: ${e.runtimeType}');
+      _logger.log(LogCategory.database,
+          'SupabaseDatabaseService: Error getting user vocabulary: $e',
+          isError: true);
+      _logger.log(LogCategory.database,
+          'SupabaseDatabaseService: Error type: ${e.runtimeType}',
+          isError: true);
       return [];
     }
   }
@@ -285,7 +313,7 @@ class SupabaseDatabaseService implements DatabaseService {
   Future<List<UserVocabularyItem>> getVocabularyDueForReview(String userId,
       {String? language}) async {
     try {
-      debugPrint(
+      _logger.log(LogCategory.database,
           'SupabaseDatabaseService: Getting vocabulary due for review for user: $userId, language: ${language ?? "all"}');
 
       try {
@@ -301,16 +329,18 @@ class SupabaseDatabaseService implements DatabaseService {
         }
 
         final response = await query;
-        debugPrint(
+        _logger.log(LogCategory.database,
             'SupabaseDatabaseService: Found ${response.length} vocabulary items due for review with regular client');
         return response
             .map((item) => UserVocabularyItem.fromSupabase(item))
             .toList();
       } catch (normalClientError) {
         // If the normal client fails, try with service role client
-        debugPrint(
-            'SupabaseDatabaseService: Regular client failed getting vocabulary due for review: $normalClientError');
-        debugPrint('SupabaseDatabaseService: Trying with service role client');
+        _logger.log(LogCategory.database,
+            'SupabaseDatabaseService: Regular client failed getting vocabulary due for review: $normalClientError',
+            isError: true);
+        _logger.log(LogCategory.database,
+            'SupabaseDatabaseService: Trying with service role client');
 
         final serviceClient = SupabaseClient(
           SupabaseConfig.projectUrl,
@@ -328,16 +358,19 @@ class SupabaseDatabaseService implements DatabaseService {
         }
 
         final response = await query;
-        debugPrint(
+        _logger.log(LogCategory.database,
             'SupabaseDatabaseService: Found ${response.length} vocabulary items due for review with service role client');
         return response
             .map((item) => UserVocabularyItem.fromSupabase(item))
             .toList();
       }
     } catch (e) {
-      debugPrint(
-          'SupabaseDatabaseService: Error getting vocabulary due for review: $e');
-      debugPrint('SupabaseDatabaseService: Error type: ${e.runtimeType}');
+      _logger.log(LogCategory.database,
+          'SupabaseDatabaseService: Error getting vocabulary due for review: $e',
+          isError: true);
+      _logger.log(LogCategory.database,
+          'SupabaseDatabaseService: Error type: ${e.runtimeType}',
+          isError: true);
       return [];
     }
   }
@@ -358,7 +391,8 @@ class SupabaseDatabaseService implements DatabaseService {
       }
       return null;
     } catch (e) {
-      debugPrint('Error getting vocabulary stats: $e');
+      _logger.log(LogCategory.database, 'Error getting vocabulary stats: $e',
+          isError: true);
       return null;
     }
   }
@@ -370,7 +404,8 @@ class SupabaseDatabaseService implements DatabaseService {
           .from(SupabaseConfig.vocabularyStatsTable)
           .upsert(stats.toSupabase());
     } catch (e) {
-      debugPrint('Error updating vocabulary stats: $e');
+      _logger.log(LogCategory.database, 'Error updating vocabulary stats: $e',
+          isError: true);
       rethrow;
     }
   }
@@ -385,7 +420,8 @@ class SupabaseDatabaseService implements DatabaseService {
         ...message,
       });
     } catch (e) {
-      debugPrint('Error saving chat message: $e');
+      _logger.log(LogCategory.database, 'Error saving chat message: $e',
+          isError: true);
       rethrow;
     }
   }
@@ -403,7 +439,8 @@ class SupabaseDatabaseService implements DatabaseService {
 
       return response;
     } catch (e) {
-      debugPrint('Error getting chat history: $e');
+      _logger.log(LogCategory.database, 'Error getting chat history: $e',
+          isError: true);
       return [];
     }
   }
@@ -416,7 +453,8 @@ class SupabaseDatabaseService implements DatabaseService {
           .delete()
           .eq('user_id', userId);
     } catch (e) {
-      debugPrint('Error deleting chat history: $e');
+      _logger.log(LogCategory.database, 'Error deleting chat history: $e',
+          isError: true);
       rethrow;
     }
   }
@@ -433,7 +471,8 @@ class SupabaseDatabaseService implements DatabaseService {
           .from(SupabaseConfig.usersTable)
           .update({'is_premium': isPremium}).eq('id', userId);
     } catch (e) {
-      debugPrint('Error updating premium status: $e');
+      _logger.log(LogCategory.database, 'Error updating premium status: $e',
+          isError: true);
       rethrow;
     }
   }
@@ -441,7 +480,7 @@ class SupabaseDatabaseService implements DatabaseService {
   @override
   Future<bool> isPremiumUser(String userId) async {
     try {
-      debugPrint(
+      _logger.log(LogCategory.database,
           'SupabaseDatabaseService: Checking premium status for user: $userId');
 
       try {
@@ -453,12 +492,13 @@ class SupabaseDatabaseService implements DatabaseService {
             .single();
 
         final isPremium = response['is_premium'] ?? false;
-        debugPrint(
+        _logger.log(LogCategory.database,
             'SupabaseDatabaseService: Premium status (regular client): $isPremium');
         return isPremium;
       } catch (normalClientError) {
-        debugPrint(
-            'SupabaseDatabaseService: Regular client failed to check premium, using service role: $normalClientError');
+        _logger.log(LogCategory.database,
+            'SupabaseDatabaseService: Regular client failed to check premium, using service role: $normalClientError',
+            isError: true);
 
         // Use service role client as fallback
         final serviceClient = SupabaseClient(
@@ -473,12 +513,14 @@ class SupabaseDatabaseService implements DatabaseService {
             .single();
 
         final isPremium = response['is_premium'] ?? false;
-        debugPrint(
+        _logger.log(LogCategory.database,
             'SupabaseDatabaseService: Premium status (service role client): $isPremium');
         return isPremium;
       }
     } catch (e) {
-      debugPrint('SupabaseDatabaseService: Error checking premium status: $e');
+      _logger.log(LogCategory.database,
+          'SupabaseDatabaseService: Error checking premium status: $e',
+          isError: true);
       return false;
     }
   }

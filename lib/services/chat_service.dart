@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:langchain/langchain.dart';
+import 'package:langchain/langchain.dart' as langchain;
 import 'package:langchain_openai/langchain_openai.dart';
 import 'package:langchain_google/langchain_google.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
@@ -9,6 +9,7 @@ import 'dart:math'; // Import for min function
 import 'settings_service.dart';
 import 'prompts.dart';
 import 'prompt_config_service.dart';
+import 'logging_service.dart';
 import '../models/language_response.dart'; // Import the new model
 
 enum MessageType { system, user, assistant }
@@ -65,6 +66,7 @@ class ChatService extends ChangeNotifier {
 
   String _systemPrompt = Prompts.structuredBasePrompt;
   PromptConfig? _config;
+  final LoggingService _logger = LoggingService();
 
   String get systemPrompt => _systemPrompt;
 
@@ -117,18 +119,21 @@ class ChatService extends ChangeNotifier {
             'support_language_2': 'fr',
           };
 
-      debugPrint('Prompt type from config: $promptType');
-      debugPrint('Language variables: $variables');
+      _logger.log(
+          LogCategory.chatService, 'Prompt type from config: $promptType');
+      _logger.log(LogCategory.chatService, 'Language variables: $variables');
 
       _systemPrompt = Prompts.getPrompt(promptType, variables: variables);
-      debugPrint('Selected prompt type: $promptType');
-      debugPrint('System prompt length: ${_systemPrompt.length}');
+      _logger.log(LogCategory.chatService, 'Selected prompt type: $promptType');
+      _logger.log(LogCategory.chatService,
+          'System prompt length: ${_systemPrompt.length}');
 
       if (_chatHistory.isEmpty) {
         _chatHistory.add(ChatMessage.system(_systemPrompt));
       }
     } catch (e) {
-      debugPrint('Error loading config: $e');
+      _logger.log(LogCategory.chatService, 'Error loading config: $e',
+          isError: true);
     }
   }
 
@@ -175,7 +180,8 @@ class ChatService extends ChangeNotifier {
         'support_language_2': languageSettings.supportLanguage2?.code ?? 'fr',
       };
 
-      debugPrint('Updating system prompt with language variables: $variables');
+      _logger.log(LogCategory.chatService,
+          'Updating system prompt with language variables: $variables');
 
       final promptType = _config?.systemPromptType ?? 'default';
       _systemPrompt = Prompts.getPrompt(promptType, variables: variables);
@@ -190,7 +196,9 @@ class ChatService extends ChangeNotifier {
 
       notifyListeners();
     } catch (e) {
-      debugPrint('Error updating system prompt with languages: $e');
+      _logger.log(LogCategory.chatService,
+          'Error updating system prompt with languages: $e',
+          isError: true);
     }
   }
 
@@ -198,7 +206,8 @@ class ChatService extends ChangeNotifier {
   void _initializeAI() {
     try {
       final provider = _settings.currentProvider;
-      debugPrint('Initializing AI provider: ${provider.name}');
+      _logger.log(LogCategory.chatService,
+          'Initializing AI provider: ${provider.name}');
 
       // Update system prompt with current language settings
       _updateSystemPromptWithLanguages();
@@ -222,7 +231,8 @@ class ChatService extends ChangeNotifier {
               temperature: _config?.temperature ?? 0.7,
             ),
           );
-          debugPrint('OpenAI initialized successfully');
+          _logger.log(
+              LogCategory.chatService, 'OpenAI initialized successfully');
           break;
 
         case AIProvider.gemini:
@@ -244,7 +254,8 @@ class ChatService extends ChangeNotifier {
               maxOutputTokens: _config?.maxTokens ?? 2048,
             ),
           );
-          debugPrint('Gemini initialized successfully');
+          _logger.log(
+              LogCategory.chatService, 'Gemini initialized successfully');
           break;
       }
 
@@ -252,8 +263,11 @@ class ChatService extends ChangeNotifier {
       if (_chatHistory.isEmpty) {
         _chatHistory.add(ChatMessage.system(_systemPrompt));
       }
+
+      _logger.log(LogCategory.chatService, 'AI initialization complete.');
     } catch (e) {
-      debugPrint('Error initializing AI: $e');
+      _logger.log(LogCategory.chatService, 'Error initializing AI: $e',
+          isError: true);
       _messages.add(Message(
         content: 'Error initializing AI provider: $e',
         isUser: false,
@@ -265,92 +279,104 @@ class ChatService extends ChangeNotifier {
   List<Message> get messages => _messages;
   bool get isLoading => _isLoading;
 
-  Future<void> sendMessage(String message) async {
-    if (message.trim().isEmpty) return;
-
-    // Add user message
-
-    _messages.add(Message(content: message, isUser: true, LLMjsonResponse: ''));
-    _chatHistory.add(ChatMessage.user(message));
-    notifyListeners();
+  Future<void> sendMessage(String text, {bool addToHistory = true}) async {
+    if (_isLoading) return;
 
     _isLoading = true;
+    final userMessage = Message(content: text, isUser: true);
+    if (addToHistory) {
+      _messages.add(userMessage);
+      _chatHistory.add(ChatMessage.user(text));
+    }
     notifyListeners();
 
     try {
-      String reply;
-      String LLMjsonOutput;
+      final provider = _settings.currentProvider;
+      _logger.log(
+          LogCategory.chatService, 'Sending message with ${provider.name}');
+      _logger.logLlm(sent: text);
 
-      switch (_settings.currentProvider) {
-        case AIProvider.openai:
-          if (_openAILlm == null) {
-            throw Exception(
-                'OpenAI not initialized. Please check your API key.');
-          }
-
-          // generates prompt for the LLM (with history )
-          final prompt = PromptValue.string('''
-          ${_systemPrompt.trim()}
-
-          Previous conversation context:
-          ${_chatHistory.where((msg) => msg.type != MessageType.system).map((msg) => "${msg.type == MessageType.user ? 'User' : 'Assistant'}: ${msg.content}").join('\n')}
-
-          User: $message
-          Assistant:''');
-
-          final response = await _openAILlm!.invoke(prompt);
-          reply = response.firstOutput?.content ?? 'No response from AI';
-          break;
-
-        case AIProvider.gemini:
-          if (_geminiModel == null) {
-            throw Exception(
-                'Gemini not initialized. Please check your API key.');
-          }
-
-          // For Gemini, we'll send both the system prompt and user message together
-          final prompt = '''
-            ${_systemPrompt.trim()}
-
-            Previous conversation context:
-            ${_chatHistory.where((msg) => msg.type != MessageType.system).map((msg) => "${msg.type == MessageType.user ? 'User' : 'Assistant'}: ${msg.content}").join('\n')}
-
-            User: $message
-            Assistant:''';
-
-          debugPrint('----------------');
-          debugPrint('Full prompt sent to LLM:');
-          debugPrint('===============================');
-          debugPrint(prompt);
-          debugPrint('----------------');
-
-          final response =
-              await _geminiModel!.generateContent([Content.text(prompt)]);
-
-          if (response.text == null) {
-            throw Exception('No response received from Gemini');
-          }
-
-          reply = response.text!;
-          break;
+      if (provider == AIProvider.openai && _openAILlm != null) {
+        await _handleOpenAIChat(text);
+      } else if (provider == AIProvider.gemini && _activeGeminiModel != null) {
+        await _handleGeminiChat(text);
+      } else {
+        _handleError(
+            'No active AI provider found or provider not initialized.');
       }
-
-      // Here is where we threat the response from the LLM
-      // so we can extract the vocabulary items and add them to the vocabulary service
-      (reply, LLMjsonOutput) = _getVocabFromLLMResponse(reply);
-
-      _messages.add(Message(
-          content: reply, isUser: false, LLMjsonResponse: LLMjsonOutput));
-      _chatHistory.add(ChatMessage.assistant(reply));
     } catch (e) {
-      debugPrint('Error sending message: $e');
-      _messages.add(Message(
-        content: 'Sorry, I encountered an error. Please try again.\nError: $e',
-        isUser: false,
-      ));
+      _handleError('Error sending message: $e');
     } finally {
       _isLoading = false;
       notifyListeners();
+    }
+  }
+
+  Future<void> _handleOpenAIChat(String text) async {
+    final chatHistoryForLlm = _chatHistory
+        .map((m) => _chatMessageToLlmMessage(m))
+        .toList(growable: false);
+
+    final stream = _openAILlm!.stream(
+      langchain.PromptValue.chat(chatHistoryForLlm),
+    );
+
+    var responseContent = '';
+    await for (final chunk in stream) {
+      responseContent += chunk.firstOutput?.content ?? '';
+    }
+
+    _logger.logLlm(received: responseContent);
+
+    final assistantMessage = Message(content: responseContent, isUser: false);
+    _messages.add(assistantMessage);
+    _chatHistory.add(ChatMessage.assistant(responseContent));
+  }
+
+  Future<void> _handleGeminiChat(String text) async {
+    final chatHistoryForLlm = _chatHistory.map((m) {
+      final role = m.type == MessageType.user ? 'user' : 'model';
+      // For Gemini, system prompts are handled differently or should be part of the user message.
+      // Here, we'll treat the system message as a model message for context.
+      if (m.type == MessageType.system) {
+        // Let's format it in a way Gemini understands context
+        return Content('model', [TextPart(m.content)]);
+      }
+      return Content(role, [TextPart(m.content)]);
+    }).toList();
+
+    final response =
+        await _activeGeminiModel!.generateContent(chatHistoryForLlm);
+
+    _logger.logLlm(received: response.text);
+
+    if (response.text != null) {
+      final assistantMessage = Message(content: response.text!, isUser: false);
+      _messages.add(assistantMessage);
+      _chatHistory.add(ChatMessage.assistant(response.text!));
+    } else {
+      _handleError(
+          'Received null response from Gemini. Check API status and request details.');
+    }
+  }
+
+  void _handleError(String errorMessage) {
+    _logger.log(LogCategory.chatService, errorMessage, isError: true);
+    final errorResponseMessage =
+        Message(content: 'Error: $errorMessage', isUser: false);
+    _messages.add(errorResponseMessage);
+  }
+
+  langchain.ChatMessage _chatMessageToLlmMessage(ChatMessage message) {
+    switch (message.type) {
+      case MessageType.system:
+        return langchain.ChatMessage.system(message.content);
+      case MessageType.user:
+        return langchain.ChatMessage.human(
+          langchain.ChatMessageContent.text(message.content),
+        );
+      case MessageType.assistant:
+        return langchain.ChatMessage.ai(message.content);
     }
   }
 
@@ -368,9 +394,9 @@ class ChatService extends ChangeNotifier {
     // FORMAT THE RESPONSE FOR DISPLAY
     // RETURN THE FORMATTED RESPONSE
 
-    debugPrint('===============================');
-    debugPrint('Processing JSON response:');
-    debugPrint(response);
+    _logger.log(LogCategory.chatService, '===============================');
+    _logger.log(LogCategory.chatService, 'Processing JSON response:');
+    _logger.log(LogCategory.chatService, response);
 
     String jsonString = '';
 
@@ -388,7 +414,7 @@ class ChatService extends ChangeNotifier {
       if (match != null) {
         // Found JSON within text
         jsonString = match.group(1) ?? '';
-        debugPrint(
+        _logger.log(LogCategory.chatService,
             'Extracted JSON: ${jsonString.substring(0, min(100, jsonString.length))}...');
       } else if (response
           .replaceAll('```json', '')
@@ -405,8 +431,9 @@ class ChatService extends ChangeNotifier {
       // Parse the JSON into our model
       final languageResponse =
           LanguageResponse.fromJson(json.decode(jsonString));
-      debugPrint('Successfully parsed JSON into LanguageResponse model');
-      debugPrint(
+      _logger.log(LogCategory.chatService,
+          'Successfully parsed JSON into LanguageResponse model');
+      _logger.log(LogCategory.chatService,
           'Vocabulary items: ${languageResponse.vocabularyBreakdown.length}');
 
       ///////////////////////////////////////
@@ -416,11 +443,11 @@ class ChatService extends ChangeNotifier {
       // Format the response for display
       final formattedResponse =
           _formatLanguageResponseToDisplayText(languageResponse);
-      debugPrint('Formatted response for display');
+      _logger.log(LogCategory.chatService, 'Formatted response for display');
       return (formattedResponse, jsonString);
     } catch (e) {
-      debugPrint('Error parsing JSON response: $e');
-      debugPrint('Returning original response');
+      _logger.log(LogCategory.chatService, 'Error parsing JSON response: $e');
+      _logger.log(LogCategory.chatService, 'Returning original response');
       return (response, jsonString);
     }
   }

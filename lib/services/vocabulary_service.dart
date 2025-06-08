@@ -5,6 +5,7 @@ import 'package:uuid/uuid.dart';
 import '../models/vocabulary_item.dart';
 import '../models/user_vocabulary.dart';
 import 'user_service.dart';
+import 'logging_service.dart';
 
 class VocabularyService extends ChangeNotifier {
   static const String _storageKey = 'vocabulary_items';
@@ -13,6 +14,7 @@ class VocabularyService extends ChangeNotifier {
   bool _isInitialized = false;
   UserService? _userService;
   VoidCallback? _userAuthListener;
+  final LoggingService _logger = LoggingService();
 
   bool get isInitialized => _isInitialized;
   List<VocabularyItem> get items => List.unmodifiable(_items);
@@ -44,7 +46,7 @@ class VocabularyService extends ChangeNotifier {
   }
 
   Future<void> _handleUserChange() async {
-    debugPrint(
+    _logger.log(LogCategory.database,
         'VocabularyService: Detected user change. Clearing local data and reloading.');
     _items = []; // Clear in-memory items
     if (_isInitialized) {
@@ -52,7 +54,9 @@ class VocabularyService extends ChangeNotifier {
       try {
         await _prefs.remove(_storageKey); // Clear from SharedPreferences
       } catch (e) {
-        debugPrint('Error removing SharedPreferences key \$_storageKey: \$e');
+        _logger.log(LogCategory.database,
+            'Error removing SharedPreferences key $_storageKey: $e',
+            isError: true);
       }
     }
 
@@ -102,7 +106,8 @@ class VocabularyService extends ChangeNotifier {
       }
       _sortItems();
     } catch (e) {
-      debugPrint('Error loading items: $e');
+      _logger.log(LogCategory.database, 'Error loading items: $e',
+          isError: true);
       _items = [];
     }
   }
@@ -117,7 +122,8 @@ class VocabularyService extends ChangeNotifier {
           jsonEncode(_items.map((e) => e.toJson()).toList());
       await _prefs.setString(_storageKey, encodedItems);
     } catch (e) {
-      debugPrint('Error saving items: $e');
+      _logger.log(LogCategory.database, 'Error saving items: $e',
+          isError: true);
     }
   }
 
@@ -130,7 +136,8 @@ class VocabularyService extends ChangeNotifier {
     String? conversationId,
   }) async {
     if (!_isInitialized) {
-      debugPrint('VocabularyService not initialized');
+      _logger.log(LogCategory.database, 'VocabularyService not initialized',
+          isError: true);
       return;
     }
 
@@ -151,7 +158,8 @@ class VocabularyService extends ChangeNotifier {
 
       notifyListeners();
     } catch (e) {
-      debugPrint('Error adding/updating item: $e');
+      _logger.log(LogCategory.database, 'Error adding/updating item: $e',
+          isError: true);
       rethrow;
     }
   }
@@ -252,9 +260,10 @@ class VocabularyService extends ChangeNotifier {
       );
 
       await _userService!.saveVocabularyItem(vocabularyItem);
-      debugPrint('Saved vocabulary item to user system: $word');
+      _logger.log(
+          LogCategory.database, 'Saved vocabulary item to user system: $word');
     } catch (e) {
-      debugPrint('Error saving to user system: $e');
+      _logger.log(LogCategory.database, 'Error saving to user system: $e');
       // Don't rethrow - local storage should still work
     }
   }
@@ -268,11 +277,11 @@ class VocabularyService extends ChangeNotifier {
       await _saveItems();
       notifyListeners();
     } catch (e) {
-      debugPrint('Error removing item: $e');
+      _logger.log(LogCategory.database, 'Error removing item: $e');
     }
   }
 
-  Future<void> markReviewed(String word, String type) async {
+  Future<void> markAsReviewed(String word, String type) async {
     if (!_isInitialized) return;
 
     try {
@@ -288,7 +297,7 @@ class VocabularyService extends ChangeNotifier {
         notifyListeners();
       }
     } catch (e) {
-      debugPrint('Error marking item as reviewed: $e');
+      _logger.log(LogCategory.database, 'Error marking item as reviewed: $e');
     }
   }
 
@@ -317,7 +326,7 @@ class VocabularyService extends ChangeNotifier {
     try {
       return await _userService!.getUserVocabulary(language: language);
     } catch (e) {
-      debugPrint('Error getting user vocabulary: $e');
+      _logger.log(LogCategory.database, 'Error getting user vocabulary: $e');
       return [];
     }
   }

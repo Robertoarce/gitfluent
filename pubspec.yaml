@@ -50,4 +50,5 @@ flutter:
     - lib/config/prompt_config.yaml
     - lib/config/conversation_starters.yaml
     - assets/dictionaries/
-    - lib/config/ 
+    - lib/config/
+    - assets/config/log_config.yaml 

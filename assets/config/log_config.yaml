@@ -1,0 +1,38 @@
+# Centralized logging configuration
+# Enables or disables logging for different parts of the application.
+logging:
+  # Master switch for all logging. If false, no logs will be shown regardless of individual settings.
+  enabled: true
+
+  # Logs related to the application lifecycle (e.g., resumed, paused, inactive).
+  app_lifecycle: false
+
+  # Logs for database operations (e.g., Hive, sqflite).
+  database: false
+
+  # Logs for network requests.
+  network: false
+
+  # Logs from the Supabase client.
+  supabase: false
+
+  # Logging for Large Language Model (LLM) interactions.
+  llm:
+    enabled: true
+    # Log the data sent to the LLM.
+    log_sent: true
+    # Log the data received from the LLM.
+    log_received: true
+
+  # Logs for UI events like button clicks, screen transitions, etc.
+  # This can be very verbose, enable with caution.
+  ui_events: false
+
+  # Logs from the chat service.
+  chat_service: false
+
+  # Logs from the conversation service.
+  conversation_service: true
+
+  # Logs for changes in application settings.
+  settings_service: false 

@@ -1,0 +1,18 @@
+# Logging configuration
+# Set to true to enable logging for a specific category, false to disable.
+
+# General app lifecycle events
+app_lifecycle: true
+
+# Database operations
+database: true
+
+# Network requests
+network: true
+
+# User authentication
+
+auth: true
+
+# UI events
+ui: true 

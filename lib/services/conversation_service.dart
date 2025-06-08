@@ -7,6 +7,7 @@ import 'dart:convert';
 import 'prompts.dart';
 import 'prompt_config_service.dart';
 import 'settings_service.dart';
+import 'logging_service.dart';
 import '../models/conversation_response.dart';
 
 // Import conversation_screen.dart with a prefix
@@ -17,6 +18,7 @@ class ConversationService extends ChangeNotifier {
   bool _isLoading = false;
   google_ai.GenerativeModel? _geminiModel;
   final List<ChatMessage> _chatHistory = [];
+  final LoggingService _logger = LoggingService();
 
   final SettingsService _settings;
   PromptConfig? _config;
@@ -76,11 +78,14 @@ class ConversationService extends ChangeNotifier {
       // Create a system message
       _chatHistory.add(SystemChatMessage(content: systemPromptText));
 
-      debugPrint(
+      _logger.log(LogCategory.conversationService,
           'ConversationService Gemini model initialized with model: ${_config?.conversationModelName}');
-      debugPrint('Conversation System Prompt Type: $systemPromptType');
+      _logger.log(LogCategory.conversationService,
+          'Conversation System Prompt Type: $systemPromptType');
     } catch (e) {
-      debugPrint('Error initializing ConversationService: $e');
+      _logger.log(LogCategory.conversationService,
+          'Error initializing ConversationService: $e',
+          isError: true);
       _addErrorMessage('Error initializing conversation: ${e.toString()}');
     } finally {
       _isLoading = false;
@@ -91,8 +96,7 @@ class ConversationService extends ChangeNotifier {
   void _addInitialBotMessage() {
     final initialBotMessage = convo_ui.ChatMessage(
         id: 'conv_initial_bot_${DateTime.now().millisecondsSinceEpoch}',
-        text:
-            "Hello! I'm your conversation partner. How can I help you practice today?",
+        text: Prompts.initialBotMessage,
         isUser: false);
     _messages.add(initialBotMessage);
     notifyListeners();
@@ -118,9 +122,11 @@ class ConversationService extends ChangeNotifier {
       final contentHistory =
           _chatHistory.map((msg) => msg.toGoogleContent()).toList();
 
+      _logger.logLlm(sent: text);
       final llmResponse = await _geminiModel!.generateContent(contentHistory);
-
       rawResponseText = llmResponse.text ?? '';
+      _logger.logLlm(received: rawResponseText);
+
       String displayResponseText = 'Sorry, I could not understand that.';
 
       if (rawResponseText.isNotEmpty) {
@@ -161,8 +167,12 @@ class ConversationService extends ChangeNotifier {
           displayResponseText = sb.toString();
         } catch (e) {
           parsedResponse = null;
-          debugPrint('Error parsing LLM JSON response: $e');
-          debugPrint('Raw LLM response was: $rawResponseText');
+          _logger.log(LogCategory.conversationService,
+              'Error parsing LLM JSON response: $e',
+              isError: true);
+          _logger.log(LogCategory.conversationService,
+              'Raw LLM response was: $rawResponseText',
+              isError: true);
           displayResponseText = rawResponseText.isEmpty
               ? 'Sorry, I received an empty response.'
               : rawResponseText;
@@ -179,7 +189,9 @@ class ConversationService extends ChangeNotifier {
       _chatHistory.add(
           AIChatMessage(content: parsedResponse?.response ?? rawResponseText));
     } catch (e) {
-      debugPrint('Error sending message to Gemini: $e');
+      _logger.log(LogCategory.conversationService,
+          'Error sending message to Gemini: $e',
+          isError: true);
       _addErrorMessage('Error communicating with the AI: ${e.toString()}');
     } finally {
       _isLoading = false;

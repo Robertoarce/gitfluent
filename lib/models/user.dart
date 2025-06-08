@@ -1,6 +1,8 @@
 import 'package:json_annotation/json_annotation.dart';
 import 'dart:convert'; // Added for jsonEncode
 import 'package:flutter/foundation.dart';
+import 'package:llm_chat_app/services/logging_service.dart';
+import 'user_vocabulary.dart';
 
 part 'user.g.dart';
 
@@ -54,97 +56,87 @@ class User {
 
   // Supabase-specific methods
   Map<String, dynamic> toSupabase() {
-    debugPrint('=========== USER TOSUPABASE START ===========');
-    // Create a copy of the JSON data
+    final LoggingService logger = LoggingService();
+    logger.log(
+        LogCategory.database, '=========== USER TOSUPABASE START ===========');
     final json = Map<String, dynamic>.from(toJson());
-    
-    // Convert DateTime to ISO strings for Supabase
-    debugPrint('User.toSupabase: Converting created_at: ${createdAt}');
+
+    logger.log(LogCategory.database,
+        'User.toSupabase: Converting created_at: $createdAt');
     json['created_at'] = createdAt.toIso8601String();
-    
+
     if (lastLoginAt != null) {
-      debugPrint('User.toSupabase: Converting last_login_at: ${lastLoginAt}');
+      logger.log(LogCategory.database,
+          'User.toSupabase: Converting last_login_at: $lastLoginAt');
       json['last_login_at'] = lastLoginAt!.toIso8601String();
     }
-    
-    // Make sure preferences and statistics are JSON strings
+
+    // Ensure preferences and statistics are JSON strings
     if (json['preferences'] is! String) {
-      debugPrint('User.toSupabase: Converting preferences to JSON string');
-      json['preferences'] = preferences.toJson();
+      logger.log(LogCategory.database,
+          'User.toSupabase: Converting preferences to JSON string');
+      json['preferences'] = jsonEncode(json['preferences']);
     }
-    
     if (json['statistics'] is! String) {
-      debugPrint('User.toSupabase: Converting statistics to JSON string');
-      json['statistics'] = statistics.toJson();
+      logger.log(LogCategory.database,
+          'User.toSupabase: Converting statistics to JSON string');
+      json['statistics'] = jsonEncode(json['statistics']);
     }
-    
-    // Log the final data for debugging
-    debugPrint('User.toSupabase: Data fields: ${json.keys.join(', ')}');
-    debugPrint('User.toSupabase: ID: ${json['id']}, email: ${json['email']}');
-    debugPrint('User.toSupabase: is_premium: ${json['is_premium']}');
-    debugPrint('=========== USER TOSUPABASE END ===========');
+
+    logger.log(LogCategory.database,
+        'User.toSupabase: Data fields: ${json.keys.join(', ')}');
+    logger.log(LogCategory.database,
+        'User.toSupabase: ID: ${json['id']}, email: ${json['email']}');
+    logger.log(LogCategory.database,
+        'User.toSupabase: is_premium: ${json['is_premium']}');
+    logger.log(
+        LogCategory.database, '=========== USER TOSUPABASE END ===========');
     return json;
   }
 
   factory User.fromSupabase(Map<String, dynamic> data) {
-    // Create a copy of the data to avoid modifying the original
-    final Map<String, dynamic> processedData = Map<String, dynamic>.from(data);
-    
-    // Debug logs for tracing
-    print('[User.fromSupabase] Raw data: ' + processedData.toString());
-    print('[User.fromSupabase] created_at type: ' + (processedData['created_at']?.runtimeType.toString() ?? 'null'));
-    print('[User.fromSupabase] last_login_at type: ' + (processedData['last_login_at']?.runtimeType.toString() ?? 'null'));
-    print('[User.fromSupabase] is_premium value: ' + (processedData['is_premium']?.toString() ?? 'null'));
-    
-    // Handle DateTime fields
-    if (processedData['created_at'] != null) {
-      if (processedData['created_at'] is String) {
-        // Already a string, no conversion needed
-      } else if (processedData['created_at'] is DateTime) {
-        processedData['created_at'] = (processedData['created_at'] as DateTime).toIso8601String();
-      } else {
-        // Convert to string
-        processedData['created_at'] = processedData['created_at'].toString();
-      }
-    }
-    
-    if (processedData['last_login_at'] != null) {
-      if (processedData['last_login_at'] is String) {
-        // Already a string, no conversion needed
-      } else if (processedData['last_login_at'] is DateTime) {
-        processedData['last_login_at'] = (processedData['last_login_at'] as DateTime).toIso8601String();
-      } else {
-        // Convert to string
-        processedData['last_login_at'] = processedData['last_login_at'].toString();
-      }
-    }
-    
-    // Ensure premium status is properly set
+    final LoggingService logger = LoggingService();
+    final processedData = Map<String, dynamic>.from(data);
+
+    logger.log(LogCategory.database,
+        '[User.fromSupabase] Raw data: ${processedData.toString()}');
+    logger.log(LogCategory.database,
+        '[User.fromSupabase] created_at type: ${processedData['created_at']?.runtimeType.toString() ?? 'null'}');
+    logger.log(LogCategory.database,
+        '[User.fromSupabase] last_login_at type: ${processedData['last_login_at']?.runtimeType.toString() ?? 'null'}');
+    logger.log(LogCategory.database,
+        '[User.fromSupabase] is_premium value: ${processedData['is_premium']?.toString() ?? 'null'}');
+
+    // Handle is_premium field
     if (processedData.containsKey('is_premium')) {
-      // Ensure proper boolean conversion - Supabase might return it as a string or number
       if (processedData['is_premium'] is String) {
-        processedData['is_premium'] = processedData['is_premium'].toLowerCase() == 'true';
-      } else if (processedData['is_premium'] is num) {
-        processedData['is_premium'] = processedData['is_premium'] != 0;
+        processedData['is_premium'] =
+            (processedData['is_premium'] as String).toLowerCase() == 'true';
       }
-      print('[User.fromSupabase] Processed is_premium: ${processedData['is_premium']}');
+      // If it's already a bool, do nothing
     } else {
-      print('[User.fromSupabase] is_premium field missing, defaulting to false');
       processedData['is_premium'] = false;
     }
-    
-    // Always pass preferences/statistics as JSON strings
-    if (processedData['preferences'] is! String) {
-      print('[User.fromSupabase] Converting preferences to JSON string');
-      processedData['preferences'] = jsonEncode(processedData['preferences'] ?? {});
+    logger.log(LogCategory.database,
+        '[User.fromSupabase] Processed is_premium: ${processedData['is_premium']}');
+
+    // Convert preferences and statistics from JSON string if necessary
+    if (processedData['preferences'] is String) {
+      logger.log(LogCategory.database,
+          '[User.fromSupabase] Converting preferences to JSON string');
+      processedData['preferences'] =
+          jsonDecode(processedData['preferences'] as String);
     }
-    
-    if (processedData['statistics'] is! String) {
-      print('[User.fromSupabase] Converting statistics to JSON string');
-      processedData['statistics'] = jsonEncode(processedData['statistics'] ?? {});
+    if (processedData['statistics'] is String) {
+      logger.log(LogCategory.database,
+          '[User.fromSupabase] Converting statistics to JSON string');
+      processedData['statistics'] =
+          jsonDecode(processedData['statistics'] as String);
     }
-    
-    print('[User.fromSupabase] Final data for fromJson: ' + processedData.toString());
+
+    logger.log(LogCategory.database,
+        '[User.fromSupabase] Final data for fromJson: ${processedData.toString()}');
+
     return User.fromJson(processedData);
   }
 
@@ -159,26 +151,28 @@ class User {
 
   factory User.fromFirestore(Map<String, dynamic> data) {
     // Handle Firebase Timestamp objects
-    if (data['created_at'] != null && data['created_at'].runtimeType.toString().contains('Timestamp')) {
+    if (data['created_at'] != null &&
+        data['created_at'].runtimeType.toString().contains('Timestamp')) {
       data['created_at'] = (data['created_at'] as dynamic).toDate();
     }
-    if (data['last_login_at'] != null && data['last_login_at'].runtimeType.toString().contains('Timestamp')) {
+    if (data['last_login_at'] != null &&
+        data['last_login_at'].runtimeType.toString().contains('Timestamp')) {
       data['last_login_at'] = (data['last_login_at'] as dynamic).toDate();
     }
-    
+
     // Parse nested objects
     if (data['preferences'] is Map) {
       data['preferences'] = UserPreferences.fromMap(data['preferences']);
     } else {
       data['preferences'] = UserPreferences();
     }
-    
+
     if (data['statistics'] is Map) {
       data['statistics'] = UserStatistics.fromMap(data['statistics']);
     } else {
       data['statistics'] = UserStatistics();
     }
-    
+
     return User.fromJson(data);
   }
 
@@ -250,19 +244,30 @@ class UserPreferences {
       if (jsonString.trim().isEmpty || jsonString == '{}') {
         return UserPreferences();
       }
-      
+
       // Try to parse as JSON first
       final Map<String, dynamic> json = {};
-      
+
       // Extract values using regex (fallback for simple JSON strings)
-      final targetLang = RegExp(r'"target_language":\s*"([^"]*)"').firstMatch(jsonString)?.group(1) ?? 'it';
-      final nativeLang = RegExp(r'"native_language":\s*"([^"]*)"').firstMatch(jsonString)?.group(1) ?? 'en';
-      final supportLang1Match = RegExp(r'"support_language_1":\s*"([^"]*)"').firstMatch(jsonString);
-      final supportLang2Match = RegExp(r'"support_language_2":\s*"([^"]*)"').firstMatch(jsonString);
-      final notificationsMatch = RegExp(r'"notifications_enabled":\s*(true|false)').firstMatch(jsonString);
-      final soundMatch = RegExp(r'"sound_enabled":\s*(true|false)').firstMatch(jsonString);
+      final targetLang = RegExp(r'"target_language":\s*"([^"]*)"')
+              .firstMatch(jsonString)
+              ?.group(1) ??
+          'it';
+      final nativeLang = RegExp(r'"native_language":\s*"([^"]*)"')
+              .firstMatch(jsonString)
+              ?.group(1) ??
+          'en';
+      final supportLang1Match =
+          RegExp(r'"support_language_1":\s*"([^"]*)"').firstMatch(jsonString);
+      final supportLang2Match =
+          RegExp(r'"support_language_2":\s*"([^"]*)"').firstMatch(jsonString);
+      final notificationsMatch =
+          RegExp(r'"notifications_enabled":\s*(true|false)')
+              .firstMatch(jsonString);
+      final soundMatch =
+          RegExp(r'"sound_enabled":\s*(true|false)').firstMatch(jsonString);
       final themeMatch = RegExp(r'"theme":\s*"([^"]*)"').firstMatch(jsonString);
-      
+
       json['target_language'] = targetLang;
       json['native_language'] = nativeLang;
       json['support_language_1'] = supportLang1Match?.group(1);
@@ -270,14 +275,15 @@ class UserPreferences {
       json['notifications_enabled'] = notificationsMatch?.group(1) == 'true';
       json['sound_enabled'] = soundMatch?.group(1) == 'true';
       json['theme'] = themeMatch?.group(1) ?? 'system';
-      
+
       return _$UserPreferencesFromJson(json);
     } catch (e) {
       return UserPreferences();
     }
   }
 
-  factory UserPreferences.fromMap(Map<String, dynamic> map) => _$UserPreferencesFromJson(map);
+  factory UserPreferences.fromMap(Map<String, dynamic> map) =>
+      _$UserPreferencesFromJson(map);
   Map<String, dynamic> toMap() => _$UserPreferencesToJson(this);
 
   String toJson() {
@@ -339,15 +345,17 @@ class UserStatistics {
     this.totalStudyTimeMinutes = 0,
   });
 
-  factory UserStatistics.fromMap(Map<String, dynamic> map) => _$UserStatisticsFromJson(map);
+  factory UserStatistics.fromMap(Map<String, dynamic> map) =>
+      _$UserStatisticsFromJson(map);
   Map<String, dynamic> toMap() => _$UserStatisticsToJson(this);
 
   String toJson() {
     final map = toMap();
-    final progressJson = (map['language_progress'] as Map<String, int>).entries
+    final progressJson = (map['language_progress'] as Map<String, int>)
+        .entries
         .map((e) => '"${e.key}": ${e.value}')
         .join(', ');
-    
+
     return '''
 {
   "total_words_learned": ${map['total_words_learned']},
@@ -364,19 +372,24 @@ class UserStatistics {
       if (jsonString.trim().isEmpty || jsonString == '{}') {
         return UserStatistics();
       }
-      
+
       // Extract values using regex
-      final wordsMatch = RegExp(r'"total_words_learned":\s*(\d+)').firstMatch(jsonString);
-      final messagesMatch = RegExp(r'"total_messages_processed":\s*(\d+)').firstMatch(jsonString);
-      final streakMatch = RegExp(r'"streak_days":\s*(\d+)').firstMatch(jsonString);
-      final studyDateMatch = RegExp(r'"last_study_date":\s*"([^"]*)"').firstMatch(jsonString);
-      final studyTimeMatch = RegExp(r'"total_study_time_minutes":\s*(\d+)').firstMatch(jsonString);
-      
+      final wordsMatch =
+          RegExp(r'"total_words_learned":\s*(\d+)').firstMatch(jsonString);
+      final messagesMatch =
+          RegExp(r'"total_messages_processed":\s*(\d+)').firstMatch(jsonString);
+      final streakMatch =
+          RegExp(r'"streak_days":\s*(\d+)').firstMatch(jsonString);
+      final studyDateMatch =
+          RegExp(r'"last_study_date":\s*"([^"]*)"').firstMatch(jsonString);
+      final studyTimeMatch =
+          RegExp(r'"total_study_time_minutes":\s*(\d+)').firstMatch(jsonString);
+
       // Parse language progress
       final progressRegex = RegExp(r'"language_progress":\s*\{([^}]*)\}');
       final progressMatch = progressRegex.firstMatch(jsonString);
       Map<String, int> languageProgress = {};
-      
+
       if (progressMatch != null && progressMatch.group(1) != null) {
         final progressContent = progressMatch.group(1)!;
         final entryRegex = RegExp(r'"([^"]+)":\s*(\d+)');
@@ -384,18 +397,18 @@ class UserStatistics {
           languageProgress[match.group(1)!] = int.parse(match.group(2)!);
         }
       }
-      
+
       final json = {
         'total_words_learned': int.parse(wordsMatch?.group(1) ?? '0'),
         'total_messages_processed': int.parse(messagesMatch?.group(1) ?? '0'),
         'streak_days': int.parse(streakMatch?.group(1) ?? '0'),
-        'last_study_date': studyDateMatch?.group(1) != null 
-            ? DateTime.parse(studyDateMatch!.group(1)!) 
+        'last_study_date': studyDateMatch?.group(1) != null
+            ? DateTime.parse(studyDateMatch!.group(1)!)
             : null,
         'language_progress': languageProgress,
         'total_study_time_minutes': int.parse(studyTimeMatch?.group(1) ?? '0'),
       };
-      
+
       return _$UserStatisticsFromJson(json);
     } catch (e) {
       return UserStatistics();
@@ -412,11 +425,13 @@ class UserStatistics {
   }) {
     return UserStatistics(
       totalWordsLearned: totalWordsLearned ?? this.totalWordsLearned,
-      totalMessagesProcessed: totalMessagesProcessed ?? this.totalMessagesProcessed,
+      totalMessagesProcessed:
+          totalMessagesProcessed ?? this.totalMessagesProcessed,
       streakDays: streakDays ?? this.streakDays,
       lastStudyDate: lastStudyDate ?? this.lastStudyDate,
       languageProgress: languageProgress ?? this.languageProgress,
-      totalStudyTimeMinutes: totalStudyTimeMinutes ?? this.totalStudyTimeMinutes,
+      totalStudyTimeMinutes:
+          totalStudyTimeMinutes ?? this.totalStudyTimeMinutes,
     );
   }
-} 
+}
