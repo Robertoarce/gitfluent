@@ -1,0 +1,54 @@
+flowchart TD
+    A["👤 User Types Message"] --> B["📨 sendMessage(text)"]
+    B --> C{{"🔍 Valid Message?<br/>(not empty & model ready)"}}
+    
+    C -->|"❌ No"| D["🚫 Return Early"]
+    C -->|"✅ Yes"| E["💬 Create User Message<br/>with unique ID"]
+    
+    E --> F["📱 Add to UI Messages"]
+    F --> G["📚 Add to Chat History<br/>as HumanChatMessage"]
+    G --> H["🔄 Set isLoading = true"]
+    H --> I["🔔 notifyListeners()"]
+    
+    I --> J["🤖 Gemini API Call<br/>generateContent(chatHistory)"]
+    J --> K{{"📡 API Response?"}}
+    
+    K -->|"💥 Error"| L["⚠️ Catch Exception"]
+    K -->|"✅ Success"| M["📨 Get Raw Response Text"]
+    
+    L --> N["📝 Log Error Message"]
+    N --> O["💬 Add Error to UI"]
+    O --> P["🔄 Set isLoading = false"]
+    
+    M --> Q{{"🔍 Response Empty?"}}
+    Q -->|"✅ Has Content"| R["🎯 Try JSON Parsing"]
+    Q -->|"❌ Empty"| S["💬 Default Sorry Message"]
+    
+    R --> T{{"📋 Valid JSON?"}}
+    T -->|"✅ Parsed"| U["📊 Create ConversationResponse"]
+    T -->|"❌ Failed"| V["📝 Log Parse Error"]
+    
+    U --> W["🎨 Format Rich Response<br/>• Bot: [response]<br/>• Translation: [translation]<br/>• New Vocab: [words]<br/>• Corrections: [fixes]<br/>• Next: [question]"]
+    
+    V --> X["📄 Use Raw Response Text"]
+    S --> X
+    
+    W --> Y["💬 Create Bot Message<br/>with formatted text"]
+    X --> Y
+    
+    Y --> Z["📱 Add Bot Message to UI"]
+    Z --> AA["📚 Add to Chat History<br/>as AIChatMessage"]
+    AA --> BB["🔄 Set isLoading = false"]
+    BB --> CC["🔔 notifyListeners()"]
+    CC --> DD["✅ Ready for Next Input"]
+    
+    P --> CC
+    
+    DD --> A
+    
+    style A fill:#e3f2fd
+    style J fill:#fce4ec
+    style U fill:#f3e5f5
+    style W fill:#e8f5e8
+    style Y fill:#fff3e0
+    style DD fill:#c8e6c9 

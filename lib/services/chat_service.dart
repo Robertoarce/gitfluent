@@ -110,7 +110,7 @@ class ChatService extends ChangeNotifier {
       }
 
       // Get the prompt type and variables directly from config
-      final promptType = _config?.systemPromptType ?? 'default';
+      final promptType = _config?.systemPromptType ?? 'structured_base';
       final variables = _config?.defaultSettings ??
           {
             'target_language': 'it',
@@ -174,8 +174,8 @@ class ChatService extends ChangeNotifier {
       if (languageSettings == null) return;
 
       final variables = {
-        'target_language': languageSettings.targetLanguage?.code ?? 'it',
         'native_language': languageSettings.nativeLanguage?.code ?? 'en',
+        'target_language': languageSettings.targetLanguage?.code ?? 'it',
         'support_language_1': languageSettings.supportLanguage1?.code ?? 'es',
         'support_language_2': languageSettings.supportLanguage2?.code ?? 'fr',
       };
@@ -183,7 +183,7 @@ class ChatService extends ChangeNotifier {
       _logger.log(LogCategory.chatService,
           'Updating system prompt with language variables: $variables');
 
-      final promptType = _config?.systemPromptType ?? 'default';
+      final promptType = _config?.systemPromptType ?? 'structured_base';
       _systemPrompt = Prompts.getPrompt(promptType, variables: variables);
 
       // Update system message in chat history

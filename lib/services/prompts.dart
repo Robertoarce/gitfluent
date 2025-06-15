@@ -605,6 +605,10 @@ Please provide a helpful response.
       case 'base':
         prompt = basePrompt;
         break;
+      case 'default':
+      case 'defaultsystemprompt':
+        prompt = structuredBasePrompt;
+        break;
       default:
         _logger.log(
             LogCategory.llm, 'Prompt not found, using structured base prompt',

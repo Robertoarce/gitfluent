@@ -61,6 +61,12 @@ class ConversationService extends ChangeNotifier {
         'native_language': languageSettings?.nativeLanguage?.code ??
             _config?.defaultSettings['native_language'] ??
             'en',
+        'support_language_1': languageSettings?.nativeLanguage?.code ??
+            _config?.defaultSettings['support_language_1'] ??
+            'en',
+        'support_language_2': languageSettings?.nativeLanguage?.code ??
+            _config?.defaultSettings['support_language_2'] ??
+            'en',
       };
       final systemPromptText =
           Prompts.getPrompt(systemPromptType, variables: variables);

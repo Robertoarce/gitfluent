@@ -1,4 +1,5 @@
 import 'dart:developer' as developer;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:yaml/yaml.dart';
 
@@ -72,6 +73,12 @@ class LoggingService {
     if (_isLogEnabled(category)) {
       final logName = isError ? '${category.name}.error' : category.name;
       developer.log(message, name: logName);
+
+      // Also print to terminal/console, especially useful for web debugging
+      if (kDebugMode) {
+        final prefix = isError ? '❌ ERROR' : '📝 LOG';
+        print('$prefix [$logName] $message');
+      }
     }
   }
 
@@ -81,9 +88,15 @@ class LoggingService {
       if (llmConfig is Map) {
         if ((llmConfig['log_sent'] ?? false) && sent != null) {
           developer.log(sent, name: 'llm.sent');
+          if (kDebugMode) {
+            print('🚀 SENT [llm.sent] $sent');
+          }
         }
         if ((llmConfig['log_received'] ?? false) && received != null) {
           developer.log(received, name: 'llm.received');
+          if (kDebugMode) {
+            print('📨 RECEIVED [llm.received] $received');
+          }
         }
       }
     }

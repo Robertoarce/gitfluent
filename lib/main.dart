@@ -151,15 +151,27 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProxyProvider<SettingsService, ChatService>(
           create: (context) =>
               ChatService(settings: context.read<SettingsService>()),
-          update: (context, settings, previous) =>
-              ChatService(settings: settings),
+          update: (context, settings, previous) {
+            if (previous != null) {
+              // Reuse existing service, just notify of settings change
+              return previous;
+            } else {
+              return ChatService(settings: settings);
+            }
+          },
         ),
         // Add ConversationService provider
         ChangeNotifierProxyProvider<SettingsService, ConversationService>(
           create: (context) =>
               ConversationService(settings: context.read<SettingsService>()),
-          update: (context, settings, previous) => ConversationService(
-              settings: settings), // Or manage state update if needed
+          update: (context, settings, previous) {
+            if (previous != null) {
+              // Reuse existing service, just notify of settings change
+              return previous;
+            } else {
+              return ConversationService(settings: settings);
+            }
+          },
         ),
       ],
       child: Consumer<UserService>(
