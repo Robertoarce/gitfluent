@@ -575,6 +575,48 @@ Respond to the user in a conversational and encouraging manner. Help them practi
 Please provide a helpful response.
 ''';
 
+  // Initial bot message with multi-language support
+  static String getInitialBotMessage(String languageCode) {
+    final messages = {
+      'en':
+          "Hello! I'm your conversation partner. How can I help you practice today?",
+      'es':
+          "¡Hola! Soy tu compañero de conversación. ¿Cómo puedo ayudarte a practicar hoy?",
+      'fr':
+          "Bonjour ! Je suis votre partenaire de conversation. Comment puis-je vous aider à pratiquer aujourd'hui ?",
+      'de':
+          "Hallo! Ich bin Ihr Gesprächspartner. Wie kann ich Ihnen heute beim Üben helfen?",
+      'it':
+          "Ciao! Sono il tuo partner di conversazione. Come posso aiutarti a praticare oggi?",
+      'pt':
+          "Olá! Sou seu parceiro de conversação. Como posso ajudá-lo a praticar hoje?",
+      'ru':
+          "Привет! Я ваш собеседник. Как я могу помочь вам практиковаться сегодня?",
+      'zh': "你好！我是你的对话伙伴。今天我如何帮助你练习？",
+      'ja': "こんにちは！私はあなたの会話パートナーです。今日はどのように練習のお手伝いをしましょうか？",
+      'ko': "안녕하세요! 저는 당신의 대화 파트너입니다. 오늘 연습에 어떻게 도움을 드릴까요?",
+      'nl':
+          "Hallo! Ik ben je gesprekspartner. Hoe kan ik je vandaag helpen met oefenen?",
+      'el':
+          "Γεια σας! Είμαι ο συνομιλητής σας. Πώς μπορώ να σας βοηθήσω να εξασκηθείτε σήμερα;",
+      'he': "שלום! אני בן הזוג שלך לשיחה. איך אני יכול לעזור לך להתרגל היום?",
+      'hi':
+          "नमस्ते! मैं आपका बातचीत का साथी हूँ। आज मैं आपकी अभ्यास में कैसे मदद कर सकता हूँ?",
+      'ga':
+          "Dia dhuit! Is mise do pháirtí comhrá. Conas is féidir liom cabhrú leat cleachtadh inniu?",
+      'pl':
+          "Cześć! Jestem twoim partnerem do rozmów. Jak mogę pomóc ci ćwiczyć dzisiaj?",
+      'sv':
+          "Hej! Jag är din samtalspartner. Hur kan jag hjälpa dig att öva idag?",
+      'vi':
+          "Xin chào! Tôi là đối tác trò chuyện của bạn. Hôm nay tôi có thể giúp bạn luyện tập như thế nào?",
+    };
+
+    return messages[languageCode] ?? messages['en']!;
+  }
+
+  // Deprecated: Use getInitialBotMessage(languageCode) instead
+  @Deprecated('Use getInitialBotMessage(languageCode) instead')
   static const String initialBotMessage =
       "Hello! I'm your conversation partner. How can I help you practice today?";
 

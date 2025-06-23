@@ -12,6 +12,8 @@ import 'services/user_service.dart';
 import 'services/supabase_auth_service.dart';
 import 'services/supabase_database_service.dart';
 import 'services/conversation_service.dart';
+import 'services/global_settings_service.dart';
+import 'services/user_preferences_service.dart';
 import 'models/user.dart' as app_user;
 import 'screens/chat_screen.dart';
 import 'screens/auth_screen.dart';
@@ -26,6 +28,17 @@ void main() async {
   // Initialize LoggingService early
   await LoggingService().init();
   final logger = LoggingService();
+
+  // Initialize GlobalSettingsService first (it's the source of truth)
+  try {
+    await GlobalSettingsService.initialize();
+    logger.log(LogCategory.appLifecycle,
+        'GlobalSettingsService initialized successfully');
+  } catch (e) {
+    logger.log(LogCategory.appLifecycle,
+        'Error initializing GlobalSettingsService: $e',
+        isError: true);
+  }
 
   try {
     await dotenv.load(fileName: ".env");
@@ -87,7 +100,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        // Core services - need to be initialized
+        // Core services - initialized in dependency order
         ChangeNotifierProvider(
           create: (_) {
             final settingsService = SettingsService();
@@ -98,7 +111,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(
           create: (_) {
             final languageSettings = LanguageSettings();
-            _initializeLanguageSettings(languageSettings);
+            _initializeLanguageSettingsSequentially(languageSettings);
             return languageSettings;
           },
         ),
@@ -126,6 +139,41 @@ class MyApp extends StatelessWidget {
                 authService: authService,
                 databaseService: databaseService,
               ),
+        ),
+
+        // User preferences service that depends on UserService
+        ChangeNotifierProxyProvider<UserService, UserPreferencesService>(
+          create: (context) {
+            final userPreferencesService = UserPreferencesService();
+            _initializeUserPreferencesService(
+                userPreferencesService, context.read<UserService>());
+            return userPreferencesService;
+          },
+          update: (context, userService, previous) {
+            if (previous != null) {
+              return previous;
+            } else {
+              final userPreferencesService = UserPreferencesService();
+              _initializeUserPreferencesService(
+                  userPreferencesService, userService);
+              return userPreferencesService;
+            }
+          },
+        ),
+
+        // Service communication coordinator - ensures callbacks are set up
+        ProxyProvider2<LanguageSettings, UserPreferencesService, bool>(
+          create: (context) => false,
+          update:
+              (context, languageSettings, userPreferencesService, previous) {
+            if (previous != true &&
+                languageSettings.isInitialized &&
+                userPreferencesService.isInitialized) {
+              MyApp._setupServiceCommunication(context);
+              return true;
+            }
+            return previous ?? false;
+          },
         ),
 
         // Vocabulary service that depends on user service
@@ -236,6 +284,86 @@ class MyApp extends StatelessWidget {
     }
   }
 
+  // Helper method to initialize language settings after GlobalSettingsService is ready
+  static Future<void> _initializeLanguageSettingsSequentially(
+      LanguageSettings languageSettings) async {
+    final logger = LoggingService();
+    try {
+      // Wait for GlobalSettingsService to be ready
+      int retryCount = 0;
+      while (!GlobalSettingsService.instance.isInitialized && retryCount < 10) {
+        await Future.delayed(const Duration(milliseconds: 100));
+        retryCount++;
+      }
+
+      if (!GlobalSettingsService.instance.isInitialized) {
+        logger.log(LogCategory.settingsService,
+            'Warning: GlobalSettingsService not ready, proceeding with LanguageSettings init anyway');
+      }
+
+      await languageSettings.init();
+      logger.log(LogCategory.settingsService,
+          'LanguageSettings initialized successfully in sequence');
+    } catch (e) {
+      logger.log(LogCategory.settingsService,
+          'Error initializing LanguageSettings sequentially: $e',
+          isError: true);
+    }
+  }
+
+  // Helper method to initialize user preferences service
+  static Future<void> _initializeUserPreferencesService(
+      UserPreferencesService userPreferencesService,
+      UserService userService) async {
+    final logger = LoggingService();
+    try {
+      await userPreferencesService.init(userService: userService);
+      logger.log(LogCategory.settingsService,
+          'UserPreferencesService initialized successfully');
+    } catch (e) {
+      logger.log(LogCategory.settingsService,
+          'Error initializing UserPreferencesService: $e',
+          isError: true);
+    }
+  }
+
+  // Helper method to setup cross-service communication
+  static Future<void> _setupServiceCommunication(BuildContext context) async {
+    final logger = LoggingService();
+    try {
+      // Get services from provider
+      final languageSettings =
+          Provider.of<LanguageSettings>(context, listen: false);
+      final userPreferencesService =
+          Provider.of<UserPreferencesService>(context, listen: false);
+
+      // Set up callback for UserPreferencesService to notify LanguageSettings
+      UserPreferencesService.setLanguageSettingsCallback((languageMap) {
+        logger.log(LogCategory.settingsService,
+            'UserPreferences -> LanguageSettings callback triggered');
+        languageSettings.updateFromExternalSource(
+          targetLanguageCode: languageMap['target_language'],
+          nativeLanguageCode: languageMap['native_language'],
+          supportLanguage1Code:
+              languageMap['support_language_1']?.isNotEmpty == true
+                  ? languageMap['support_language_1']
+                  : null,
+          supportLanguage2Code:
+              languageMap['support_language_2']?.isNotEmpty == true
+                  ? languageMap['support_language_2']
+                  : null,
+        );
+      });
+
+      logger.log(
+          LogCategory.settingsService, 'Service communication setup completed');
+    } catch (e) {
+      logger.log(LogCategory.settingsService,
+          'Error setting up service communication: $e',
+          isError: true);
+    }
+  }
+
   Widget _buildHome(UserService userService) {
     // Show loading while checking auth state
     if (userService.isLoading) {
@@ -269,6 +397,7 @@ class AppHome extends StatefulWidget {
 }
 
 class _AppHomeState extends State<AppHome> {
+  bool _isServiceCommunicationSetup = false;
   // Add a key for the Scaffold to allow opening the drawer programmatically if needed
   // final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>(); // Removed
 
@@ -308,9 +437,19 @@ class _AppHomeState extends State<AppHome> {
   void initState() {
     super.initState();
     _initializeServices();
+
+    // Setup service communication after the widget is built
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_isServiceCommunicationSetup) {
+        MyApp._setupServiceCommunication(context);
+        _isServiceCommunicationSetup = true;
+      }
+    });
   }
 
   Future<void> _initializeServices() async {
+    final logger = LoggingService();
+
     // Initialize vocabulary service
     final vocabularyService = context.read<VocabularyService>();
     if (!vocabularyService.isInitialized) {

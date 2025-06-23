@@ -81,7 +81,7 @@ flowchart TD
 
 ### API Communication
 
-- **Context Sending**: Sends complete chat history to Gemini API
+- **Context Sending**: Sends complete chat history to Gemini API using globalSettings.conversation.model
 - **Error Handling**: Gracefully handles network and API errors
 - **Response Processing**: Handles both successful and failed API calls
 

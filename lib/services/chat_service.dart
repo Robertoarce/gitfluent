@@ -96,6 +96,8 @@ class ChatService extends ChangeNotifier {
     _initializeAI();
     // Listen to settings changes
     _settings.addListener(_initializeAI);
+    // Listen to language settings changes specifically
+    _settings.languageSettings.addListener(_onLanguageSettingsChanged);
   }
 
   Future<void> _initializeConfig() async {
@@ -164,7 +166,15 @@ class ChatService extends ChangeNotifier {
   @override
   void dispose() {
     _settings.removeListener(_initializeAI);
+    _settings.languageSettings.removeListener(_onLanguageSettingsChanged);
     super.dispose();
+  }
+
+  // Add this method to handle language settings changes
+  void _onLanguageSettingsChanged() {
+    _logger.log(LogCategory.chatService,
+        'Language settings changed, updating system prompt');
+    _updateSystemPromptWithLanguages();
   }
 
   // Add method to update system prompt with current language settings
@@ -328,7 +338,15 @@ class ChatService extends ChangeNotifier {
 
     _logger.logLlm(received: responseContent);
 
-    final assistantMessage = Message(content: responseContent, isUser: false);
+    // Format the response using the vocab formatter
+    final (formattedResponse, jsonResponse) =
+        _getVocabFromLLMResponse(responseContent);
+
+    final assistantMessage = Message(
+      content: formattedResponse,
+      isUser: false,
+      LLMjsonResponse: jsonResponse,
+    );
     _messages.add(assistantMessage);
     _chatHistory.add(ChatMessage.assistant(responseContent));
   }
@@ -351,7 +369,15 @@ class ChatService extends ChangeNotifier {
     _logger.logLlm(received: response.text);
 
     if (response.text != null) {
-      final assistantMessage = Message(content: response.text!, isUser: false);
+      // Format the response using the vocab formatter
+      final (formattedResponse, jsonResponse) =
+          _getVocabFromLLMResponse(response.text!);
+
+      final assistantMessage = Message(
+        content: formattedResponse,
+        isUser: false,
+        LLMjsonResponse: jsonResponse,
+      );
       _messages.add(assistantMessage);
       _chatHistory.add(ChatMessage.assistant(response.text!));
     } else {

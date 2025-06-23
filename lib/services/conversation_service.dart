@@ -29,6 +29,9 @@ class ConversationService extends ChangeNotifier {
   ConversationService({required SettingsService settings})
       : _settings = settings {
     _initialize();
+
+    // Listen for language settings changes
+    _settings.languageSettings.addListener(_onLanguageSettingsChanged);
   }
 
   Future<void> _initialize() async {
@@ -100,9 +103,15 @@ class ConversationService extends ChangeNotifier {
   }
 
   void _addInitialBotMessage() {
+    // Get the target language from settings, fallback to config, then to 'en'
+    final languageSettings = _settings.languageSettings;
+    final targetLanguage = languageSettings?.targetLanguage?.code ??
+        _config?.defaultSettings['target_language'] ??
+        'en';
+
     final initialBotMessage = convo_ui.ChatMessage(
         id: 'conv_initial_bot_${DateTime.now().millisecondsSinceEpoch}',
-        text: Prompts.initialBotMessage,
+        text: Prompts.getInitialBotMessage(targetLanguage),
         isUser: false);
     _messages.add(initialBotMessage);
     notifyListeners();
@@ -237,6 +246,72 @@ class ConversationService extends ChangeNotifier {
       _chatHistory.add(SystemChatMessage(content: systemPromptText));
     }
     notifyListeners();
+  }
+
+  // Handle language settings changes
+  void _onLanguageSettingsChanged() {
+    _logger.log(LogCategory.conversationService,
+        'Language settings changed, updating conversation');
+
+    // Update the initial bot message with new language
+    if (_messages.isNotEmpty && !_messages.first.isUser) {
+      // Get the new target language
+      final languageSettings = _settings.languageSettings;
+      final targetLanguage = languageSettings?.targetLanguage?.code ??
+          _config?.defaultSettings['target_language'] ??
+          'en';
+
+      // Update the first (initial) message with new language
+      final updatedInitialMessage = convo_ui.ChatMessage(
+          id: _messages.first.id,
+          text: Prompts.getInitialBotMessage(targetLanguage),
+          isUser: false);
+
+      _messages[0] = updatedInitialMessage;
+
+      _logger.log(LogCategory.conversationService,
+          'Updated initial bot message to language: $targetLanguage');
+    }
+
+    // Update the system prompt in chat history with new language variables
+    if (_config != null && _chatHistory.isNotEmpty) {
+      final languageSettings = _settings.languageSettings;
+      final variables = {
+        'target_language': languageSettings?.targetLanguage?.code ??
+            _config?.defaultSettings['target_language'] ??
+            'en',
+        'native_language': languageSettings?.nativeLanguage?.code ??
+            _config?.defaultSettings['native_language'] ??
+            'en',
+        'support_language_1': languageSettings?.supportLanguage1?.code ??
+            _config?.defaultSettings['support_language_1'] ??
+            'en',
+        'support_language_2': languageSettings?.supportLanguage2?.code ??
+            _config?.defaultSettings['support_language_2'] ??
+            'en',
+      };
+
+      final systemPromptType =
+          _config?.conversationSystemPromptType ?? 'structured_conversation';
+      final systemPromptText =
+          Prompts.getPrompt(systemPromptType, variables: variables);
+
+      // Update the first system message if it exists
+      if (_chatHistory.isNotEmpty && _chatHistory.first is SystemChatMessage) {
+        _chatHistory[0] = SystemChatMessage(content: systemPromptText);
+        _logger.log(LogCategory.conversationService,
+            'Updated system prompt with new language variables');
+      }
+    }
+
+    notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    // Remove language settings listener to avoid memory leaks
+    _settings.languageSettings.removeListener(_onLanguageSettingsChanged);
+    super.dispose();
   }
 }
 

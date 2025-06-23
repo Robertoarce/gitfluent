@@ -9,9 +9,9 @@ This directory contains detailed process flow diagrams for the ConversationServi
 Complete service initialization and lifecycle management, including:
 
 - Service construction and dependency injection
-- Configuration loading and validation
-- Gemini API setup and authentication
-- Prompt configuration and system message setup
+- GlobalSettingsService integration and centralized configuration access
+- Gemini API setup using globalSettings.conversation.model
+- Prompt configuration with globalSettings.languageVariables
 - Error handling and recovery mechanisms
 
 **Mermaid File**: [conversation-service-lifecycle.mermaid](./conversation-service-lifecycle.mermaid)
@@ -64,8 +64,8 @@ These flows document the `ConversationService` class found in `lib/services/conv
 
 The service works in conjunction with:
 
-- `SettingsService` for user preferences
-- `PromptConfigService` for AI prompt management
+- `GlobalSettingsService` for centralized configuration management
+- `SettingsService` for additional user preferences (legacy)
 - `LoggingService` for debugging and monitoring
 - Provider pattern for state management
 

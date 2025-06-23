@@ -1,61 +1,84 @@
 flowchart TD
     A["🚀 ConversationService<br/>Constructor"] --> B["📋 _initialize()"]
     B --> C["⚙️ _loadConfigAndInitializeModel()"]
-    B --> D["💬 _addInitialBotMessage()"]
+    B --> D["🌍 _addInitialBotMessage()"]
     
-    C --> E["🔧 PromptConfigService.init()"]
-    E --> F["📄 Load Config from YAML/Prefs"]
+    C --> E["🔄 Wait for GlobalSettingsService<br/>globalSettings.isInitialized"]
+    E --> F["🌐 Access GlobalSettingsService<br/>globalSettings.conversation"]
     F --> G["🔑 Check GEMINI_API_KEY"]
     
     G -->|"❌ No API Key"| H["⚠️ Add Error Message"]
-    G -->|"✅ API Key Found"| I["🎯 Get System Prompt Type<br/>'structured_conversation'"]
+    G -->|"✅ API Key Found"| I["🎯 Get System Prompt Type<br/>globalSettings.conversation.systemPromptType"]
     
-    I --> J["🌐 Get Language Variables<br/>target_language, native_language"]
-    J --> K["📝 Prompts.getPrompt()<br/>with variables"]
-    K --> L["🤖 Create Gemini Model<br/>with config"]
+    I --> J["👤 Get Language Settings<br/>_settings.languageSettings"]
+    J --> K["🌐 Build Language Variables<br/>target_language, native_language, etc."]
+    K --> L["📝 Prompts.getPrompt()<br/>with language variables"]
+    L --> M["🤖 Create Gemini Model<br/>globalSettings.conversation.model"]
     
-    L --> M["📚 Initialize Chat History<br/>with System Message"]
-    M --> N["✅ Service Ready"]
+    M --> N["📚 Initialize Chat History<br/>with System Message"]
+    N --> O["✅ Service Ready"]
     
-    D --> O["💬 Add Initial Bot Message<br/>'Hello! I'm your conversation partner'"]
+    D --> P["👤 Get Language Settings<br/>_settings.languageSettings"]
+    P --> Q["🌍 Get Target Language Code<br/>languageSettings?.targetLanguage?.code"]
+    Q --> R["📝 Get Localized Message<br/>Prompts.getInitialBotMessage(targetLanguage)"]
+    R --> S["🎯 Select Language-Specific Greeting<br/>• 'en': 'Hello! I'm your conversation partner...'<br/>• 'es': '¡Hola! Soy tu compañero...'<br/>• 'fr': 'Bonjour ! Je suis votre partenaire...'<br/>• 'it': 'Ciao! Sono il tuo partner...'<br/>• etc. (18 languages total)"]
+    S --> T["💬 Add Localized Initial Message to UI"]
     
-    N --> P["👤 User Sends Message"]
-    P --> Q["📨 sendMessage(text)"]
-    Q --> R["➕ Add User Message to UI"]
-    R --> S["📝 Add to Chat History"]
-    S --> T["🔄 Set Loading State"]
+    O --> U["👤 User Sends Message"]
+    U --> V["📨 sendMessage(text)"]
+    V --> W["➕ Add User Message to UI"]
+    W --> X["📝 Add to Chat History"]
+    X --> Y["🔄 Set Loading State"]
     
-    T --> U["🤖 Call Gemini API<br/>generateContent()"]
-    U --> V["📨 Receive Raw Response"]
-    V --> W["🔍 Try Parse JSON Response"]
+    Y --> Z["🤖 Call Gemini API<br/>generateContent()"]
+    Z --> AA["📨 Receive Raw Response"]
+    AA --> BB["🔍 Try Parse JSON Response"]
     
-    W -->|"✅ Valid JSON"| X["📋 Parse ConversationResponse"]
-    W -->|"❌ Invalid JSON"| Y["⚠️ Use Raw Text"]
+    BB -->|"✅ Valid JSON"| CC["📋 Parse ConversationResponse"]
+    BB -->|"❌ Invalid JSON"| DD["⚠️ Use Raw Text"]
     
-    X --> Z["🎨 Format Display Response<br/>• Bot Response<br/>• Translation<br/>• New Vocabulary<br/>• Corrections<br/>• Follow-up Question"]
-    Y --> AA["📄 Use Raw Response Text"]
+    CC --> EE["🎨 Format Display Response<br/>• Bot Response<br/>• Translation<br/>• New Vocabulary<br/>• Corrections<br/>• Follow-up Question"]
+    DD --> FF["📄 Use Raw Response Text"]
     
-    Z --> BB["💬 Add Bot Message to UI"]
-    AA --> BB
-    BB --> CC["📚 Add AI Message to History"]
-    CC --> DD["🔄 Clear Loading State"]
-    DD --> EE["✅ Ready for Next Message"]
+    EE --> GG["💬 Add Bot Message to UI"]
+    FF --> GG
+    GG --> HH["📚 Add AI Message to History"]
+    HH --> II["🔄 Clear Loading State"]
+    II --> JJ["✅ Ready for Next Message"]
     
-    EE --> P
+    JJ --> U
     
-    U -->|"💥 API Error"| FF["⚠️ Handle Error"]
-    FF --> GG["📝 Log Error"]
-    GG --> HH["💬 Add Error Message"]
-    HH --> DD
+    Z -->|"💥 API Error"| KK["⚠️ Handle Error"]
+    KK --> LL["📝 Log Error"]
+    LL --> MM["💬 Add Error Message"]
+    MM --> II
     
-    II["🗑️ clearChat()"] --> JJ["📝 Clear Messages & History"]
-    JJ --> KK["💬 Add Initial Bot Message"]
-    KK --> LL["📚 Recreate System Message"]
-    LL --> EE
+    NN["🗑️ clearChat()"] --> OO["📝 Clear Messages & History"]
+    OO --> PP["🔄 Re-initialize with Current Settings"]
+    PP --> QQ["👤 Get Current Language Settings"]
+    QQ --> RR["🌍 Get Updated Target Language"]
+    RR --> SS["💬 Add New Localized Initial Message"]
+    SS --> TT["📚 Recreate System Message<br/>with current globalSettings.languageVariables"]
+    TT --> JJ
+    
+    UU["⚙️ Settings Change Event<br/>(Language Updated)"] --> VV["🔄 Update Service State"]
+    VV --> WW["🌍 Reload Language Variables"]
+    WW --> XX["📝 Update System Prompt"]
+    XX --> YY["💬 Update Initial Message Language"]
+    YY --> JJ
+    
+    ZZ["🔐 User Login/Logout Event"] --> AAA["👤 UserPreferencesService Update"]
+    AAA --> BBB["🔄 Language Settings Sync"]
+    BBB --> CCC["🌍 Update Target Language"]
+    CCC --> VV
     
     style A fill:#e1f5fe
-    style N fill:#c8e6c9
-    style P fill:#fff3e0
-    style U fill:#fce4ec
-    style X fill:#f3e5f5
-    style Z fill:#e8f5e8
+    style O fill:#c8e6c9
+    style U fill:#fff3e0
+    style Z fill:#fce4ec
+    style CC fill:#f3e5f5
+    style EE fill:#e8f5e8
+    style S fill:#ffe0b2
+    style T fill:#c8e6c9
+    style UU fill:#f8bbd9
+    style ZZ fill:#d1c4e9

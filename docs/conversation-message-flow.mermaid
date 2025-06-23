@@ -10,7 +10,7 @@ flowchart TD
     G --> H["🔄 Set isLoading = true"]
     H --> I["🔔 notifyListeners()"]
     
-    I --> J["🤖 Gemini API Call<br/>generateContent(chatHistory)"]
+    I --> J["🤖 Gemini API Call<br/>generateContent(chatHistory)<br/>using globalSettings.conversation.model"]
     J --> K{{"📡 API Response?"}}
     
     K -->|"💥 Error"| L["⚠️ Catch Exception"]
