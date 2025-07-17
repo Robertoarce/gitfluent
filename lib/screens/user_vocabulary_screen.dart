@@ -4,6 +4,7 @@ import '../services/vocabulary_service.dart';
 import '../services/user_service.dart';
 import '../models/vocabulary_item.dart';
 import '../models/user_vocabulary.dart';
+import 'vocabulary_detail_screen.dart'; // Added import for VocabularyDetailScreen
 
 class UserVocabularyScreen extends StatefulWidget {
   const UserVocabularyScreen({super.key});
@@ -12,7 +13,8 @@ class UserVocabularyScreen extends StatefulWidget {
   State<UserVocabularyScreen> createState() => _UserVocabularyScreenState();
 }
 
-class _UserVocabularyScreenState extends State<UserVocabularyScreen> with SingleTickerProviderStateMixin {
+class _UserVocabularyScreenState extends State<UserVocabularyScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
   bool _isLoading = true;
   List<VocabularyItem> _legacyItems = [];
@@ -33,19 +35,18 @@ class _UserVocabularyScreenState extends State<UserVocabularyScreen> with Single
 
   Future<void> _loadVocabulary() async {
     setState(() => _isLoading = true);
-    
+
     try {
       final vocabularyService = context.read<VocabularyService>();
       final userService = context.read<UserService>();
-      
+
       // Load legacy vocabulary items
       _legacyItems = vocabularyService.items;
-      
+
       // Load user vocabulary items if logged in
       if (userService.isLoggedIn) {
         _userItems = await vocabularyService.getUserVocabulary();
       }
-      
     } catch (e) {
       debugPrint('Error loading vocabulary: $e');
     } finally {
@@ -99,7 +100,7 @@ class _UserVocabularyScreenState extends State<UserVocabularyScreen> with Single
 
   Widget _buildUserVocabularyTab() {
     final userService = context.watch<UserService>();
-    
+
     if (!userService.isLoggedIn) {
       return const Center(
         child: Padding(
@@ -148,13 +149,16 @@ class _UserVocabularyScreenState extends State<UserVocabularyScreen> with Single
     // Group by word type
     final verbs = _userItems.where((item) => item.wordType == 'verb').toList();
     final nouns = _userItems.where((item) => item.wordType == 'noun').toList();
-    final others = _userItems.where((item) => !['verb', 'noun'].contains(item.wordType)).toList();
+    final others = _userItems
+        .where((item) => !['verb', 'noun'].contains(item.wordType))
+        .toList();
 
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
         if (verbs.isNotEmpty) ...[
-          _buildSectionHeader('Verbs', Icons.run_circle, Colors.blue, verbs.length),
+          _buildSectionHeader(
+              'Verbs', Icons.run_circle, Colors.blue, verbs.length),
           ...verbs.map((item) => _buildUserVocabularyCard(item)),
           const SizedBox(height: 16),
         ],
@@ -164,7 +168,8 @@ class _UserVocabularyScreenState extends State<UserVocabularyScreen> with Single
           const SizedBox(height: 16),
         ],
         if (others.isNotEmpty) ...[
-          _buildSectionHeader('Other Words', Icons.text_fields, Colors.orange, others.length),
+          _buildSectionHeader(
+              'Other Words', Icons.text_fields, Colors.orange, others.length),
           ...others.map((item) => _buildUserVocabularyCard(item)),
         ],
       ],
@@ -192,15 +197,22 @@ class _UserVocabularyScreenState extends State<UserVocabularyScreen> with Single
     }
 
     // Group by type
-    final verbs = _legacyItems.where((item) => item.type == VocabularyItem.typeVerb).toList();
-    final nouns = _legacyItems.where((item) => item.type == VocabularyItem.typeNoun).toList();
-    final adverbs = _legacyItems.where((item) => item.type == VocabularyItem.typeAdverb).toList();
+    final verbs = _legacyItems
+        .where((item) => item.type == VocabularyItem.typeVerb)
+        .toList();
+    final nouns = _legacyItems
+        .where((item) => item.type == VocabularyItem.typeNoun)
+        .toList();
+    final adverbs = _legacyItems
+        .where((item) => item.type == VocabularyItem.typeAdverb)
+        .toList();
 
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
         if (verbs.isNotEmpty) ...[
-          _buildSectionHeader('Verbs', Icons.run_circle, Colors.blue, verbs.length),
+          _buildSectionHeader(
+              'Verbs', Icons.run_circle, Colors.blue, verbs.length),
           ...verbs.map((item) => _buildLegacyVocabularyCard(item)),
           const SizedBox(height: 16),
         ],
@@ -210,14 +222,16 @@ class _UserVocabularyScreenState extends State<UserVocabularyScreen> with Single
           const SizedBox(height: 16),
         ],
         if (adverbs.isNotEmpty) ...[
-          _buildSectionHeader('Adverbs & Others', Icons.text_fields, Colors.purple, adverbs.length),
+          _buildSectionHeader('Adverbs & Others', Icons.text_fields,
+              Colors.purple, adverbs.length),
           ...adverbs.map((item) => _buildLegacyVocabularyCard(item)),
         ],
       ],
     );
   }
 
-  Widget _buildSectionHeader(String title, IconData icon, Color color, int count) {
+  Widget _buildSectionHeader(
+      String title, IconData icon, Color color, int count) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
@@ -238,81 +252,94 @@ class _UserVocabularyScreenState extends State<UserVocabularyScreen> with Single
   }
 
   Widget _buildUserVocabularyCard(UserVocabularyItem item) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    item.word,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
+    return InkWell(
+      onTap: () {
+        final vocabularyItem = VocabularyItem.fromUserVocabularyItem(item);
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => VocabularyDetailScreen(item: vocabularyItem),
+          ),
+        );
+      },
+      child: Card(
+        margin: const EdgeInsets.only(bottom: 8),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      item.word,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: _getTypeColor(item.wordType).withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    item.wordType,
-                    style: TextStyle(
-                      color: _getTypeColor(item.wordType),
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color:
+                          _getTypeColor(item.wordType).withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
                     ),
+                    child: Text(
+                      item.wordType,
+                      style: TextStyle(
+                        color: _getTypeColor(item.wordType),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              if (item.translations.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Text(
+                  item.translations.join(', '),
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.grey[700],
                   ),
                 ),
               ],
-            ),
-            if (item.translations.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              Text(
-                item.translations.join(', '),
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Colors.grey[700],
-                ),
-              ),
-            ],
-            if (item.forms.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              Text(
-                'Forms: ${item.forms.join(', ')}',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey[600],
-                  fontStyle: FontStyle.italic,
-                ),
-              ),
-            ],
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Icon(Icons.visibility, size: 16, color: Colors.grey[600]),
-                const SizedBox(width: 4),
+              if (item.forms.isNotEmpty) ...[
+                const SizedBox(height: 8),
                 Text(
-                  'Seen ${item.timesSeen} times',
-                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                ),
-                const SizedBox(width: 16),
-                Icon(Icons.trending_up, size: 16, color: Colors.grey[600]),
-                const SizedBox(width: 4),
-                Text(
-                  'Mastery: ${item.masteryLevel}%',
-                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                  'Forms: ${item.forms.join(', ')}',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey[600],
+                    fontStyle: FontStyle.italic,
+                  ),
                 ),
               ],
-            ),
-          ],
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Icon(Icons.visibility, size: 16, color: Colors.grey[600]),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Seen ${item.timesSeen} times',
+                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                  ),
+                  const SizedBox(width: 16),
+                  Icon(Icons.trending_up, size: 16, color: Colors.grey[600]),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Mastery: ${item.masteryLevel}%',
+                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -338,9 +365,11 @@ class _UserVocabularyScreenState extends State<UserVocabularyScreen> with Single
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: _getLegacyTypeColor(item.type).withValues(alpha: 0.1),
+                    color:
+                        _getLegacyTypeColor(item.type).withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
@@ -420,7 +449,7 @@ class _UserVocabularyScreenState extends State<UserVocabularyScreen> with Single
   String _formatDate(DateTime date) {
     final now = DateTime.now();
     final difference = now.difference(date);
-    
+
     if (difference.inDays > 0) {
       return '${difference.inDays}d ago';
     } else if (difference.inHours > 0) {
@@ -429,4 +458,4 @@ class _UserVocabularyScreenState extends State<UserVocabularyScreen> with Single
       return '${difference.inMinutes}m ago';
     }
   }
-} 
+}

@@ -44,7 +44,7 @@ class Prompts {
             "items": {
               "type": "string"
             },
-            "description": "List of different forms (e.g., conjugations, plural forms). Each form is a string. Incase of a verb, include the infinitive, present, past, and future forms as well as the pronouns separated by commas."
+            "description": "For verbs, include all conjugations (infinitive, present, past, future) with their respective pronouns (e.g., 'io, parlo (Present)'). For other word types, include plural forms, gendered forms, or other relevant variations. Each form is a string."
           },
           "translations": {
             "type": "array",
@@ -100,8 +100,7 @@ $jsonOutputSchema
 # RULES FOR GENERATION
 - For 'corrections', if there are no errors, the array must contain exactly one string: "None.". Otherwise, list each correction as a separate string.
 - For 'vocabulary_breakdown', ensure each 'word_type' is specific (e.g., "Verb", "Noun", "Adjective").
-- For the verbs forms, if it has a pronoun, separated it by commas.
-- For 'forms' within 'vocabulary_breakdown', list each form as a distinct string.
+- For 'forms' within 'vocabulary_breakdown', **it is crucial to include all relevant forms and conjugations**. For verbs, list the infinitive, and conjugated forms for present, past (e.g., passato remoto), and future tenses, each with its corresponding pronoun (e.g., 'io, parlo', 'tu, parli'). For nouns, include plural forms. Each form must be a distinct string.
 - Ensure all relevant pronouns are included before verbs in the corrected {target_language} sentence.
 - Ensure articles are included before nouns in the corrected {target_language} sentence, unless standard usage in {target_language} dictates otherwise.
 - The 'additional_context' field is optional. If no additional context is needed, omit this field or set its value to `null`.
@@ -519,10 +518,11 @@ Generate a **single JSON object** that strictly adheres to the following schema.
 
   static String getPrompt(String type, {Map<String, String>? variables}) {
     debugPrint('Getting prompt for type: $type');
-    
+
     // Map legacy prompt types to structured versions
-    final mappedType = _legacyToStructuredMap[type.toLowerCase()] ?? type.toLowerCase();
-    
+    final mappedType =
+        _legacyToStructuredMap[type.toLowerCase()] ?? type.toLowerCase();
+
     // Get the prompt template
     final prompt = _promptMap[mappedType];
     if (prompt == null) {
@@ -536,7 +536,7 @@ Generate a **single JSON object** that strictly adheres to the following schema.
   // Helper method to format a prompt with variables
   static String _formatPrompt(String prompt, Map<String, String>? variables) {
     if (variables == null) return prompt;
-    
+
     // Replace variables in the prompt with their values
     String formattedPrompt = prompt;
     variables.forEach((key, value) {
@@ -566,4 +566,4 @@ Generate a **single JSON object** that strictly adheres to the following schema.
     'structured_conversation': structuredConversationPrompt,
     'structured_writing': structuredWritingPrompt,
   };
-} 
+}

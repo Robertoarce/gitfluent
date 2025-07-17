@@ -36,10 +36,9 @@ class VocabularyDetailScreen extends StatelessWidget {
               _buildSection('Definition', item.definition!),
               const SizedBox(height: 24),
             ],
-            if (item.type == 'verb' && item.conjugations != null)
+            if (item.type == VocabularyItem.typeVerb &&
+                item.conjugations != null)
               _buildConjugationsSection(item.conjugations!),
-            const SizedBox(height: 24),
-            _buildStatsSection(),
           ],
         ),
       ),
@@ -94,6 +93,8 @@ class VocabularyDetailScreen extends StatelessWidget {
         return Colors.green.shade700;
       case VocabularyItem.typeAdverb:
         return Colors.purple.shade700;
+      case VocabularyItem.typeOther: // Added for new type
+        return Colors.orange.shade700; // Choose an appropriate color
       default:
         return Colors.grey.shade700;
     }
@@ -125,6 +126,13 @@ class VocabularyDetailScreen extends StatelessWidget {
   }
 
   Widget _buildConjugationsSection(Map<String, dynamic> conjugations) {
+    final List<dynamic>? forms = conjugations['forms'];
+
+    if (forms == null || forms.isEmpty) {
+      return const SizedBox
+          .shrink(); // Return empty widget if no forms are present
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -141,48 +149,13 @@ class VocabularyDetailScreen extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: conjugations.entries.map((entry) {
-                final tense = entry.key;
-                final conjugation = entry.value;
-                
+              // Iterate directly over the forms list
+              children: forms.map((formEntry) {
                 return Padding(
-                  padding: const EdgeInsets.only(bottom: 16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        tense,
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: _getTypeColor(),
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      if (conjugation is String)
-                        Text(
-                          conjugation,
-                          style: const TextStyle(fontSize: 15),
-                        )
-                      else if (conjugation is Map)
-                        ...conjugation.entries.map((conj) => Padding(
-                          padding: const EdgeInsets.only(
-                            left: 16,
-                            top: 4,
-                          ),
-                          child: Row(
-                            children: [
-                              Text(
-                                '${conj.key}: ',
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                              Text(conj.value.toString()),
-                            ],
-                          ),
-                        )),
-                    ],
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Text(
+                    formEntry.toString(), // Display the form entry as a string
+                    style: const TextStyle(fontSize: 16),
                   ),
                 );
               }).toList(),
@@ -192,60 +165,4 @@ class VocabularyDetailScreen extends StatelessWidget {
       ],
     );
   }
-
-  Widget _buildStatsSection() {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Statistics',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 8),
-            _buildStatRow('Added', item.dateAdded),
-            if (item.lastAdded != null)
-              _buildStatRow('Last Added', item.lastAdded!),
-            _buildStatRow('Times Added', item.addedCount.toString()),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStatRow(String label, dynamic value) {
-    String displayValue = value is DateTime 
-        ? _formatDate(value)
-        : value.toString();
-        
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            label,
-            style: const TextStyle(
-              color: Colors.grey,
-            ),
-          ),
-          Text(
-            displayValue,
-            style: const TextStyle(
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  String _formatDate(DateTime date) {
-    return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
-  }
-} 
+}

@@ -16,6 +16,7 @@ class VocabularyItem {
   static const String typeVerb = 'verb';
   static const String typeNoun = 'noun';
   static const String typeAdverb = 'adverb';
+  static const String typeOther = 'other'; // Added new type
 
   VocabularyItem({
     required this.word,
@@ -27,7 +28,10 @@ class VocabularyItem {
     this.addedCount = 0,
     this.lastAdded,
     this.lastConversationId,
-  })  : assert(type == typeVerb || type == typeNoun || type == typeAdverb),
+  })  : assert(type == typeVerb ||
+            type == typeNoun ||
+            type == typeAdverb ||
+            type == typeOther), // Updated assertion
         dateAdded = dateAdded ?? DateTime.now();
 
   factory VocabularyItem.fromUserVocabularyItem(UserVocabularyItem userItem) {
@@ -35,16 +39,26 @@ class VocabularyItem {
     // This assumes that wordType values in UserVocabularyItem (e.g., 'verb', 'noun')
     // are compatible with VocabularyItem.typeVerb, VocabularyItem.typeNoun, etc.
     // or a direct string match is intended.
-    String itemType = userItem.wordType;
+    String itemType =
+        userItem.wordType.toLowerCase(); // Ensure lowercase for comparison
     // Basic validation or mapping if necessary, for example:
-    if (userItem.wordType == 'verb')
+    if (itemType == 'verb') {
       itemType = VocabularyItem.typeVerb;
-    else if (userItem.wordType == 'noun')
+    } else if (itemType == 'noun') {
       itemType = VocabularyItem.typeNoun;
-    else if (userItem.wordType == 'adverb')
+    } else if (itemType == 'adverb') {
       itemType = VocabularyItem.typeAdverb;
-    // Add more mappings or a fallback if UserVocabularyItem.wordType has other values
-    // that need to be represented in VocabularyItem
+    } else {
+      itemType = VocabularyItem.typeOther; // Default for unrecognized types
+    }
+
+    // Map forms to conjugations only if it's a verb
+    Map<String, dynamic>? conjugationsMap;
+    if (itemType == VocabularyItem.typeVerb && userItem.forms.isNotEmpty) {
+      conjugationsMap = {
+        'forms': userItem.forms
+      }; // Store forms under a 'forms' key
+    }
 
     return VocabularyItem(
       word: userItem.word,
@@ -53,9 +67,10 @@ class VocabularyItem {
           ? userItem.translations.first
           : '', // Takes the first translation
       definition: userItem.exampleSentences.isNotEmpty
-          ? userItem.exampleSentences.first
-          : null, // Uses first example sentence as definition
-      // conjugations:  // UserVocabularyItem has 'forms' (List<String>), VocabularyItem has 'conjugations' (Map<String, dynamic>). Needs mapping logic if required.
+          ? userItem.exampleSentences
+              .first // Use first example sentence as definition for all types
+          : null,
+      conjugations: conjugationsMap, // Assign the mapped conjugations
       dateAdded: userItem.firstLearned,
       addedCount: userItem.timesSeen, // Mapping timesSeen to addedCount
       lastAdded: userItem.lastSeen, // Mapping lastSeen to lastAdded

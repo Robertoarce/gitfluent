@@ -13,28 +13,30 @@ import 'services/supabase_database_service.dart';
 import 'models/user.dart' as app_user;
 import 'screens/chat_screen.dart';
 import 'screens/auth_screen.dart';
-import 'screens/user_vocabulary_screen.dart';
 import 'config/supabase_config.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   try {
     await dotenv.load(fileName: ".env");
     debugPrint('Environment loaded successfully');
-    
+
     // Check if required environment variables are present
     final url = dotenv.env['SUPABASE_URL'];
     final anonKey = dotenv.env['SUPABASE_ANON_KEY'];
     final serviceKey = dotenv.env['SUPABASE_SERVICE_ROLE_KEY'];
-    
+
     debugPrint('Environment check:');
     debugPrint(' - SUPABASE_URL: ${url != null ? 'present' : 'MISSING!'}');
-    debugPrint(' - SUPABASE_ANON_KEY: ${anonKey != null ? 'present' : 'MISSING!'}');
-    debugPrint(' - SUPABASE_SERVICE_ROLE_KEY: ${serviceKey != null ? 'present' : 'MISSING!'}');
-    
+    debugPrint(
+        ' - SUPABASE_ANON_KEY: ${anonKey != null ? 'present' : 'MISSING!'}');
+    debugPrint(
+        ' - SUPABASE_SERVICE_ROLE_KEY: ${serviceKey != null ? 'present' : 'MISSING!'}');
+
     if (url == null || anonKey == null || serviceKey == null) {
-      debugPrint('WARNING: One or more required environment variables are missing!');
+      debugPrint(
+          'WARNING: One or more required environment variables are missing!');
       debugPrint('This will cause issues with Supabase functionality.');
     }
   } catch (e) {
@@ -82,7 +84,7 @@ class MyApp extends StatelessWidget {
             return languageSettings;
           },
         ),
-        
+
         // User system services
         Provider<SupabaseAuthService>(
           create: (_) {
@@ -94,18 +96,20 @@ class MyApp extends StatelessWidget {
         Provider<SupabaseDatabaseService>(
           create: (_) => SupabaseDatabaseService(),
         ),
-        ChangeNotifierProxyProvider2<SupabaseAuthService, SupabaseDatabaseService, UserService>(
+        ChangeNotifierProxyProvider2<SupabaseAuthService,
+            SupabaseDatabaseService, UserService>(
           create: (context) => UserService(
             authService: context.read<SupabaseAuthService>(),
             databaseService: context.read<SupabaseDatabaseService>(),
           ),
           update: (context, authService, databaseService, previous) =>
-              previous ?? UserService(
+              previous ??
+              UserService(
                 authService: authService,
                 databaseService: databaseService,
               ),
         ),
-        
+
         // Vocabulary service that depends on user service
         ChangeNotifierProxyProvider<UserService, VocabularyService>(
           create: (context) {
@@ -124,11 +128,13 @@ class MyApp extends StatelessWidget {
             }
           },
         ),
-        
+
         // Chat service depends on settings service
         ChangeNotifierProxyProvider<SettingsService, ChatService>(
-          create: (context) => ChatService(settings: context.read<SettingsService>()),
-          update: (context, settings, previous) => ChatService(settings: settings),
+          create: (context) =>
+              ChatService(settings: context.read<SettingsService>()),
+          update: (context, settings, previous) =>
+              ChatService(settings: settings),
         ),
       ],
       child: Consumer<UserService>(
@@ -164,7 +170,8 @@ class MyApp extends StatelessWidget {
   }
 
   // Helper method to initialize settings service
-  static Future<void> _initializeSettingsService(SettingsService settingsService) async {
+  static Future<void> _initializeSettingsService(
+      SettingsService settingsService) async {
     try {
       await settingsService.init();
       debugPrint('SettingsService initialized successfully');
@@ -174,7 +181,8 @@ class MyApp extends StatelessWidget {
   }
 
   // Helper method to initialize language settings
-  static Future<void> _initializeLanguageSettings(LanguageSettings languageSettings) async {
+  static Future<void> _initializeLanguageSettings(
+      LanguageSettings languageSettings) async {
     try {
       await languageSettings.init();
       debugPrint('LanguageSettings initialized successfully');
@@ -187,6 +195,7 @@ class MyApp extends StatelessWidget {
     // Show loading while checking auth state
     if (userService.isLoading) {
       return const Scaffold(
+        backgroundColor: Colors.grey, // Set background to grey
         body: Center(
           child: CircularProgressIndicator(),
         ),
@@ -195,7 +204,7 @@ class MyApp extends StatelessWidget {
 
     // Show auth screen if not logged in
     if (!userService.isLoggedIn) {
-      return const AuthScreen();
+      return const AuthScreen(); // AuthScreen already has a white background
     }
 
     // Show main app if logged in
@@ -227,11 +236,13 @@ class _AppHomeState extends State<AppHome> {
     // Load user vocabulary from Supabase if logged in
     final userService = context.read<UserService>();
     if (userService.isLoggedIn) {
-      debugPrint('Loading vocabulary for user: ${userService.currentUser?.email}');
-      
+      debugPrint(
+          'Loading vocabulary for user: ${userService.currentUser?.email}');
+
       // Check premium status from database to ensure it's up to date
       if (userService.currentUser != null) {
-        final isPremium = await context.read<SupabaseDatabaseService>()
+        final isPremium = await context
+            .read<SupabaseDatabaseService>()
             .isPremiumUser(userService.currentUser!.id);
         if (isPremium != userService.isPremium) {
           debugPrint('Updating premium status from database: $isPremium');
@@ -239,7 +250,7 @@ class _AppHomeState extends State<AppHome> {
           await userService.upgradeToPremium();
         }
       }
-      
+
       // Load user vocabulary
       try {
         final items = await vocabularyService.getUserVocabulary();
@@ -256,7 +267,7 @@ class _AppHomeState extends State<AppHome> {
       body: Consumer<UserService>(
         builder: (context, userService, child) {
           final user = userService.currentUser;
-          
+
           if (user == null) {
             return const AuthScreen();
           }
@@ -316,4 +327,4 @@ class _AppHomeState extends State<AppHome> {
       ),
     );
   }
-} 
+}

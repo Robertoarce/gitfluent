@@ -38,7 +38,8 @@ class UserVocabularyItem {
   @JsonKey(name: 'example_sentences')
   final List<String> exampleSentences;
   @JsonKey(name: 'source_message_id')
-  final String? sourceMessageId; // Reference to the chat message where it was learned
+  final String?
+      sourceMessageId; // Reference to the chat message where it was learned
 
   UserVocabularyItem({
     required this.id,
@@ -62,12 +63,14 @@ class UserVocabularyItem {
     this.sourceMessageId,
   });
 
-  factory UserVocabularyItem.fromJson(Map<String, dynamic> json) => _$UserVocabularyItemFromJson(json);
+  factory UserVocabularyItem.fromJson(Map<String, dynamic> json) =>
+      _$UserVocabularyItemFromJson(json);
   Map<String, dynamic> toJson() => _$UserVocabularyItemToJson(this);
 
   // Legacy methods for backward compatibility
   Map<String, dynamic> toMap() => toJson();
-  factory UserVocabularyItem.fromMap(Map<String, dynamic> map) => UserVocabularyItem.fromJson(map);
+  factory UserVocabularyItem.fromMap(Map<String, dynamic> map) =>
+      UserVocabularyItem.fromJson(map);
 
   // Supabase-specific methods
   Map<String, dynamic> toSupabase() {
@@ -81,139 +84,225 @@ class UserVocabularyItem {
   factory UserVocabularyItem.fromSupabase(Map<String, dynamic> data) {
     try {
       // Create a copy of the data to avoid modifying the original
-      final Map<String, dynamic> processedData = Map<String, dynamic>.from(data);
-      
+      final Map<String, dynamic> processedData =
+          Map<String, dynamic>.from(data);
+
       // Debug logs for tracing
-      debugPrint('[UserVocabularyItem.fromSupabase] Processing item: ${processedData['word']}');
-      
+      debugPrint(
+          '[UserVocabularyItem.fromSupabase] Processing item: ${processedData['word']}');
+      debugPrint(
+          '[UserVocabularyItem.fromSupabase] Raw data for ${processedData['word']}: $data');
+
       // Ensure translations is a List<String>
       if (processedData['translations'] != null) {
         if (processedData['translations'] is List) {
-          final translationsList = processedData['translations'] as List;
-          processedData['translations'] = translationsList.map((e) => e.toString()).toList();
+          processedData['translations'] =
+              (processedData['translations'] as List)
+                  .map((e) => e.toString())
+                  .toList();
         } else if (processedData['translations'] is String) {
-          // Handle string representation of list
-          final translationsString = processedData['translations'] as String;
-          if (translationsString.startsWith('[') && translationsString.endsWith(']')) {
-            // Try to parse as JSON
-            try {
-              final List parsed = jsonDecode(translationsString);
-              processedData['translations'] = parsed.map((e) => e.toString()).toList();
-            } catch (_) {
-              // Fallback if not valid JSON
-              processedData['translations'] = [translationsString];
-            }
-          } else {
-            processedData['translations'] = [translationsString];
+          try {
+            processedData['translations'] =
+                List<String>.from(jsonDecode(processedData['translations']));
+          } catch (_) {
+            processedData['translations'] = [
+              processedData['translations'].toString()
+            ];
           }
         } else {
           processedData['translations'] = [];
         }
+      } else {
+        processedData['translations'] = [];
       }
-      
+
       // Ensure forms is a List<String>
       if (processedData['forms'] != null) {
         if (processedData['forms'] is List) {
-          final formsList = processedData['forms'] as List;
-          processedData['forms'] = formsList.map((e) => e.toString()).toList();
+          processedData['forms'] = (processedData['forms'] as List)
+              .map((e) => e.toString())
+              .toList();
         } else if (processedData['forms'] is String) {
-          // Handle string representation of list
-          final formsString = processedData['forms'] as String;
-          if (formsString.startsWith('[') && formsString.endsWith(']')) {
-            // Try to parse as JSON
-            try {
-              final List parsed = jsonDecode(formsString);
-              processedData['forms'] = parsed.map((e) => e.toString()).toList();
-            } catch (_) {
-              // Fallback if not valid JSON
-              processedData['forms'] = [formsString];
-            }
-          } else {
-            processedData['forms'] = [formsString];
+          try {
+            processedData['forms'] =
+                List<String>.from(jsonDecode(processedData['forms']));
+          } catch (_) {
+            processedData['forms'] = [processedData['forms'].toString()];
           }
         } else {
           processedData['forms'] = [];
         }
+      } else {
+        processedData['forms'] = [];
       }
-      
+
       // Handle DateTime fields more robustly
-      if (processedData['last_seen'] != null) {
+      // For last_seen
+      dynamic lastSeenValue = processedData['last_seen'];
+      if (lastSeenValue != null) {
         try {
-          if (processedData['last_seen'] is String) {
-            processedData['last_seen'] = DateTime.parse(processedData['last_seen']);
-          } else if (processedData['last_seen'] is DateTime) {
-            // Keep as is - it's already a DateTime
-          } else {
-            // Convert to string then parse to ensure compatibility
-            processedData['last_seen'] = DateTime.parse(processedData['last_seen'].toString());
+          if (lastSeenValue is String) {
+            processedData['last_seen'] = DateTime.parse(lastSeenValue);
+          } else if (lastSeenValue is! DateTime) {
+            processedData['last_seen'] =
+                DateTime.parse(lastSeenValue.toString());
           }
         } catch (e) {
-          debugPrint('[UserVocabularyItem.fromSupabase] Error parsing last_seen: $e');
-          processedData['last_seen'] = DateTime.now();
+          debugPrint(
+              '[UserVocabularyItem.fromSupabase] Error parsing last_seen ($lastSeenValue): $e');
+          processedData['last_seen'] =
+              DateTime.now(); // Fallback to current time
         }
       } else {
-        processedData['last_seen'] = DateTime.now();
+        processedData['last_seen'] = DateTime.now(); // Default if null
       }
-      
-      if (processedData['first_learned'] != null) {
+      debugPrint(
+          '[UserVocabularyItem.fromSupabase] Processed last_seen: ${processedData['last_seen']}');
+
+      // For first_learned
+      dynamic firstLearnedValue = processedData['first_learned'];
+      if (firstLearnedValue != null) {
         try {
-          if (processedData['first_learned'] is String) {
-            processedData['first_learned'] = DateTime.parse(processedData['first_learned']);
-          } else if (processedData['first_learned'] is DateTime) {
-            // Keep as is - it's already a DateTime
-          } else {
-            // Convert to string then parse to ensure compatibility
-            processedData['first_learned'] = DateTime.parse(processedData['first_learned'].toString());
+          if (firstLearnedValue is String) {
+            processedData['first_learned'] = DateTime.parse(firstLearnedValue);
+          } else if (firstLearnedValue is! DateTime) {
+            processedData['first_learned'] =
+                DateTime.parse(firstLearnedValue.toString());
           }
         } catch (e) {
-          debugPrint('[UserVocabularyItem.fromSupabase] Error parsing first_learned: $e');
-          processedData['first_learned'] = DateTime.now();
+          debugPrint(
+              '[UserVocabularyItem.fromSupabase] Error parsing first_learned ($firstLearnedValue): $e');
+          processedData['first_learned'] =
+              DateTime.now(); // Fallback to current time
         }
       } else {
-        processedData['first_learned'] = DateTime.now();
+        processedData['first_learned'] = DateTime.now(); // Default if null
       }
-      
-      if (processedData['next_review'] != null) {
+      debugPrint(
+          '[UserVocabularyItem.fromSupabase] Processed first_learned: ${processedData['first_learned']}');
+
+      // For next_review
+      dynamic nextReviewValue = processedData['next_review'];
+      if (nextReviewValue != null) {
         try {
-          if (processedData['next_review'] is String) {
-            processedData['next_review'] = DateTime.parse(processedData['next_review']);
-          } else if (processedData['next_review'] is DateTime) {
-            // Keep as is - it's already a DateTime
-          } else {
-            // Convert to string then parse to ensure compatibility
-            processedData['next_review'] = DateTime.parse(processedData['next_review'].toString());
+          if (nextReviewValue is String) {
+            processedData['next_review'] = DateTime.parse(nextReviewValue);
+          } else if (nextReviewValue is! DateTime) {
+            processedData['next_review'] =
+                DateTime.parse(nextReviewValue.toString());
           }
         } catch (e) {
-          debugPrint('[UserVocabularyItem.fromSupabase] Error parsing next_review: $e');
-          // Set default next review date to tomorrow
-          processedData['next_review'] = DateTime.now().add(const Duration(days: 1));
+          debugPrint(
+              '[UserVocabularyItem.fromSupabase] Error parsing next_review ($nextReviewValue): $e');
+          processedData['next_review'] = DateTime.now()
+              .add(const Duration(days: 1)); // Fallback to tomorrow
         }
+      } else {
+        processedData['next_review'] = null; // nextReview can be null
       }
-      
-      // Ensure other required fields are present
+      debugPrint(
+          '[UserVocabularyItem.fromSupabase] Processed next_review: ${processedData['next_review']}');
+
+      // Ensure other required fields are present and correctly typed
       if (!processedData.containsKey('id') || processedData['id'] == null) {
         processedData['id'] = const Uuid().v4();
       }
-      
-      if (!processedData.containsKey('word_type') || processedData['word_type'] == null) {
+      if (!processedData.containsKey('user_id') ||
+          processedData['user_id'] == null) {
+        processedData['user_id'] = 'unknown_user';
+      }
+      if (!processedData.containsKey('word') || processedData['word'] == null) {
+        processedData['word'] = 'unknown_word';
+      }
+      if (!processedData.containsKey('base_form') ||
+          processedData['base_form'] == null) {
+        processedData['base_form'] = processedData['word'];
+      }
+      if (!processedData.containsKey('word_type') ||
+          processedData['word_type'] == null) {
         processedData['word_type'] = 'unknown';
       }
-      
-      return UserVocabularyItem.fromJson(processedData);
+      if (!processedData.containsKey('language') ||
+          processedData['language'] == null) {
+        processedData['language'] = 'en';
+      }
+      if (!processedData.containsKey('translations') ||
+          processedData['translations'] == null) {
+        processedData['translations'] = <String>[];
+      }
+      if (!processedData.containsKey('forms') ||
+          processedData['forms'] == null) {
+        processedData['forms'] = <String>[];
+      }
+      if (!processedData.containsKey('difficulty_level') ||
+          processedData['difficulty_level'] == null) {
+        processedData['difficulty_level'] = 1; // Default value
+      }
+      if (!processedData.containsKey('mastery_level') ||
+          processedData['mastery_level'] == null) {
+        processedData['mastery_level'] = 0; // Default value
+      }
+      if (!processedData.containsKey('times_seen') ||
+          processedData['times_seen'] == null) {
+        processedData['times_seen'] = 0; // Default value
+      }
+      if (!processedData.containsKey('times_correct') ||
+          processedData['times_correct'] == null) {
+        processedData['times_correct'] = 0; // Default value
+      }
+      if (!processedData.containsKey('is_favorite') ||
+          processedData['is_favorite'] == null) {
+        processedData['is_favorite'] = false; // Default value
+      }
+      if (!processedData.containsKey('tags') || processedData['tags'] == null) {
+        processedData['tags'] = <String>[];
+      }
+      if (!processedData.containsKey('example_sentences') ||
+          processedData['example_sentences'] == null) {
+        processedData['example_sentences'] = <String>[];
+      }
+
+      final userVocabularyItem = UserVocabularyItem.fromJson(
+          processedData); // Use the generated fromJson
+      debugPrint(
+          '[UserVocabularyItem.fromSupabase] Successfully parsed UserVocabularyItem for ${userVocabularyItem.word}');
+      return userVocabularyItem;
     } catch (e) {
-      debugPrint('[UserVocabularyItem.fromSupabase] Critical error processing item: $e');
+      debugPrint(
+          '[UserVocabularyItem.fromSupabase] Critical error processing item: $e');
       debugPrint('[UserVocabularyItem.fromSupabase] Raw data: $data');
-      
-      // Return a minimal valid object
+
+      // Return a minimal valid object to prevent crash, log missing data
+      final String id = data['id']?.toString() ?? const Uuid().v4();
+      final String userId = data['user_id']?.toString() ?? 'unknown_user';
+      final String word = data['word']?.toString() ?? 'unknown_word';
+      final String baseForm = data['base_form']?.toString() ?? word;
+      final String wordType = data['word_type']?.toString() ?? 'unknown';
+      final String language = data['language']?.toString() ?? 'en';
+
+      debugPrint(
+          '[UserVocabularyItem.fromSupabase] Returning fallback UserVocabularyItem due to error. Word: $word');
+
       return UserVocabularyItem(
-        id: const Uuid().v4(),
-        userId: data['user_id']?.toString() ?? 'unknown',
-        word: data['word']?.toString() ?? 'unknown',
-        baseForm: data['base_form']?.toString() ?? data['word']?.toString() ?? 'unknown',
-        wordType: data['word_type']?.toString() ?? 'unknown',
-        language: data['language']?.toString() ?? 'en',
+        id: id,
+        userId: userId,
+        word: word,
+        baseForm: baseForm,
+        wordType: wordType,
+        language: language,
+        translations: (data['translations'] is List)
+            ? List<String>.from(data['translations'])
+            : [],
+        forms: (data['forms'] is List) ? List<String>.from(data['forms']) : [],
         lastSeen: DateTime.now(),
         firstLearned: DateTime.now(),
+        nextReview: null, // Default to null on error
+        isFavorite: data['is_favorite'] as bool? ?? false,
+        tags: (data['tags'] is List) ? List<String>.from(data['tags']) : [],
+        exampleSentences: (data['example_sentences'] is List)
+            ? List<String>.from(data['example_sentences'])
+            : [],
+        sourceMessageId: data['source_message_id']?.toString(),
       );
     }
   }
@@ -223,13 +312,16 @@ class UserVocabularyItem {
 
   factory UserVocabularyItem.fromFirestore(Map<String, dynamic> data) {
     // Handle Firebase Timestamp objects
-    if (data['last_seen'] != null && data['last_seen'].runtimeType.toString().contains('Timestamp')) {
+    if (data['last_seen'] != null &&
+        data['last_seen'].runtimeType.toString().contains('Timestamp')) {
       data['last_seen'] = (data['last_seen'] as dynamic).toDate();
     }
-    if (data['first_learned'] != null && data['first_learned'].runtimeType.toString().contains('Timestamp')) {
+    if (data['first_learned'] != null &&
+        data['first_learned'].runtimeType.toString().contains('Timestamp')) {
       data['first_learned'] = (data['first_learned'] as dynamic).toDate();
     }
-    if (data['next_review'] != null && data['next_review'].runtimeType.toString().contains('Timestamp')) {
+    if (data['next_review'] != null &&
+        data['next_review'].runtimeType.toString().contains('Timestamp')) {
       data['next_review'] = (data['next_review'] as dynamic).toDate();
     }
     return UserVocabularyItem.fromJson(data);
@@ -283,7 +375,8 @@ class UserVocabularyItem {
   double get accuracy => timesSeen > 0 ? (timesCorrect / timesSeen) * 100 : 0;
 
   // Check if word needs review based on spaced repetition
-  bool get needsReview => nextReview != null && DateTime.now().isAfter(nextReview!);
+  bool get needsReview =>
+      nextReview != null && DateTime.now().isAfter(nextReview!);
 
   // Calculate next review date based on mastery level
   DateTime calculateNextReview() {
@@ -291,9 +384,9 @@ class UserVocabularyItem {
     final days = switch (masteryLevel) {
       >= 90 => 30, // Mastered - review monthly
       >= 70 => 14, // Good - review bi-weekly
-      >= 50 => 7,  // Fair - review weekly
-      >= 30 => 3,  // Poor - review every 3 days
-      _ => 1,      // New/Very poor - review daily
+      >= 50 => 7, // Fair - review weekly
+      >= 30 => 3, // Poor - review every 3 days
+      _ => 1, // New/Very poor - review daily
     };
     return now.add(Duration(days: days));
   }
@@ -303,12 +396,15 @@ class UserVocabularyItem {
     final newTimesSeen = timesSeen + 1;
     final newTimesCorrect = wasCorrect ? timesCorrect + 1 : timesCorrect;
     final newAccuracy = (newTimesCorrect / newTimesSeen) * 100;
-    
+
     // Calculate new mastery level (weighted average of current mastery and recent performance)
-    final performanceWeight = 0.3; // How much recent performance affects mastery
+    const performanceWeight =
+        0.3; // How much recent performance affects mastery
     final currentWeight = 1 - performanceWeight;
-    final newMasteryLevel = ((masteryLevel * currentWeight) + (newAccuracy * performanceWeight)).round();
-    
+    final newMasteryLevel =
+        ((masteryLevel * currentWeight) + (newAccuracy * performanceWeight))
+            .round();
+
     return copyWith(
       timesSeen: newTimesSeen,
       timesCorrect: newTimesCorrect,
@@ -354,12 +450,14 @@ class UserVocabularyStats {
     this.wordsByType = const {},
   });
 
-  factory UserVocabularyStats.fromJson(Map<String, dynamic> json) => _$UserVocabularyStatsFromJson(json);
+  factory UserVocabularyStats.fromJson(Map<String, dynamic> json) =>
+      _$UserVocabularyStatsFromJson(json);
   Map<String, dynamic> toJson() => _$UserVocabularyStatsToJson(this);
 
   // Legacy methods for backward compatibility
   Map<String, dynamic> toMap() => toJson();
-  factory UserVocabularyStats.fromMap(Map<String, dynamic> map) => UserVocabularyStats.fromJson(map);
+  factory UserVocabularyStats.fromMap(Map<String, dynamic> map) =>
+      UserVocabularyStats.fromJson(map);
 
   // Supabase-specific methods
   Map<String, dynamic> toSupabase() {
@@ -371,19 +469,21 @@ class UserVocabularyStats {
   factory UserVocabularyStats.fromSupabase(Map<String, dynamic> data) {
     // Create a copy of the data to avoid modifying the original
     final Map<String, dynamic> processedData = Map<String, dynamic>.from(data);
-    
+
     // Handle DateTime fields more robustly
     if (processedData['last_updated'] != null) {
       if (processedData['last_updated'] is String) {
-        processedData['last_updated'] = DateTime.parse(processedData['last_updated']);
+        processedData['last_updated'] =
+            DateTime.parse(processedData['last_updated']);
       } else if (processedData['last_updated'] is DateTime) {
         // Keep as is - it's already a DateTime
       } else {
         // Convert to string then parse to ensure compatibility
-        processedData['last_updated'] = DateTime.parse(processedData['last_updated'].toString());
+        processedData['last_updated'] =
+            DateTime.parse(processedData['last_updated'].toString());
       }
     }
-    
+
     return UserVocabularyStats.fromJson(processedData);
   }
 
@@ -391,7 +491,8 @@ class UserVocabularyStats {
   Map<String, dynamic> toFirestore() => toJson();
 
   factory UserVocabularyStats.fromFirestore(Map<String, dynamic> data) {
-    if (data['last_updated'] != null && data['last_updated'].runtimeType.toString().contains('Timestamp')) {
+    if (data['last_updated'] != null &&
+        data['last_updated'].runtimeType.toString().contains('Timestamp')) {
       data['last_updated'] = (data['last_updated'] as dynamic).toDate();
     }
     return UserVocabularyStats.fromJson(data);
@@ -424,10 +525,13 @@ class UserVocabularyStats {
   }
 
   // Calculate progress percentage
-  double get progressPercentage => totalWords > 0 ? (masteredWords / totalWords) * 100 : 0;
+  double get progressPercentage =>
+      totalWords > 0 ? (masteredWords / totalWords) * 100 : 0;
 
   // Get learning efficiency (mastered words per total study time)
   double getLearningEfficiency(int totalStudyTimeMinutes) {
-    return totalStudyTimeMinutes > 0 ? masteredWords / (totalStudyTimeMinutes / 60.0) : 0;
+    return totalStudyTimeMinutes > 0
+        ? masteredWords / (totalStudyTimeMinutes / 60.0)
+        : 0;
   }
-} 
+}

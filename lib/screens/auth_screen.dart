@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:email_validator/email_validator.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
+import 'package:flutter/gestures.dart'; // Added for TapGestureRecognizer
 import '../services/user_service.dart';
 
 class AuthScreen extends StatefulWidget {
@@ -11,7 +12,8 @@ class AuthScreen extends StatefulWidget {
   State<AuthScreen> createState() => _AuthScreenState();
 }
 
-class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateMixin {
+class _AuthScreenState extends State<AuthScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final _loginFormKey = GlobalKey<FormState>();
   final _registerFormKey = GlobalKey<FormState>();
@@ -53,7 +55,8 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFAFAFA),
+      backgroundColor:
+          Colors.grey[100], // Changed background color to light grey
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -64,80 +67,127 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   // App Logo/Title
-                  ShadCard(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF3B82F6),
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: const Icon(
-                            Icons.school,
-                            size: 48,
-                            color: Colors.white,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        const Text(
-                          'GitFluent',
-                          style: TextStyle(
-                            fontSize: 28,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF1F2937),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Learn languages with AI assistance',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                      ],
+                  Container(
+                    // Removed ShadCard, now directly in Column
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEEEBFF), // Changed color
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: const Icon(
+                      Icons.security, // Changed icon to a shield
+                      size: 48,
+                      color: Color(0xFF6B47ED), // Changed icon color
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Welcome Back', // Changed title
+                    style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF1F2937),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Sign in to your account to continue', // Changed subtitle
+                    style: TextStyle(
+                      fontSize: 16, // Increased font size
+                      color: Colors.grey[600],
                     ),
                   ),
                   const SizedBox(height: 32),
 
-                  // Auth Card
-                  ShadCard(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      children: [
-                        // Tab Bar
-                        DefaultTabController(
-                          length: 2,
-                          child: Column(
-                            children: [
-                              TabBar(
-                                controller: _tabController,
-                                tabs: const [
-                                  Tab(text: 'Login'),
-                                  Tab(text: 'Register'),
-                                ],
-                              ),
-                              const SizedBox(height: 16),
-                              SizedBox(
-                                height: 400,
-                                child: TabBarView(
-                                  controller: _tabController,
-                                  children: [
-                                    _buildLoginForm(),
-                                    _buildRegisterForm(),
-                                  ],
-                                ),
-                              ),
-                            ],
+                  // Auth Tabs
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.grey[200], // Background for tabs
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: TabBar(
+                      controller: _tabController,
+                      indicatorSize: TabBarIndicatorSize.tab,
+                      indicator: BoxDecoration(
+                        color: Colors.white, // Indicator color
+                        borderRadius: BorderRadius.circular(8),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.grey.withOpacity(0.2),
+                            spreadRadius: 1,
+                            blurRadius: 3,
+                            offset: const Offset(0, 2),
                           ),
-                        ),
+                        ],
+                      ),
+                      labelColor: Colors.black, // Label color
+                      unselectedLabelColor:
+                          Colors.grey[600], // Unselected label color
+                      tabs: const [
+                        Tab(text: 'Sign In'),
+                        Tab(text: 'Sign Up'),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+
+                  SizedBox(
+                    height: 500, // Increased height to accommodate new elements
+                    child: TabBarView(
+                      controller: _tabController,
+                      children: [
+                        _buildLoginForm(),
+                        _buildRegisterForm(),
                       ],
                     ),
                   ),
 
-                  // Error Display
+                  // "OR CONTINUE WITH" section
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 24.0),
+                    child: Row(
+                      children: [
+                        const Expanded(child: Divider()),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                          child: Text(
+                            'OR CONTINUE WITH',
+                            style: TextStyle(color: Colors.grey[600]),
+                          ),
+                        ),
+                        const Expanded(child: Divider()),
+                      ],
+                    ),
+                  ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      _buildSocialLoginButton(Icons.mail, () {
+                        // TODO: Implement Google/Email sign-in
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                              content: Text('Email social login coming soon!')),
+                        );
+                      }),
+                      _buildSocialLoginButton(Icons.auto_awesome, () {
+                        // TODO: Implement GitHub sign-in
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                              content:
+                                  Text('GitHub social login coming soon!')),
+                        );
+                      }),
+                      _buildSocialLoginButton(Icons.apple, () {
+                        // TODO: Implement Apple sign-in
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                              content: Text('Apple social login coming soon!')),
+                        );
+                      }),
+                    ],
+                  ),
+
+                  // Error Display - moved here
                   Consumer<UserService>(
                     builder: (context, userService, child) {
                       if (userService.error != null) {
@@ -158,6 +208,55 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
 
                   // Demo Users Section
                   _buildDemoUsersSection(),
+
+                  const SizedBox(height: 24), // Added space
+
+                  // Terms and Privacy Policy
+                  Align(
+                    alignment: Alignment.center,
+                    child: Text.rich(
+                      TextSpan(
+                        text: 'By signing in, you agree to our ',
+                        style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                        children: [
+                          TextSpan(
+                            text: 'Terms of Service',
+                            style: const TextStyle(
+                              color: Color(0xFF6B47ED),
+                              decoration: TextDecoration.underline,
+                            ),
+                            // TODO: Add actual link
+                            recognizer: TapGestureRecognizer()
+                              ..onTap = () {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                      content: Text(
+                                          'Terms of Service coming soon!')),
+                                );
+                              },
+                          ),
+                          const TextSpan(text: ' and '),
+                          TextSpan(
+                            text: 'Privacy Policy',
+                            style: const TextStyle(
+                              color: Color(0xFF6B47ED),
+                              decoration: TextDecoration.underline,
+                            ),
+                            // TODO: Add actual link
+                            recognizer: TapGestureRecognizer()
+                              ..onTap = () {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                      content:
+                                          Text('Privacy Policy coming soon!')),
+                                );
+                              },
+                          ),
+                        ],
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -201,8 +300,11 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
               labelText: 'Password',
               prefixIcon: const Icon(Icons.lock_outlined),
               suffixIcon: IconButton(
-                icon: Icon(_obscureLoginPassword ? Icons.visibility : Icons.visibility_off),
-                onPressed: () => setState(() => _obscureLoginPassword = !_obscureLoginPassword),
+                icon: Icon(_obscureLoginPassword
+                    ? Icons.visibility
+                    : Icons.visibility_off),
+                onPressed: () => setState(
+                    () => _obscureLoginPassword = !_obscureLoginPassword),
               ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
@@ -238,7 +340,8 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
             onPressed: () {
               // TODO: Implement forgot password
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Forgot password feature coming soon!')),
+                const SnackBar(
+                    content: Text('Forgot password feature coming soon!')),
               );
             },
             child: const Text('Forgot Password?'),
@@ -323,8 +426,11 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
               labelText: 'Password',
               prefixIcon: const Icon(Icons.lock_outlined),
               suffixIcon: IconButton(
-                icon: Icon(_obscureRegisterPassword ? Icons.visibility : Icons.visibility_off),
-                onPressed: () => setState(() => _obscureRegisterPassword = !_obscureRegisterPassword),
+                icon: Icon(_obscureRegisterPassword
+                    ? Icons.visibility
+                    : Icons.visibility_off),
+                onPressed: () => setState(
+                    () => _obscureRegisterPassword = !_obscureRegisterPassword),
               ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
@@ -348,8 +454,11 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
               labelText: 'Confirm Password',
               prefixIcon: const Icon(Icons.lock_outlined),
               suffixIcon: IconButton(
-                icon: Icon(_obscureConfirmPassword ? Icons.visibility : Icons.visibility_off),
-                onPressed: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
+                icon: Icon(_obscureConfirmPassword
+                    ? Icons.visibility
+                    : Icons.visibility_off),
+                onPressed: () => setState(
+                    () => _obscureConfirmPassword = !_obscureConfirmPassword),
               ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
@@ -414,14 +523,17 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
             style: TextStyle(color: Colors.blue[700], fontSize: 13),
           ),
           const SizedBox(height: 8),
-          _buildDemoUserTile('Regular User', 'regular@test.com', 'password123', false),
-          _buildDemoUserTile('Premium User', 'premium@test.com', 'password123', true),
+          _buildDemoUserTile(
+              'Regular User', 'regular@test.com', 'password123', false),
+          _buildDemoUserTile(
+              'Premium User', 'premium@test.com', 'password123', true),
         ],
       ),
     );
   }
 
-  Widget _buildDemoUserTile(String name, String email, String password, bool isPremium) {
+  Widget _buildDemoUserTile(
+      String name, String email, String password, bool isPremium) {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
@@ -444,7 +556,8 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
               children: [
                 Text(
                   name,
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                  style: const TextStyle(
+                      fontWeight: FontWeight.bold, fontSize: 12),
                 ),
                 Text(
                   email,
@@ -469,7 +582,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
       _tabController.animateTo(0);
       setState(() {});
     }
-    
+
     Future.delayed(const Duration(milliseconds: 100), () {
       _loginEmailController.text = email;
       _loginPasswordController.text = password;
@@ -505,4 +618,20 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
       Navigator.of(context).pushReplacementNamed('/home');
     }
   }
-} 
+
+  Widget _buildSocialLoginButton(IconData icon, VoidCallback onPressed) {
+    return InkWell(
+      onTap: onPressed,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        width: 60,
+        height: 60,
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.grey[300]!),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(icon, size: 30, color: Colors.grey[700]),
+      ),
+    );
+  }
+}
