@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../models/user.dart';
+import 'user_service.dart';
 
 class Language {
   final String code;
@@ -35,6 +37,8 @@ class LanguageSettings extends ChangeNotifier {
   Language? _nativeLanguage;
   Language? _supportLanguage1;
   Language? _supportLanguage2;
+  
+  UserService? _userService;
 
 
   // Getters
@@ -42,6 +46,53 @@ class LanguageSettings extends ChangeNotifier {
   Language? get nativeLanguage => _nativeLanguage;
   Language? get supportLanguage1 => _supportLanguage1;
   Language? get supportLanguage2 => _supportLanguage2;
+  
+  // Set UserService for database synchronization
+  void setUserService(UserService userService) {
+    _userService = userService;
+  }
+  
+  // Load preferences from user's database profile
+  Future<void> loadFromUserPreferences(UserPreferences preferences) async {
+    _targetLanguage = _findLanguageByCode(preferences.targetLanguage);
+    _nativeLanguage = _findLanguageByCode(preferences.nativeLanguage);
+    _supportLanguage1 = _findLanguageByCode(preferences.supportLanguage1);
+    _supportLanguage2 = _findLanguageByCode(preferences.supportLanguage2);
+    
+    // Also update SharedPreferences to keep them in sync
+    await _prefs.setString('target_language', preferences.targetLanguage);
+    await _prefs.setString('native_language', preferences.nativeLanguage);
+    if (preferences.supportLanguage1 != null) {
+      await _prefs.setString('support_language_1', preferences.supportLanguage1!);
+    }
+    if (preferences.supportLanguage2 != null) {
+      await _prefs.setString('support_language_2', preferences.supportLanguage2!);
+    }
+    
+    notifyListeners();
+  }
+  
+  // Sync current settings to database
+  Future<void> _syncToDatabase() async {
+    if (_userService == null || !_userService!.isLoggedIn) return;
+    
+    final currentUser = _userService!.currentUser;
+    if (currentUser == null) return;
+    
+    try {
+      final updatedPreferences = currentUser.preferences.copyWith(
+        targetLanguage: _targetLanguage?.code ?? currentUser.preferences.targetLanguage,
+        nativeLanguage: _nativeLanguage?.code ?? currentUser.preferences.nativeLanguage,
+        supportLanguage1: _supportLanguage1?.code ?? currentUser.preferences.supportLanguage1,
+        supportLanguage2: _supportLanguage2?.code ?? currentUser.preferences.supportLanguage2,
+      );
+      
+      await _userService!.updatePreferences(updatedPreferences);
+      debugPrint('LanguageSettings: Successfully synced preferences to database');
+    } catch (e) {
+      debugPrint('LanguageSettings: Failed to sync preferences to database: $e');
+    }
+  }
 
 
   // Initialize preferences
@@ -93,12 +144,14 @@ class LanguageSettings extends ChangeNotifier {
   Future<void> setTargetLanguage(Language language) async {
     _targetLanguage = language;
     await _prefs.setString('target_language', language.code);
+    await _syncToDatabase();
     notifyListeners();
   }
 
   Future<void> setNativeLanguage(Language language) async {
     _nativeLanguage = language;
     await _prefs.setString('native_language', language.code);
+    await _syncToDatabase();
     notifyListeners();
   }
 
@@ -109,6 +162,7 @@ class LanguageSettings extends ChangeNotifier {
     } else {
       await _prefs.remove('support_language_1');
     }
+    await _syncToDatabase();
     notifyListeners();
   }
 
@@ -119,6 +173,7 @@ class LanguageSettings extends ChangeNotifier {
     } else {
       await _prefs.remove('support_language_2');
     }
+    await _syncToDatabase();
     notifyListeners();
   }
 

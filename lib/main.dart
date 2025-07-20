@@ -129,6 +129,22 @@ class MyApp extends StatelessWidget {
           },
         ),
 
+        // Language settings that sync with user preferences
+        ChangeNotifierProxyProvider<UserService, LanguageSettings>(
+          create: (context) {
+            final languageSettings = context.read<LanguageSettings>();
+            languageSettings.setUserService(context.read<UserService>());
+            return languageSettings;
+          },
+          update: (context, userService, previous) {
+            if (previous != null) {
+              previous.setUserService(userService);
+              return previous;
+            }
+            return previous!;
+          },
+        ),
+
         // Chat service depends on settings service
         ChangeNotifierProxyProvider<SettingsService, ChatService>(
           create: (context) =>
@@ -248,6 +264,18 @@ class _AppHomeState extends State<AppHome> {
           debugPrint('Updating premium status from database: $isPremium');
           // This will update the user model and trigger UI refresh
           await userService.upgradeToPremium();
+        }
+      }
+
+      // Load language preferences from database
+      if (userService.currentUser != null) {
+        try {
+          final languageSettings = context.read<LanguageSettings>();
+          await languageSettings
+              .loadFromUserPreferences(userService.currentUser!.preferences);
+          debugPrint('Loaded language preferences from database');
+        } catch (e) {
+          debugPrint('Error loading language preferences from database: $e');
         }
       }
 
