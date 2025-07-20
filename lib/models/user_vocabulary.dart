@@ -307,25 +307,6 @@ class UserVocabularyItem {
     }
   }
 
-  // Firebase-specific methods
-  Map<String, dynamic> toFirestore() => toJson();
-
-  factory UserVocabularyItem.fromFirestore(Map<String, dynamic> data) {
-    // Handle Firebase Timestamp objects
-    if (data['last_seen'] != null &&
-        data['last_seen'].runtimeType.toString().contains('Timestamp')) {
-      data['last_seen'] = (data['last_seen'] as dynamic).toDate();
-    }
-    if (data['first_learned'] != null &&
-        data['first_learned'].runtimeType.toString().contains('Timestamp')) {
-      data['first_learned'] = (data['first_learned'] as dynamic).toDate();
-    }
-    if (data['next_review'] != null &&
-        data['next_review'].runtimeType.toString().contains('Timestamp')) {
-      data['next_review'] = (data['next_review'] as dynamic).toDate();
-    }
-    return UserVocabularyItem.fromJson(data);
-  }
 
   UserVocabularyItem copyWith({
     String? id,
@@ -487,16 +468,6 @@ class UserVocabularyStats {
     return UserVocabularyStats.fromJson(processedData);
   }
 
-  // Firebase-specific methods
-  Map<String, dynamic> toFirestore() => toJson();
-
-  factory UserVocabularyStats.fromFirestore(Map<String, dynamic> data) {
-    if (data['last_updated'] != null &&
-        data['last_updated'].runtimeType.toString().contains('Timestamp')) {
-      data['last_updated'] = (data['last_updated'] as dynamic).toDate();
-    }
-    return UserVocabularyStats.fromJson(data);
-  }
 
   UserVocabularyStats copyWith({
     String? userId,

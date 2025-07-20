@@ -148,39 +148,6 @@ class User {
     return User.fromJson(processedData);
   }
 
-  // Firebase-specific methods
-  Map<String, dynamic> toFirestore() {
-    final json = toJson();
-    // Firebase handles DateTime automatically, but we can convert for consistency
-    json['preferences'] = preferences.toMap();
-    json['statistics'] = statistics.toMap();
-    return json;
-  }
-
-  factory User.fromFirestore(Map<String, dynamic> data) {
-    // Handle Firebase Timestamp objects
-    if (data['created_at'] != null && data['created_at'].runtimeType.toString().contains('Timestamp')) {
-      data['created_at'] = (data['created_at'] as dynamic).toDate();
-    }
-    if (data['last_login_at'] != null && data['last_login_at'].runtimeType.toString().contains('Timestamp')) {
-      data['last_login_at'] = (data['last_login_at'] as dynamic).toDate();
-    }
-    
-    // Parse nested objects
-    if (data['preferences'] is Map) {
-      data['preferences'] = UserPreferences.fromMap(data['preferences']);
-    } else {
-      data['preferences'] = UserPreferences();
-    }
-    
-    if (data['statistics'] is Map) {
-      data['statistics'] = UserStatistics.fromMap(data['statistics']);
-    } else {
-      data['statistics'] = UserStatistics();
-    }
-    
-    return User.fromJson(data);
-  }
 
   User copyWith({
     String? id,
