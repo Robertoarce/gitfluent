@@ -12,7 +12,7 @@ class VocabularyButtons extends StatelessWidget {
   final LanguageResponse? parsedResponse;
 
   const VocabularyButtons({
-    Key? key, 
+    Key? key,
     required this.message,
     this.parsedResponse,
   }) : super(key: key);
@@ -23,7 +23,7 @@ class VocabularyButtons extends StatelessWidget {
     if (message.isUser) {
       return const SizedBox();
     }
-    
+
     // Use StatefulBuilder to handle state updates
     return StatefulBuilder(
       builder: (context, setState) {
@@ -41,13 +41,14 @@ class VocabularyButtonsContent extends StatefulWidget {
   final LanguageResponse? parsedResponse;
 
   const VocabularyButtonsContent({
-    Key? key, 
+    Key? key,
     required this.message,
     this.parsedResponse,
   }) : super(key: key);
 
   @override
-  State<VocabularyButtonsContent> createState() => VocabularyButtonsContentState();
+  State<VocabularyButtonsContent> createState() =>
+      VocabularyButtonsContentState();
 }
 
 class VocabularyButtonsContentState extends State<VocabularyButtonsContent> {
@@ -63,7 +64,7 @@ class VocabularyButtonsContentState extends State<VocabularyButtonsContent> {
   void initState() {
     super.initState();
     _conversationId = DateTime.now().toIso8601String();
-    
+
     // Process the message after build is complete
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _processMessage();
@@ -73,41 +74,46 @@ class VocabularyButtonsContentState extends State<VocabularyButtonsContent> {
   Future<void> _processMessage() async {
     try {
       final content = widget.message.content;
-      debugPrint('Vocabulary processor: processing message content of length: ${content.length}');
-      
+      debugPrint(
+          'Vocabulary processor: processing message content of length: ${content.length}');
+
       // If we already have a parsed response, use it
       if (widget.parsedResponse != null) {
         debugPrint('Vocabulary processor: Using pre-parsed JSON response');
         _processLanguageResponse(widget.parsedResponse!);
         return;
       }
-      
+
       // Try to parse as JSON
       LanguageResponse? languageResponse = _tryParseJson(content);
-      
+
       if (languageResponse != null) {
         debugPrint('Vocabulary processor: Successfully parsed JSON response');
         // Process structured JSON response
         _processLanguageResponse(languageResponse);
         return;
       }
-      
+
       // If direct parsing failed, try more aggressive extraction
       if (content.contains('vocabulary_breakdown')) {
-        debugPrint('Vocabulary processor: Found vocabulary_breakdown in content, trying aggressive extraction');
+        debugPrint(
+            'Vocabulary processor: Found vocabulary_breakdown in content, trying aggressive extraction');
         final String potentialJson = _extractJsonAggressively(content);
         if (potentialJson.isNotEmpty) {
           try {
-            final extractedResponse = LanguageResponse.fromJson(json.decode(potentialJson));
-            debugPrint('Vocabulary processor: Successfully parsed JSON with aggressive extraction');
+            final extractedResponse =
+                LanguageResponse.fromJson(json.decode(potentialJson));
+            debugPrint(
+                'Vocabulary processor: Successfully parsed JSON with aggressive extraction');
             _processLanguageResponse(extractedResponse);
             return;
           } catch (e) {
-            debugPrint('Vocabulary processor: Aggressive JSON extraction failed: $e');
+            debugPrint(
+                'Vocabulary processor: Aggressive JSON extraction failed: $e');
           }
         }
       }
-      
+
       // If all parsing attempts failed, display empty state
       debugPrint('Vocabulary processor: No structured JSON found in response');
       if (mounted) {
@@ -120,19 +126,20 @@ class VocabularyButtonsContentState extends State<VocabularyButtonsContent> {
       }
     }
   }
-  
+
   // Try to parse content as JSON and convert to LanguageResponse
   LanguageResponse? _tryParseJson(String content) {
     try {
       // First try direct parsing of the entire content
       return LanguageResponse.fromJson(json.decode(content));
     } catch (e) {
-      debugPrint('Vocabulary processor: Direct JSON parsing failed, trying regex extraction');
-      
+      debugPrint(
+          'Vocabulary processor: Direct JSON parsing failed, trying regex extraction');
+
       // Try to extract JSON if it's embedded in text
       final jsonRegex = RegExp(r'(\{[\s\S]*\})');
       final match = jsonRegex.firstMatch(content);
-      
+
       if (match != null) {
         try {
           final jsonString = match.group(1);
@@ -146,23 +153,23 @@ class VocabularyButtonsContentState extends State<VocabularyButtonsContent> {
     }
     return null;
   }
-  
+
   // More aggressive JSON extraction
   String _extractJsonAggressively(String content) {
     // Look for patterns like ```json...``` or just {...} with newlines
     final jsonCodeBlockRegex = RegExp(r'```json\s*([\s\S]*?)\s*```');
     final match = jsonCodeBlockRegex.firstMatch(content);
-    
+
     if (match != null && match.group(1) != null) {
       return match.group(1)!.trim();
     }
-    
+
     // If no code block, try to find outermost {...} that contains "vocabulary_breakdown"
     int startBrace = content.indexOf('{');
     if (startBrace != -1) {
       int depth = 0;
       int endBrace = -1;
-      
+
       for (int i = startBrace; i < content.length; i++) {
         if (content[i] == '{') {
           depth++;
@@ -174,35 +181,38 @@ class VocabularyButtonsContentState extends State<VocabularyButtonsContent> {
           }
         }
       }
-      
+
       if (endBrace != -1) {
         return content.substring(startBrace, endBrace + 1);
       }
     }
-    
+
     return '';
   }
-  
+
   // Process structured LanguageResponse
   void _processLanguageResponse(LanguageResponse response) {
-    debugPrint('=================== VOCABULARY DEBUG START ===================');
-    debugPrint('Processing LanguageResponse with ${response.vocabularyBreakdown.length} vocabulary items');
-    
+    debugPrint(
+        '=================== VOCABULARY DEBUG START ===================');
+    debugPrint(
+        'Processing LanguageResponse with ${response.vocabularyBreakdown.length} vocabulary items');
+
     // Print the full response for debugging
     for (int i = 0; i < response.vocabularyBreakdown.length; i++) {
       final item = response.vocabularyBreakdown[i];
-      debugPrint('Item $i: word=${item.word}, type=${item.wordType}, baseForm=${item.baseForm}');
+      debugPrint(
+          'Item $i: word=${item.word}, type=${item.wordType}, baseForm=${item.baseForm}');
       debugPrint('  forms: ${item.forms.join(', ')}');
       debugPrint('  translations: ${item.translations.join(', ')}');
     }
-    
+
     // Clear existing collections to ensure clean processing
     _verbs.clear();
     _nouns.clear();
     _adverbs.clear();
     _conjugations.clear();
     _definitions.clear();
-    
+
     try {
       for (final item in response.vocabularyBreakdown) {
         final String word = item.word;
@@ -210,26 +220,25 @@ class VocabularyButtonsContentState extends State<VocabularyButtonsContent> {
         final String baseForm = item.baseForm;
         final List<String> forms = item.forms;
         final List<String> translations = item.translations;
-        
+
         if (word.isEmpty) {
           debugPrint('Skipping empty word');
           continue;
         }
-        
-        String translationText = translations.isNotEmpty 
-            ? translations.first 
-            : '';
-        
+
+        String translationText =
+            translations.isNotEmpty ? translations.first : '';
+
         debugPrint('Processing word: $word, type: $wordType');
-        
+
         // Process based on word type (standardize to lowercase for comparison)
         final String lowerWordType = wordType.toLowerCase();
-        
+
         if (lowerWordType.contains('verb')) {
           // Use base form for verbs instead of the conjugated form
           final String verbKey = baseForm.isNotEmpty ? baseForm : word;
           _verbs[verbKey] = translationText;
-          
+
           // Process verb conjugations
           Map<String, dynamic> conjugationMap = {};
           for (int i = 0; i < forms.length; i++) {
@@ -237,15 +246,14 @@ class VocabularyButtonsContentState extends State<VocabularyButtonsContent> {
             conjugationMap[key] = forms[i];
           }
           _conjugations[verbKey] = conjugationMap;
-          debugPrint('Added verb: $verbKey (base form) with ${conjugationMap.length} conjugations');
-          
+          debugPrint(
+              'Added verb: $verbKey (base form) with ${conjugationMap.length} conjugations');
         } else if (lowerWordType.contains('noun')) {
           _nouns[word] = translationText;
           if (baseForm.isNotEmpty) {
             _definitions[word] = 'Base form: $baseForm';
           }
           debugPrint('Added noun: $word');
-          
         } else {
           // Default to adverbs for all other word types
           _adverbs[word] = translationText;
@@ -255,14 +263,15 @@ class VocabularyButtonsContentState extends State<VocabularyButtonsContent> {
           debugPrint('Added other word type: $word (type: $wordType)');
         }
       }
-      
+
       // Debug summary
       debugPrint('Maps after processing:');
       debugPrint('_verbs: ${_verbs.keys.join(', ')}');
       debugPrint('_nouns: ${_nouns.keys.join(', ')}');
       debugPrint('_adverbs: ${_adverbs.keys.join(', ')}');
-      debugPrint('After processing: ${_verbs.length} verbs, ${_nouns.length} nouns, and ${_adverbs.length} adverbs/others');
-      
+      debugPrint(
+          'After processing: ${_verbs.length} verbs, ${_nouns.length} nouns, and ${_adverbs.length} adverbs/others');
+
       // Important: Update the UI
       if (mounted) {
         setState(() {
@@ -275,7 +284,7 @@ class VocabularyButtonsContentState extends State<VocabularyButtonsContent> {
       if (e is Error) {
         debugPrint(e.stackTrace.toString());
       }
-      
+
       if (mounted) {
         setState(() {
           _isLoading = false;
@@ -304,7 +313,8 @@ class VocabularyButtonsContentState extends State<VocabularyButtonsContent> {
     final int verbCount = _verbs.length;
     final int nounCount = _nouns.length;
     final int adverbCount = _adverbs.length;
-    debugPrint('Building vocabulary buttons with $verbCount verbs, $nounCount nouns, and $adverbCount adverbs');
+    debugPrint(
+        'Building vocabulary buttons with $verbCount verbs, $nounCount nouns, and $adverbCount adverbs');
 
     // Don't show anything if there are no vocabulary items
     if (verbCount + nounCount + adverbCount == 0) {
@@ -377,7 +387,7 @@ class VocabularyChipState extends State<VocabularyChip> {
     final isVerb = widget.type == VocabularyItem.typeVerb;
     final isNoun = widget.type == VocabularyItem.typeNoun;
     final isAdverb = widget.type == VocabularyItem.typeAdverb;
-    
+
     Color getChipColor() {
       if (_isAdded) return Colors.green.shade700;
       if (isVerb) return Colors.blue.shade700;
@@ -385,7 +395,7 @@ class VocabularyChipState extends State<VocabularyChip> {
       if (isAdverb) return Colors.purple.shade700;
       return Colors.grey.shade700;
     }
-    
+
     Color getBackgroundColor() {
       if (_isAdded) return Colors.green.shade50;
       if (isVerb) return Colors.blue.shade50;
@@ -393,7 +403,7 @@ class VocabularyChipState extends State<VocabularyChip> {
       if (isAdverb) return Colors.purple.shade50;
       return Colors.grey.shade50;
     }
-    
+
     IconData getIcon() {
       if (_isAdded) return Icons.check;
       if (isVerb) return Icons.run_circle;
@@ -401,7 +411,7 @@ class VocabularyChipState extends State<VocabularyChip> {
       if (isAdverb) return Icons.speed;
       return Icons.help_outline;
     }
-    
+
     return ActionChip(
       avatar: CircleAvatar(
         backgroundColor: Colors.transparent,
@@ -436,7 +446,11 @@ class VocabularyChipState extends State<VocabularyChip> {
                 if (!vocabularyService.isInitialized) {
                   throw Exception('Vocabulary service not initialized');
                 }
-                
+
+                debugPrint(
+                    '🎯 VocabularyChip: Starting to save "${widget.word}" (${widget.type})...');
+
+                // Save immediately with all data
                 await vocabularyService.addOrUpdateItem(
                   widget.word,
                   widget.type,
@@ -448,21 +462,53 @@ class VocabularyChipState extends State<VocabularyChip> {
 
                 if (!mounted) return;
                 setState(() => _isAdded = true);
+
+                debugPrint(
+                    '✅ VocabularyChip: Successfully saved "${widget.word}"');
+
+                // Show immediate success feedback
+                String message = 'Added "${widget.word}" to your vocabulary';
+                if (widget.type == 'verb' && widget.conjugations != null) {
+                  final formCount = widget.conjugations!.values.length;
+                  message += ' with $formCount conjugations';
+                }
+
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text('Added "${widget.word}" to your vocabulary'),
+                    content: Text(message),
+                    backgroundColor: Colors.green.shade600,
                     duration: const Duration(seconds: 2),
                     behavior: SnackBarBehavior.floating,
+                    action: SnackBarAction(
+                      label: 'VIEW',
+                      textColor: Colors.white,
+                      onPressed: () {
+                        // Could navigate to vocabulary detail here
+                      },
+                    ),
                   ),
                 );
               } catch (e) {
+                debugPrint(
+                    '❌ VocabularyChip: Error adding "${widget.word}": $e');
                 if (!mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text('Error adding word: $e'),
-                    backgroundColor: Colors.red,
-                    duration: const Duration(seconds: 2),
+                    content:
+                        Text('Error saving "${widget.word}": ${e.toString()}'),
+                    backgroundColor: Colors.red.shade600,
+                    duration: const Duration(seconds: 3),
                     behavior: SnackBarBehavior.floating,
+                    action: SnackBarAction(
+                      label: 'RETRY',
+                      textColor: Colors.white,
+                      onPressed: () {
+                        setState(() {
+                          _isAdded = false;
+                          _isLoading = false;
+                        });
+                      },
+                    ),
                   ),
                 );
               } finally {
@@ -473,4 +519,4 @@ class VocabularyChipState extends State<VocabularyChip> {
             },
     );
   }
-} 
+}

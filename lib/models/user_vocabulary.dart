@@ -136,25 +136,24 @@ class UserVocabularyItem {
         processedData['forms'] = [];
       }
 
-      // Handle DateTime fields more robustly
+      // Handle DateTime fields - keep as strings for the generated fromJson method
       // For last_seen
       dynamic lastSeenValue = processedData['last_seen'];
       if (lastSeenValue != null) {
         try {
-          if (lastSeenValue is String) {
-            processedData['last_seen'] = DateTime.parse(lastSeenValue);
-          } else if (lastSeenValue is! DateTime) {
-            processedData['last_seen'] =
-                DateTime.parse(lastSeenValue.toString());
+          if (lastSeenValue is DateTime) {
+            processedData['last_seen'] = lastSeenValue.toIso8601String();
+          } else if (lastSeenValue is! String) {
+            processedData['last_seen'] = lastSeenValue.toString();
           }
+          // If it's already a string, keep it as is
         } catch (e) {
           debugPrint(
-              '[UserVocabularyItem.fromSupabase] Error parsing last_seen ($lastSeenValue): $e');
-          processedData['last_seen'] =
-              DateTime.now(); // Fallback to current time
+              '[UserVocabularyItem.fromSupabase] Error processing last_seen ($lastSeenValue): $e');
+          processedData['last_seen'] = DateTime.now().toIso8601String();
         }
       } else {
-        processedData['last_seen'] = DateTime.now(); // Default if null
+        processedData['last_seen'] = DateTime.now().toIso8601String();
       }
       debugPrint(
           '[UserVocabularyItem.fromSupabase] Processed last_seen: ${processedData['last_seen']}');
@@ -163,20 +162,20 @@ class UserVocabularyItem {
       dynamic firstLearnedValue = processedData['first_learned'];
       if (firstLearnedValue != null) {
         try {
-          if (firstLearnedValue is String) {
-            processedData['first_learned'] = DateTime.parse(firstLearnedValue);
-          } else if (firstLearnedValue is! DateTime) {
+          if (firstLearnedValue is DateTime) {
             processedData['first_learned'] =
-                DateTime.parse(firstLearnedValue.toString());
+                firstLearnedValue.toIso8601String();
+          } else if (firstLearnedValue is! String) {
+            processedData['first_learned'] = firstLearnedValue.toString();
           }
+          // If it's already a string, keep it as is
         } catch (e) {
           debugPrint(
-              '[UserVocabularyItem.fromSupabase] Error parsing first_learned ($firstLearnedValue): $e');
-          processedData['first_learned'] =
-              DateTime.now(); // Fallback to current time
+              '[UserVocabularyItem.fromSupabase] Error processing first_learned ($firstLearnedValue): $e');
+          processedData['first_learned'] = DateTime.now().toIso8601String();
         }
       } else {
-        processedData['first_learned'] = DateTime.now(); // Default if null
+        processedData['first_learned'] = DateTime.now().toIso8601String();
       }
       debugPrint(
           '[UserVocabularyItem.fromSupabase] Processed first_learned: ${processedData['first_learned']}');
@@ -185,17 +184,17 @@ class UserVocabularyItem {
       dynamic nextReviewValue = processedData['next_review'];
       if (nextReviewValue != null) {
         try {
-          if (nextReviewValue is String) {
-            processedData['next_review'] = DateTime.parse(nextReviewValue);
-          } else if (nextReviewValue is! DateTime) {
-            processedData['next_review'] =
-                DateTime.parse(nextReviewValue.toString());
+          if (nextReviewValue is DateTime) {
+            processedData['next_review'] = nextReviewValue.toIso8601String();
+          } else if (nextReviewValue is! String) {
+            processedData['next_review'] = nextReviewValue.toString();
           }
+          // If it's already a string, keep it as is
         } catch (e) {
           debugPrint(
-              '[UserVocabularyItem.fromSupabase] Error parsing next_review ($nextReviewValue): $e');
-          processedData['next_review'] = DateTime.now()
-              .add(const Duration(days: 1)); // Fallback to tomorrow
+              '[UserVocabularyItem.fromSupabase] Error processing next_review ($nextReviewValue): $e');
+          processedData['next_review'] =
+              DateTime.now().add(const Duration(days: 1)).toIso8601String();
         }
       } else {
         processedData['next_review'] = null; // nextReview can be null
@@ -306,7 +305,6 @@ class UserVocabularyItem {
       );
     }
   }
-
 
   UserVocabularyItem copyWith({
     String? id,
@@ -467,7 +465,6 @@ class UserVocabularyStats {
 
     return UserVocabularyStats.fromJson(processedData);
   }
-
 
   UserVocabularyStats copyWith({
     String? userId,

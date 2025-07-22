@@ -135,23 +135,43 @@ class VocabularyService extends ChangeNotifier {
     }
 
     try {
-      // Save to local storage (legacy support)
+      debugPrint(
+          '🚀 VocabularyService: Immediately saving "$word" to all storage systems...');
+
+      // Save to local storage first (immediate persistence)
       await _saveToLocalStorage(word, type, translation,
           definition: definition,
           conjugations: conjugations,
           conversationId: conversationId);
+      debugPrint('✅ VocabularyService: Saved "$word" to local storage');
 
-      // Save to user system if available
+      // Save to Supabase immediately (don't wait for anything else)
       if (_userService != null && _userService!.isLoggedIn) {
-        await _saveToUserSystem(word, type, translation,
-            definition: definition,
-            conjugations: conjugations,
-            conversationId: conversationId);
+        try {
+          await _saveToUserSystem(word, type, translation,
+              definition: definition,
+              conjugations: conjugations,
+              conversationId: conversationId);
+          debugPrint(
+              '✅ VocabularyService: Saved "$word" to Supabase successfully');
+        } catch (supabaseError) {
+          debugPrint(
+              '❌ VocabularyService: Failed to save "$word" to Supabase: $supabaseError');
+          // Don't throw - local storage still worked
+          // The item will be re-synced when user comes back online or reloads
+        }
+      } else {
+        debugPrint(
+            '⚠️ VocabularyService: User not logged in, saved "$word" locally only');
       }
 
+      // Notify UI immediately (optimistic update)
       notifyListeners();
+      debugPrint(
+          '🎯 VocabularyService: "$word" added/updated successfully and UI notified');
     } catch (e) {
-      debugPrint('Error adding/updating item: $e');
+      debugPrint(
+          '💥 VocabularyService: Critical error adding/updating item "$word": $e');
       rethrow;
     }
   }
@@ -228,7 +248,23 @@ class VocabularyService extends ChangeNotifier {
         wordType = 'adverb';
       }
 
-      // Create UserVocabularyItem
+      // Extract verb forms from conjugations (for immediate saving)
+      List<String> forms = [];
+      if (conjugations != null && wordType == 'verb') {
+        if (conjugations.containsKey('forms')) {
+          // If conjugations already has 'forms' key (from UserVocabularyItem conversion)
+          forms = List<String>.from(conjugations['forms']);
+          debugPrint(
+              '📝 VocabularyService: Extracted ${forms.length} verb forms for "$word"');
+        } else {
+          // If conjugations has individual form keys (from vocabulary processor)
+          forms = conjugations.values.map((v) => v.toString()).toList();
+          debugPrint(
+              '📝 VocabularyService: Converted ${forms.length} conjugations to forms for "$word"');
+        }
+      }
+
+      // Create UserVocabularyItem immediately (optimized for speed)
       final vocabularyItem = UserVocabularyItem(
         id: const Uuid().v4(),
         userId: user.id,
@@ -237,7 +273,7 @@ class VocabularyService extends ChangeNotifier {
         wordType: wordType,
         language: user.preferences.targetLanguage,
         translations: [translation],
-        forms: conjugations?.values.map((v) => v.toString()).toList() ?? [],
+        forms: forms, // Preserve all verb conjugations
         difficultyLevel: 1,
         masteryLevel: 0,
         timesSeen: 1,
@@ -251,11 +287,23 @@ class VocabularyService extends ChangeNotifier {
         sourceMessageId: conversationId,
       );
 
+      debugPrint(
+          '💾 VocabularyService: About to save "$word" (${wordType}) with ${vocabularyItem.forms.length} forms to Supabase...');
+
+      // Save immediately to Supabase
       await _userService!.saveVocabularyItem(vocabularyItem);
-      debugPrint('Saved vocabulary item to user system: $word');
+
+      debugPrint(
+          '✅ VocabularyService: Successfully saved "$word" to Supabase with all data preserved');
+      if (vocabularyItem.forms.isNotEmpty) {
+        debugPrint(
+            '🔤 VocabularyService: Verb forms saved: ${vocabularyItem.forms.take(3).join(", ")}${vocabularyItem.forms.length > 3 ? "..." : ""}');
+      }
     } catch (e) {
-      debugPrint('Error saving to user system: $e');
+      debugPrint('❌ VocabularyService: Failed to save "$word" to Supabase: $e');
+      debugPrint('❌ VocabularyService: Error type: ${e.runtimeType}');
       // Don't rethrow - local storage should still work
+      rethrow; // Actually, let's rethrow so the caller can handle it
     }
   }
 
