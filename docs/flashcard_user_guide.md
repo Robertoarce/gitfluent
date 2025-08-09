@@ -1,0 +1,324 @@
+# Flashcard Learning - User Guide
+
+## Getting Started with Flashcards
+
+The Flashcard Learning feature helps you memorize vocabulary through spaced repetition - a scientifically proven method for long-term retention. The system adapts to your learning pace and focuses on words you need to practice most.
+
+## How to Access Flashcards
+
+### From the Home Screen
+
+1. Open the app and navigate to the home screen
+2. Tap the **"Flashcards"** card in the feature grid
+3. You'll be taken to the Flashcard Start screen
+
+### From Vocabulary Screens
+
+- **Chat Screen**: Tap the quiz icon (📝) in the top-right corner
+- **My Vocabulary**: Tap the quiz icon in the app bar
+- **Vocabulary Review**: Tap the "Study Flashcards" floating button
+- **Word Details**: Tap "Practice this word" to focus on a specific word
+
+## Starting a Flashcard Session
+
+### Session Configuration
+
+When you start flashcards, you can customize your study session:
+
+#### Duration Settings
+
+- **Quick Study**: 5 minutes (ideal for breaks)
+- **Standard**: 10-15 minutes (recommended daily practice)
+- **Extended**: 20-30 minutes (intensive study)
+- **Custom**: Set any duration from 1-60 minutes
+
+#### Study Focus
+
+- **All Languages**: Practice words from all languages you're learning
+- **Specific Language**: Focus on Italian, Spanish, French, etc.
+- **Word Types**: Focus on nouns, verbs, adjectives, or adverbs
+- **All Types**: Mix of all word types (recommended)
+
+#### Advanced Options
+
+- **Prioritize Review**: Focus on words due for review (recommended)
+- **Include Favorites**: Include your starred vocabulary
+- **Max Words**: Limit the number of words in your session
+
+### Quick Start
+
+For immediate practice, simply tap **"Start Quick Session"** to begin a 10-minute session with optimal settings.
+
+### Resuming Interrupted Sessions
+
+If you have an incomplete session, you'll see a **"Resume Session"** option at the top. This allows you to continue where you left off.
+
+## During Your Study Session
+
+### Question Types
+
+The system presents four types of questions to reinforce learning:
+
+#### 1. Traditional Flashcards (Most Common)
+
+- **Front**: Shows the word in your target language
+- **Back**: Shows the translation
+- **Action**: Think of the answer, then tap to reveal
+
+#### 2. Multiple Choice
+
+- **Question**: What does "casa" mean?
+- **Options**: Four choices with one correct answer
+- **Action**: Tap the correct translation
+
+#### 3. Fill-in-the-Blank
+
+- **Question**: "La \_\_\_\_ è molto bella" (Translation: house)
+- **Action**: Type or think of the missing word
+
+#### 4. Reverse Flashcards
+
+- **Front**: Shows the English translation
+- **Back**: Shows the word in your target language
+- **Action**: Think of the foreign word
+
+### Answering Questions
+
+#### For Traditional and Reverse Flashcards:
+
+1. **Think** of the answer
+2. **Tap "Show Answer"** to reveal the correct response
+3. **Self-assess** using the rating buttons:
+   - **Again** (Red): Didn't know it - show again soon
+   - **Hard** (Orange): Knew it but with difficulty
+   - **Good** (Blue): Knew it with normal effort
+   - **Easy** (Green): Knew it easily - show less often
+
+#### For Multiple Choice and Fill-in-the-Blank:
+
+1. **Select or type** your answer
+2. **Immediate feedback** shows if you're correct
+3. **Self-assess** based on how confident you felt
+
+### Navigation Controls
+
+- **Previous**: Go back to review earlier questions
+- **Next**: Move to the next question
+- **Progress Bar**: Shows your session progress
+- **Timer**: Displays session time and time per question
+
+### Session Controls
+
+- **Pause**: Temporarily stop your session (accessible via the menu)
+- **Resume**: Continue a paused session
+- **Exit**: End your session early and see results
+
+## Self-Assessment System
+
+The self-assessment ratings help the spaced repetition algorithm determine when to show you each word again:
+
+### Rating Guidelines
+
+**Again (Show again soon)**
+
+- You didn't know the answer
+- You had to guess
+- You want to see this word again soon
+
+**Hard (Increase difficulty)**
+
+- You knew it but struggled
+- It took you a while to remember
+- You want more practice with this word
+
+**Good (Normal progress)**
+
+- You knew the answer with normal effort
+- It felt like appropriate difficulty
+- Standard spaced repetition timing
+
+**Easy (Decrease frequency)**
+
+- You knew it immediately
+- The word feels well-memorized
+- Show less frequently to focus on harder words
+
+### Impact on Learning
+
+Your ratings affect:
+
+- **When** you'll see the word again
+- **How often** it appears in future sessions
+- **Your mastery level** for that word
+- **Overall learning analytics**
+
+## Session Results
+
+After completing a session, you'll see detailed results:
+
+### Performance Summary
+
+- **Accuracy**: Percentage of correct answers
+- **Total Questions**: Number of words practiced
+- **Session Time**: How long you studied
+- **Average Response Time**: Speed of answers
+
+### Individual Word Performance
+
+- **Correct/Incorrect**: Your answers for each word
+- **Difficulty Ratings**: How you assessed each word
+- **New Mastery Levels**: Updated scores for each word
+- **Next Review Dates**: When you'll see each word again
+
+### Study Recommendations
+
+Based on your performance, you might see suggestions like:
+
+- "Focus more on verbs next time"
+- "Great improvement on struggling words!"
+- "Try longer sessions for better retention"
+- "Review these specific words"
+
+### Historical Statistics
+
+- **Study streak**: Consecutive days practiced
+- **Weekly progress**: Words learned this week
+- **Accuracy trends**: How your performance is improving
+- **Time invested**: Total study time
+
+## Tips for Effective Learning
+
+### Daily Practice
+
+- **Consistency beats intensity**: 10 minutes daily is better than 1 hour weekly
+- **Use dead time**: Practice during commutes or breaks
+- **Set reminders**: Create notifications for regular practice
+
+### During Sessions
+
+- **Focus completely**: Minimize distractions
+- **Think before revealing**: Give yourself time to recall
+- **Be honest with ratings**: Accurate self-assessment improves learning
+- **Don't rush**: Take time to understand each word
+
+### Optimizing Your Reviews
+
+- **Prioritize review words**: Let the system focus on words due for review
+- **Mix question types**: Don't disable any question formats
+- **Review mistakes**: Pay extra attention to words you got wrong
+- **Use context**: Try to remember example sentences
+
+### Leveraging the Spaced Repetition System
+
+- **Trust the algorithm**: Don't manually review words too early
+- **Rate accurately**: Your assessments train the system
+- **Be patient**: Long-term retention requires time
+- **Regular sessions**: Consistency maximizes the benefits
+
+## Understanding Your Progress
+
+### Mastery Levels
+
+Each word has a mastery level from 0-100%:
+
+- **0-25%**: New or very difficult words
+- **26-50%**: Learning words that need practice
+- **51-75%**: Familiar words becoming stronger
+- **76-100%**: Well-learned words needing occasional review
+
+### Review Scheduling
+
+The system schedules reviews based on:
+
+- **Your performance**: Better ratings = longer intervals
+- **Word difficulty**: Harder words appear more frequently
+- **Time since learning**: Recently learned words need more practice
+- **Your individual patterns**: The system adapts to your learning style
+
+### Progress Indicators
+
+- **Study streak**: Days with flashcard practice
+- **Words reviewed**: Total vocabulary practiced
+- **Accuracy trends**: Improvement over time
+- **Time invested**: Your dedication to learning
+
+## Troubleshooting Common Issues
+
+### "No vocabulary found"
+
+**Solution**:
+
+- Add vocabulary through the chat feature first
+- Make sure you have words in your selected language
+- Check that your vocabulary hasn't been filtered out
+
+### Poor word selection
+
+**Solution**:
+
+- Use "Prioritize Review" to focus on due words
+- Try different word type filters
+- Ensure you have enough vocabulary for meaningful sessions
+
+### Sessions not saving
+
+**Solution**:
+
+- Check your internet connection
+- Make sure you're logged in
+- Try restarting the app
+
+### Difficulty with question types
+
+**Solution**:
+
+- Focus on traditional flashcards if others are too challenging
+- Gradually introduce other types as you improve
+- Use fill-in-the-blank for context practice
+
+## Advanced Features
+
+### Interrupted Session Recovery
+
+- Sessions are automatically saved
+- Resume within 24 hours of starting
+- Data persists across app restarts
+- Maintains your progress and timing
+
+### Performance Analytics
+
+- Track learning velocity
+- Identify weak word types
+- Monitor study habits
+- Compare different time periods
+
+### Smart Word Selection
+
+- Prioritizes struggling words
+- Includes overdue reviews
+- Balances new and familiar content
+- Adapts to your learning patterns
+
+## Best Practices Summary
+
+1. **Study regularly**: Daily 10-15 minute sessions
+2. **Be honest**: Rate difficulty accurately
+3. **Stay focused**: Minimize distractions during sessions
+4. **Trust the system**: Let spaced repetition guide your reviews
+5. **Review results**: Learn from your session statistics
+6. **Mix it up**: Practice different question types
+7. **Be patient**: Long-term retention takes time
+8. **Stay consistent**: Regular practice beats sporadic intensive sessions
+
+Remember: The flashcard system is designed to adapt to your learning style and pace. The more you use it consistently, the better it becomes at helping you learn effectively!
+
+## Getting Help
+
+If you encounter issues or have questions:
+
+- Check this user guide for common solutions
+- Review the troubleshooting section
+- Contact support through the app settings
+- Share feedback to help improve the feature
+
+Happy learning! 🎓

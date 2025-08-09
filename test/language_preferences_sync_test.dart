@@ -20,12 +20,14 @@ class MockAuthService implements AuthService {
   Stream<User?> get authStateChanges => Stream.value(_mockUser);
 
   @override
-  Future<AuthResult> signInWithEmailAndPassword(String email, String password) async {
+  Future<AuthResult> signInWithEmailAndPassword(
+      String email, String password) async {
     throw UnimplementedError();
   }
 
   @override
-  Future<AuthResult> createUserWithEmailAndPassword(String email, String password, String firstName, String lastName) async {
+  Future<AuthResult> createUserWithEmailAndPassword(
+      String email, String password, String firstName, String lastName) async {
     throw UnimplementedError();
   }
 
@@ -55,7 +57,8 @@ class MockAuthService implements AuthService {
   }
 
   @override
-  Future<void> updateUserProfile({String? firstName, String? lastName, String? profileImageUrl}) async {
+  Future<void> updateUserProfile(
+      {String? firstName, String? lastName, String? profileImageUrl}) async {
     throw UnimplementedError();
   }
 
@@ -79,6 +82,33 @@ class MockAuthService implements AuthService {
 
   @override
   Future<void> cleanup() async {}
+
+  // Flashcard methods
+  @override
+  Future<FlashcardSession> createFlashcardSession(
+          FlashcardSession session) async =>
+      session;
+  @override
+  Future<FlashcardSession?> getFlashcardSession(String sessionId) async => null;
+  @override
+  Future<void> updateFlashcardSession(FlashcardSession session) async {}
+  @override
+  Future<List<FlashcardSession>> getUserFlashcardSessions(String userId,
+          {int limit = 50}) async =>
+      [];
+  @override
+  Future<void> deleteFlashcardSession(String sessionId) async {}
+  @override
+  Future<FlashcardSessionCard> saveFlashcardSessionCard(
+          FlashcardSessionCard card) async =>
+      card;
+  @override
+  Future<List<FlashcardSessionCard>> getSessionCards(String sessionId) async =>
+      [];
+  @override
+  Future<void> updateFlashcardSessionCard(FlashcardSessionCard card) async {}
+  @override
+  Future<void> deleteFlashcardSessionCard(String cardId) async {}
 }
 
 class MockDatabaseService implements DatabaseService {
@@ -109,7 +139,8 @@ class MockDatabaseService implements DatabaseService {
   Future<void> deleteUser(String userId) async {}
 
   @override
-  Future<List<UserVocabularyItem>> getUserVocabulary(String userId, {String? language}) async {
+  Future<List<UserVocabularyItem>> getUserVocabulary(String userId,
+      {String? language}) async {
     return [];
   }
 
@@ -125,12 +156,14 @@ class MockDatabaseService implements DatabaseService {
   Future<void> deleteVocabularyItem(String itemId) async {}
 
   @override
-  Future<List<UserVocabularyItem>> getVocabularyDueForReview(String userId, {String? language}) async {
+  Future<List<UserVocabularyItem>> getVocabularyDueForReview(String userId,
+      {String? language}) async {
     return [];
   }
 
   @override
-  Future<UserVocabularyStats?> getUserVocabularyStats(String userId, String language) async {
+  Future<UserVocabularyStats?> getUserVocabularyStats(
+      String userId, String language) async {
     return null;
   }
 
@@ -138,10 +171,12 @@ class MockDatabaseService implements DatabaseService {
   Future<void> updateVocabularyStats(UserVocabularyStats stats) async {}
 
   @override
-  Future<void> saveChatMessage(String userId, Map<String, dynamic> message) async {}
+  Future<void> saveChatMessage(
+      String userId, Map<String, dynamic> message) async {}
 
   @override
-  Future<List<Map<String, dynamic>>> getChatHistory(String userId, {int limit = 50}) async {
+  Future<List<Map<String, dynamic>>> getChatHistory(String userId,
+      {int limit = 50}) async {
     return [];
   }
 
@@ -170,21 +205,22 @@ void main() {
     setUp(() async {
       // Set up SharedPreferences mock
       SharedPreferences.setMockInitialValues({});
-      
+
       mockAuthService = MockAuthService();
       mockDatabaseService = MockDatabaseService();
-      
+
       userService = UserService(
         authService: mockAuthService,
         databaseService: mockDatabaseService,
       );
-      
+
       languageSettings = LanguageSettings();
       await languageSettings.init();
       languageSettings.setUserService(userService);
     });
 
-    test('should load language preferences from user profile on login', () async {
+    test('should load language preferences from user profile on login',
+        () async {
       // Create a user with specific language preferences
       final user = User(
         id: 'test-user-id',
@@ -194,7 +230,7 @@ void main() {
         createdAt: DateTime.now(),
         preferences: UserPreferences(
           targetLanguage: 'es', // Spanish
-          nativeLanguage: 'fr',  // French
+          nativeLanguage: 'fr', // French
           supportLanguage1: 'de', // German
           supportLanguage2: 'pt', // Portuguese
         ),
@@ -215,7 +251,9 @@ void main() {
       expect(languageSettings.supportLanguage2?.code, equals('pt'));
     });
 
-    test('should sync language preference changes to database when user is logged in', () async {
+    test(
+        'should sync language preference changes to database when user is logged in',
+        () async {
       // Create a logged in user
       final user = User(
         id: 'test-user-id',
@@ -229,10 +267,11 @@ void main() {
 
       await mockDatabaseService.createUser(user);
       mockAuthService.setMockUser(user);
-      
+
       // Find target language (Italian)
-      final italianLanguage = LanguageSettings.availableLanguages.firstWhere((l) => l.code == 'it');
-      
+      final italianLanguage =
+          LanguageSettings.availableLanguages.firstWhere((l) => l.code == 'it');
+
       // Change target language
       await languageSettings.setTargetLanguage(italianLanguage);
 
@@ -241,7 +280,8 @@ void main() {
       expect(updatedUser?.preferences.targetLanguage, equals('it'));
     });
 
-    test('should handle multiple language preference updates correctly', () async {
+    test('should handle multiple language preference updates correctly',
+        () async {
       // Create a logged in user
       final user = User(
         id: 'test-user-id',
@@ -257,9 +297,12 @@ void main() {
       mockAuthService.setMockUser(user);
 
       // Find languages
-      final spanishLanguage = LanguageSettings.availableLanguages.firstWhere((l) => l.code == 'es');
-      final germanLanguage = LanguageSettings.availableLanguages.firstWhere((l) => l.code == 'de');
-      final frenchLanguage = LanguageSettings.availableLanguages.firstWhere((l) => l.code == 'fr');
+      final spanishLanguage =
+          LanguageSettings.availableLanguages.firstWhere((l) => l.code == 'es');
+      final germanLanguage =
+          LanguageSettings.availableLanguages.firstWhere((l) => l.code == 'de');
+      final frenchLanguage =
+          LanguageSettings.availableLanguages.firstWhere((l) => l.code == 'fr');
 
       // Change multiple languages
       await languageSettings.setTargetLanguage(spanishLanguage);
@@ -276,16 +319,17 @@ void main() {
     test('should not sync to database when user is not logged in', () async {
       // Ensure no user is logged in
       mockAuthService.setMockUser(null);
-      
+
       // Find a language
-      final italianLanguage = LanguageSettings.availableLanguages.firstWhere((l) => l.code == 'it');
-      
+      final italianLanguage =
+          LanguageSettings.availableLanguages.firstWhere((l) => l.code == 'it');
+
       // Try to change language (should only update local SharedPreferences)
       await languageSettings.setTargetLanguage(italianLanguage);
 
       // Verify local setting is updated
       expect(languageSettings.targetLanguage?.code, equals('it'));
-      
+
       // Database should be empty since no user was logged in
       expect(mockDatabaseService._users, isEmpty);
     });
@@ -320,7 +364,8 @@ void main() {
       expect(languageSettings.supportLanguage2, isNull);
 
       // Now set and then remove a support language
-      final spanishLanguage = LanguageSettings.availableLanguages.firstWhere((l) => l.code == 'es');
+      final spanishLanguage =
+          LanguageSettings.availableLanguages.firstWhere((l) => l.code == 'es');
       await languageSettings.setSupportLanguage1(spanishLanguage);
       await languageSettings.setSupportLanguage1(null);
 

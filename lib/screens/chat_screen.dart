@@ -17,6 +17,8 @@ import '../models/language_response.dart';
 import 'settings_screen.dart';
 import 'vocabulary_review_screen.dart';
 import 'user_vocabulary_screen.dart';
+import 'flashcard_start_screen.dart';
+import '../utils/flashcard_route_transitions.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -53,13 +55,13 @@ class _ChatScreenState extends State<ChatScreen> {
   Widget build(BuildContext context) {
     final settings = context.watch<SettingsService>();
     final languageSettings = context.watch<LanguageSettings>();
-    
+
     String title = ' GitFluent -> made by Roberto Arce';
     // if (languageSettings.targetLanguage != null) {
     //   title += '${languageSettings.targetLanguage?.name}';
     // }
     // title += ' -> Using: ${settings.getProviderName(settings.currentProvider)}';
-    
+
     return KeyboardListener(
       focusNode: FocusNode(),
       onKeyEvent: (event) {
@@ -73,8 +75,7 @@ class _ChatScreenState extends State<ChatScreen> {
         }
       },
       child: Scaffold(
-        backgroundColor: Colors.black38, 
-        
+        backgroundColor: Colors.black38,
         appBar: AppBar(
           backgroundColor: const Color.fromARGB(255, 71, 175, 227),
           title: Text(title),
@@ -93,20 +94,30 @@ class _ChatScreenState extends State<ChatScreen> {
               ],
             ),
             IconButton(
+              icon: const Icon(Icons.quiz),
+              onPressed: () {
+                FlashcardNavigation.toFlashcardStart(context);
+              },
+              tooltip: 'Study Flashcards',
+            ),
+            IconButton(
               icon: const Icon(Icons.menu_book),
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => const VocabularyReviewScreen()),
+                  MaterialPageRoute(
+                      builder: (context) => const VocabularyReviewScreen()),
                 );
               },
+              tooltip: 'Review Vocabulary',
             ),
             IconButton(
               icon: const Icon(Icons.settings),
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => const SettingsScreen()),
+                  MaterialPageRoute(
+                      builder: (context) => const SettingsScreen()),
                 );
               },
             ),
@@ -124,7 +135,7 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
           ],
         ),
-        body: Column( 
+        body: Column(
           children: [
             Expanded(
               child: Consumer<ChatService>(
@@ -138,21 +149,27 @@ class _ChatScreenState extends State<ChatScreen> {
                       final message = chatService.messages[index];
                       // Parse the message JSON if possible
                       LanguageResponse? parsedResponse;
-                      if (!message.isUser && message.LLMjsonResponse != null && message.LLMjsonResponse!.isNotEmpty) {
+                      if (!message.isUser &&
+                          message.LLMjsonResponse != null &&
+                          message.LLMjsonResponse!.isNotEmpty) {
                         // Try to parse directly from stored JSON first
                         try {
-                          parsedResponse = LanguageResponse.fromJson(json.decode(message.LLMjsonResponse!));
-                          debugPrint('Successfully parsed stored JSON response');
+                          parsedResponse = LanguageResponse.fromJson(
+                              json.decode(message.LLMjsonResponse!));
+                          debugPrint(
+                              'Successfully parsed stored JSON response');
                         } catch (e) {
                           // If direct parsing fails, use the helper method
-                          debugPrint('Stored JSON parsing failed, trying helper: $e');
-                          parsedResponse = _tryParseJsonResponse(message.LLMjsonResponse!);
+                          debugPrint(
+                              'Stored JSON parsing failed, trying helper: $e');
+                          parsedResponse =
+                              _tryParseJsonResponse(message.LLMjsonResponse!);
                         }
                       }
-                      
+
                       return Column(
-                        crossAxisAlignment: message.isUser 
-                            ? CrossAxisAlignment.end 
+                        crossAxisAlignment: message.isUser
+                            ? CrossAxisAlignment.end
                             : CrossAxisAlignment.start,
                         children: [
                           _MessageBubble(
@@ -252,13 +269,14 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  void _sendMessage(ChatService chatService, LanguageSettings languageSettings) {
+  void _sendMessage(
+      ChatService chatService, LanguageSettings languageSettings) {
     if (_controller.text.isEmpty) return;
-    
+
     chatService.sendMessage(_controller.text);
     _controller.clear();
   }
-  
+
   // Helper method to parse JSON response - shared by message bubble and vocabulary buttons
   LanguageResponse? _tryParseJsonResponse(String content) {
     if (content.isEmpty) {
@@ -272,23 +290,23 @@ class _ChatScreenState extends State<ChatScreen> {
       return LanguageResponse.fromJson(json.decode(content));
     } catch (e) {
       debugPrint('Direct JSON parsing failed: $e');
-      
+
       // Try to extract JSON if it's embedded in text
       try {
         // Look for JSON inside code blocks
         final jsonCodeBlockRegex = RegExp(r'```json\s*([\s\S]*?)\s*```');
         final codeMatch = jsonCodeBlockRegex.firstMatch(content);
-        
+
         if (codeMatch != null && codeMatch.group(1) != null) {
           debugPrint('Found JSON in code block');
           final jsonString = codeMatch.group(1)!.trim();
           return LanguageResponse.fromJson(json.decode(jsonString));
         }
-        
+
         // Try simple regex extraction
         final jsonRegex = RegExp(r'(\{[\s\S]*\})');
         final match = jsonRegex.firstMatch(content);
-        
+
         if (match != null) {
           debugPrint('Found JSON using simple regex');
           final jsonString = match.group(1);
@@ -339,7 +357,7 @@ class _MessageBubbleState extends State<_MessageBubble> {
   Widget build(BuildContext context) {
     final isUser = widget.message.isUser;
     final ScrollController scrollController = ScrollController();
-    
+
     return Align(
       alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
@@ -364,19 +382,19 @@ class _MessageBubbleState extends State<_MessageBubble> {
             controller: scrollController,
             padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
             child: isUser
-              ? SelectableText(
-                  widget.message.content,
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.onPrimary,
-                  ),
-                )
-              : _buildFormattedContent(context),
+                ? SelectableText(
+                    widget.message.content,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onPrimary,
+                    ),
+                  )
+                : _buildFormattedContent(context),
           ),
         ),
       ),
     );
   }
-  
+
   Widget _buildFormattedContent(BuildContext context) {
     if (widget.parsedResponse != null) {
       return CollapsibleResponseFormatter(
@@ -402,16 +420,18 @@ class CollapsibleResponseFormatter extends StatefulWidget {
   final bool detailedMode;
 
   const CollapsibleResponseFormatter({
-    super.key, 
+    super.key,
     required this.response,
     required this.detailedMode,
   });
 
   @override
-  State<CollapsibleResponseFormatter> createState() => _CollapsibleResponseFormatterState();
+  State<CollapsibleResponseFormatter> createState() =>
+      _CollapsibleResponseFormatterState();
 }
 
-class _CollapsibleResponseFormatterState extends State<CollapsibleResponseFormatter> {
+class _CollapsibleResponseFormatterState
+    extends State<CollapsibleResponseFormatter> {
   bool _showCorrections = false;
   bool _showVocabulary = false;
 
@@ -434,17 +454,17 @@ class _CollapsibleResponseFormatterState extends State<CollapsibleResponseFormat
       children: [
         // Translation section is always visible
         _buildTranslationSection(),
-        
+
         // Collapsible corrections section
         if (widget.response.corrections.isNotEmpty)
           _buildCollapsibleCorrectionsSection(),
-        
+
         // Collapsible vocabulary section
         if (widget.response.vocabularyBreakdown.isNotEmpty)
           _buildCollapsibleVocabularySection(),
-        
+
         // Additional context if available
-        if (widget.response.additionalContext != null && 
+        if (widget.response.additionalContext != null &&
             widget.response.additionalContext!.isNotEmpty)
           _buildAdditionalContextSection(),
       ],
@@ -481,7 +501,7 @@ class _CollapsibleResponseFormatterState extends State<CollapsibleResponseFormat
                   fontWeight: FontWeight.w500,
                 ),
               ),
-            if (widget.response.targetLanguageSentence.isNotEmpty && 
+            if (widget.response.targetLanguageSentence.isNotEmpty &&
                 widget.response.nativeLanguageTranslation.isNotEmpty)
               const SizedBox(height: 8),
             if (widget.response.nativeLanguageTranslation.isNotEmpty)
@@ -502,10 +522,12 @@ class _CollapsibleResponseFormatterState extends State<CollapsibleResponseFormat
   Widget _buildCollapsibleCorrectionsSection() {
     // Check if we have real corrections or just "None" values
     final hasCorrections = !(widget.response.corrections.isEmpty ||
-        (widget.response.corrections.length == 1 && 
-         (widget.response.corrections[0] == "None." || 
-          widget.response.corrections[0].toLowerCase().contains("none"))));
-    
+        (widget.response.corrections.length == 1 &&
+            (widget.response.corrections[0] == "None." ||
+                widget.response.corrections[0]
+                    .toLowerCase()
+                    .contains("none"))));
+
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 8),
       child: InkWell(
@@ -538,11 +560,11 @@ class _CollapsibleResponseFormatterState extends State<CollapsibleResponseFormat
                   ),
                 ],
               ),
-              
+
               // Only show content if section is expanded or in detailed mode
               if (_showCorrections || widget.detailedMode) ...[
                 const Divider(),
-                
+
                 // If no corrections, show a message
                 if (!hasCorrections)
                   const Text(
@@ -555,23 +577,24 @@ class _CollapsibleResponseFormatterState extends State<CollapsibleResponseFormat
                 else
                   // Display each correction
                   ...widget.response.corrections
-                      .where((correction) => 
-                          correction.trim().isNotEmpty && 
+                      .where((correction) =>
+                          correction.trim().isNotEmpty &&
                           correction != "None." &&
                           !correction.toLowerCase().contains("none"))
                       .map((correction) => Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 4),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Icon(Icons.arrow_right, size: 16, color: Colors.grey),
-                            const SizedBox(width: 4),
-                            Expanded(
-                              child: Text(correction),
+                            padding: const EdgeInsets.symmetric(vertical: 4),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Icon(Icons.arrow_right,
+                                    size: 16, color: Colors.grey),
+                                const SizedBox(width: 4),
+                                Expanded(
+                                  child: Text(correction),
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
-                      )),
+                          )),
               ],
             ],
           ),
@@ -582,7 +605,7 @@ class _CollapsibleResponseFormatterState extends State<CollapsibleResponseFormat
 
   Widget _buildCollapsibleVocabularySection() {
     final vocabulary = widget.response.vocabularyBreakdown;
-    
+
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 8),
       child: InkWell(
@@ -612,11 +635,11 @@ class _CollapsibleResponseFormatterState extends State<CollapsibleResponseFormat
                   ),
                 ],
               ),
-              
+
               // Only show content if section is expanded or in detailed mode
               if (_showVocabulary || widget.detailedMode) ...[
                 const Divider(),
-                
+
                 // Group vocabulary by type
                 ..._buildVocabularyContent(vocabulary),
               ],
@@ -626,51 +649,58 @@ class _CollapsibleResponseFormatterState extends State<CollapsibleResponseFormat
       ),
     );
   }
-  
+
   List<Widget> _buildVocabularyContent(List<VocabularyBreakdown> vocabulary) {
     if (vocabulary.isEmpty) {
       return [const Text('No vocabulary items')];
     }
-    
+
     try {
       // Group vocabulary by type
-      final verbs = vocabulary.where((item) => 
-        item.wordType.toLowerCase().contains('verb')).toList();
-      final nouns = vocabulary.where((item) => 
-        item.wordType.toLowerCase().contains('noun')).toList();
-      final others = vocabulary.where((item) => 
-        !item.wordType.toLowerCase().contains('verb') && 
-        !item.wordType.toLowerCase().contains('noun')).toList();
-      
+      final verbs = vocabulary
+          .where((item) => item.wordType.toLowerCase().contains('verb'))
+          .toList();
+      final nouns = vocabulary
+          .where((item) => item.wordType.toLowerCase().contains('noun'))
+          .toList();
+      final others = vocabulary
+          .where((item) =>
+              !item.wordType.toLowerCase().contains('verb') &&
+              !item.wordType.toLowerCase().contains('noun'))
+          .toList();
+
       final widgets = <Widget>[];
-      
+
       // Verbs section
       if (verbs.isNotEmpty) {
-        widgets.add(_buildVocabularyTypeHeader('Verbs', Icons.run_circle, Colors.blue));
+        widgets.add(
+            _buildVocabularyTypeHeader('Verbs', Icons.run_circle, Colors.blue));
         widgets.addAll(verbs.map((verb) => _buildVocabularyItem(verb)));
         widgets.add(const SizedBox(height: 8));
       }
-      
+
       // Nouns section
       if (nouns.isNotEmpty) {
-        widgets.add(_buildVocabularyTypeHeader('Nouns', Icons.label, Colors.green));
+        widgets.add(
+            _buildVocabularyTypeHeader('Nouns', Icons.label, Colors.green));
         widgets.addAll(nouns.map((noun) => _buildVocabularyItem(noun)));
         widgets.add(const SizedBox(height: 8));
       }
-      
+
       // Other words section
       if (others.isNotEmpty) {
-        widgets.add(_buildVocabularyTypeHeader('Other Words', Icons.text_fields, Colors.orange));
+        widgets.add(_buildVocabularyTypeHeader(
+            'Other Words', Icons.text_fields, Colors.orange));
         widgets.addAll(others.map((other) => _buildVocabularyItem(other)));
       }
-      
+
       return widgets;
     } catch (e) {
       debugPrint('Error building vocabulary section: $e');
       return [Text('Error displaying vocabulary: $e')];
     }
   }
-  
+
   Widget _buildVocabularyTypeHeader(String title, IconData icon, Color color) {
     return Padding(
       padding: const EdgeInsets.only(top: 12, bottom: 4),
@@ -690,7 +720,7 @@ class _CollapsibleResponseFormatterState extends State<CollapsibleResponseFormat
       ),
     );
   }
-  
+
   Widget _buildVocabularyItem(VocabularyBreakdown item) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
@@ -744,7 +774,7 @@ class _CollapsibleResponseFormatterState extends State<CollapsibleResponseFormat
       ),
     );
   }
-  
+
   Widget _buildAdditionalContextSection() {
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 8),
@@ -798,4 +828,4 @@ class SelectableMarkdown extends StatelessWidget {
       style: styleSheet?.p ?? DefaultTextStyle.of(context).style,
     );
   }
-} 
+}

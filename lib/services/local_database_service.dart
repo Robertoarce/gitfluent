@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import '../models/user.dart';
 import '../models/user_vocabulary.dart';
+import '../models/flashcard_session.dart';
 import 'database_service.dart';
 
 /// Simple in-memory database service for testing
@@ -10,10 +11,13 @@ class LocalDatabaseService implements DatabaseService {
   final Map<String, List<UserVocabularyItem>> _userVocabulary = {};
   final Map<String, UserVocabularyStats> _vocabularyStats = {};
   final Map<String, List<Map<String, dynamic>>> _chatHistory = {};
+  final Map<String, FlashcardSession> _flashcardSessions = {};
+  final Map<String, List<FlashcardSessionCard>> _flashcardSessionCards = {};
 
   @override
   Future<User?> getUserById(String userId) async {
-    await Future.delayed(const Duration(milliseconds: 100)); // Simulate network delay
+    await Future.delayed(
+        const Duration(milliseconds: 100)); // Simulate network delay
     return _users[userId];
   }
 
@@ -51,10 +55,11 @@ class LocalDatabaseService implements DatabaseService {
   }
 
   @override
-  Future<List<UserVocabularyItem>> getUserVocabulary(String userId, {String? language}) async {
+  Future<List<UserVocabularyItem>> getUserVocabulary(String userId,
+      {String? language}) async {
     await Future.delayed(const Duration(milliseconds: 100));
     final vocabulary = _userVocabulary[userId] ?? [];
-    
+
     if (language != null) {
       return vocabulary.where((item) => item.language == language).toList();
     }
@@ -64,18 +69,20 @@ class LocalDatabaseService implements DatabaseService {
   @override
   Future<UserVocabularyItem> saveVocabularyItem(UserVocabularyItem item) async {
     await Future.delayed(const Duration(milliseconds: 150));
-    
+
     if (!_userVocabulary.containsKey(item.userId)) {
       _userVocabulary[item.userId] = [];
     }
-    
+
     // Remove existing item with same ID if it exists
-    _userVocabulary[item.userId]!.removeWhere((existing) => existing.id == item.id);
-    
+    _userVocabulary[item.userId]!
+        .removeWhere((existing) => existing.id == item.id);
+
     // Add the new/updated item
     _userVocabulary[item.userId]!.add(item);
-    
-    debugPrint('LocalDB: Saved vocabulary item ${item.word} for user ${item.userId}');
+
+    debugPrint(
+        'LocalDB: Saved vocabulary item ${item.word} for user ${item.userId}');
     return item;
   }
 
@@ -87,7 +94,7 @@ class LocalDatabaseService implements DatabaseService {
   @override
   Future<void> deleteVocabularyItem(String itemId) async {
     await Future.delayed(const Duration(milliseconds: 100));
-    
+
     for (final vocabulary in _userVocabulary.values) {
       vocabulary.removeWhere((item) => item.id == itemId);
     }
@@ -95,18 +102,21 @@ class LocalDatabaseService implements DatabaseService {
   }
 
   @override
-  Future<List<UserVocabularyItem>> getVocabularyDueForReview(String userId, {String? language}) async {
+  Future<List<UserVocabularyItem>> getVocabularyDueForReview(String userId,
+      {String? language}) async {
     await Future.delayed(const Duration(milliseconds: 100));
     final vocabulary = await getUserVocabulary(userId, language: language);
     final now = DateTime.now();
-    
-    return vocabulary.where((item) => 
-      item.nextReview != null && now.isAfter(item.nextReview!)
-    ).toList();
+
+    return vocabulary
+        .where(
+            (item) => item.nextReview != null && now.isAfter(item.nextReview!))
+        .toList();
   }
 
   @override
-  Future<UserVocabularyStats?> getUserVocabularyStats(String userId, String language) async {
+  Future<UserVocabularyStats?> getUserVocabularyStats(
+      String userId, String language) async {
     await Future.delayed(const Duration(milliseconds: 100));
     return _vocabularyStats['${userId}_$language'];
   }
@@ -115,37 +125,39 @@ class LocalDatabaseService implements DatabaseService {
   Future<void> updateVocabularyStats(UserVocabularyStats stats) async {
     await Future.delayed(const Duration(milliseconds: 150));
     _vocabularyStats['${stats.userId}_${stats.language}'] = stats;
-    debugPrint('LocalDB: Updated vocabulary stats for user ${stats.userId}, language ${stats.language}');
+    debugPrint(
+        'LocalDB: Updated vocabulary stats for user ${stats.userId}, language ${stats.language}');
   }
 
   @override
-  Future<void> saveChatMessage(String userId, Map<String, dynamic> message) async {
+  Future<void> saveChatMessage(
+      String userId, Map<String, dynamic> message) async {
     await Future.delayed(const Duration(milliseconds: 100));
-    
+
     if (!_chatHistory.containsKey(userId)) {
       _chatHistory[userId] = [];
     }
-    
+
     final messageWithTimestamp = {
       ...message,
       'timestamp': DateTime.now().toIso8601String(),
       'id': DateTime.now().millisecondsSinceEpoch.toString(),
     };
-    
+
     _chatHistory[userId]!.add(messageWithTimestamp);
     debugPrint('LocalDB: Saved chat message for user $userId');
   }
 
   @override
-  Future<List<Map<String, dynamic>>> getChatHistory(String userId, {int limit = 50}) async {
+  Future<List<Map<String, dynamic>>> getChatHistory(String userId,
+      {int limit = 50}) async {
     await Future.delayed(const Duration(milliseconds: 100));
     final history = _chatHistory[userId] ?? [];
-    
+
     // Sort by timestamp (newest first) and limit
-    history.sort((a, b) => 
-      DateTime.parse(b['timestamp']).compareTo(DateTime.parse(a['timestamp']))
-    );
-    
+    history.sort((a, b) => DateTime.parse(b['timestamp'])
+        .compareTo(DateTime.parse(a['timestamp'])));
+
     return history.take(limit).toList();
   }
 
@@ -162,7 +174,8 @@ class LocalDatabaseService implements DatabaseService {
     final user = _users[userId];
     if (user != null) {
       _users[userId] = user.copyWith(isPremium: isPremium);
-      debugPrint('LocalDB: Updated premium status for user $userId to $isPremium');
+      debugPrint(
+          'LocalDB: Updated premium status for user $userId to $isPremium');
     }
   }
 
@@ -174,25 +187,120 @@ class LocalDatabaseService implements DatabaseService {
 
   @override
   Future<void> cleanup() async {
-    // For local storage, we might want to persist data or clear it
-    debugPrint('LocalDB: Cleanup called');
+    await Future.delayed(const Duration(milliseconds: 100));
+    debugPrint('LocalDB: Cleanup completed');
   }
 
-  // Additional helper methods for testing
-  void clearAllData() {
-    _users.clear();
-    _userVocabulary.clear();
-    _vocabularyStats.clear();
-    _chatHistory.clear();
-    debugPrint('LocalDB: Cleared all data');
+  // Flashcard session operations
+  @override
+  Future<FlashcardSession> createFlashcardSession(
+      FlashcardSession session) async {
+    await Future.delayed(const Duration(milliseconds: 150));
+    _flashcardSessions[session.id] = session;
+    _flashcardSessionCards[session.id] = [];
+    debugPrint(
+        'LocalDB: Created flashcard session ${session.id} for user ${session.userId}');
+    return session;
   }
 
+  @override
+  Future<FlashcardSession?> getFlashcardSession(String sessionId) async {
+    await Future.delayed(const Duration(milliseconds: 100));
+    return _flashcardSessions[sessionId];
+  }
+
+  @override
+  Future<void> updateFlashcardSession(FlashcardSession session) async {
+    await Future.delayed(const Duration(milliseconds: 150));
+    _flashcardSessions[session.id] = session;
+    debugPrint('LocalDB: Updated flashcard session ${session.id}');
+  }
+
+  @override
+  Future<List<FlashcardSession>> getUserFlashcardSessions(String userId,
+      {int limit = 50}) async {
+    await Future.delayed(const Duration(milliseconds: 100));
+    final sessions = _flashcardSessions.values
+        .where((session) => session.userId == userId)
+        .toList();
+
+    // Sort by session date descending
+    sessions.sort((a, b) => b.sessionDate.compareTo(a.sessionDate));
+
+    // Apply limit
+    return sessions.take(limit).toList();
+  }
+
+  @override
+  Future<void> deleteFlashcardSession(String sessionId) async {
+    await Future.delayed(const Duration(milliseconds: 150));
+    _flashcardSessions.remove(sessionId);
+    _flashcardSessionCards.remove(sessionId);
+    debugPrint('LocalDB: Deleted flashcard session $sessionId');
+  }
+
+  // Flashcard session card operations
+  @override
+  Future<FlashcardSessionCard> saveFlashcardSessionCard(
+      FlashcardSessionCard card) async {
+    await Future.delayed(const Duration(milliseconds: 100));
+
+    if (!_flashcardSessionCards.containsKey(card.sessionId)) {
+      _flashcardSessionCards[card.sessionId] = [];
+    }
+
+    _flashcardSessionCards[card.sessionId]!.add(card);
+    debugPrint(
+        'LocalDB: Saved flashcard session card ${card.id} for session ${card.sessionId}');
+    return card;
+  }
+
+  @override
+  Future<List<FlashcardSessionCard>> getSessionCards(String sessionId) async {
+    await Future.delayed(const Duration(milliseconds: 100));
+    final cards = _flashcardSessionCards[sessionId] ?? [];
+
+    // Sort by shown_at time
+    cards.sort((a, b) => a.shownAt.compareTo(b.shownAt));
+    return List.from(cards);
+  }
+
+  @override
+  Future<void> updateFlashcardSessionCard(FlashcardSessionCard card) async {
+    await Future.delayed(const Duration(milliseconds: 100));
+
+    final sessionCards = _flashcardSessionCards[card.sessionId];
+    if (sessionCards != null) {
+      final index = sessionCards.indexWhere((c) => c.id == card.id);
+      if (index >= 0) {
+        sessionCards[index] = card;
+        debugPrint('LocalDB: Updated flashcard session card ${card.id}');
+      }
+    }
+  }
+
+  @override
+  Future<void> deleteFlashcardSessionCard(String cardId) async {
+    await Future.delayed(const Duration(milliseconds: 100));
+
+    for (final sessionCards in _flashcardSessionCards.values) {
+      sessionCards.removeWhere((card) => card.id == cardId);
+    }
+    debugPrint('LocalDB: Deleted flashcard session card $cardId');
+  }
+
+  // Debug methods
   Map<String, dynamic> getDebugInfo() {
     return {
       'users_count': _users.length,
-      'vocabulary_items_count': _userVocabulary.values.fold(0, (sum, list) => sum + list.length),
+      'vocabulary_items_count':
+          _userVocabulary.values.fold(0, (sum, list) => sum + list.length),
       'stats_count': _vocabularyStats.length,
-      'chat_messages_count': _chatHistory.values.fold(0, (sum, list) => sum + list.length),
+      'chat_messages_count':
+          _chatHistory.values.fold(0, (sum, list) => sum + list.length),
+      'flashcard_sessions_count': _flashcardSessions.length,
+      'flashcard_session_cards_count': _flashcardSessionCards.values
+          .fold(0, (sum, list) => sum + list.length),
     };
   }
 
@@ -200,4 +308,4 @@ class LocalDatabaseService implements DatabaseService {
     final info = getDebugInfo();
     debugPrint('LocalDB Debug Info: $info');
   }
-} 
+}

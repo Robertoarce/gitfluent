@@ -4,13 +4,14 @@ import 'package:crypto/crypto.dart';
 import 'dart:convert';
 import '../models/user.dart';
 import '../models/user_vocabulary.dart';
+import '../models/flashcard_session.dart';
 import 'auth_service.dart';
 import 'database_service.dart';
 
 class UserService extends ChangeNotifier {
   final AuthService _authService;
   final DatabaseService _databaseService;
-  
+
   User? _currentUser;
   bool _isLoading = false;
   String? _error;
@@ -18,7 +19,8 @@ class UserService extends ChangeNotifier {
   UserService({
     required AuthService authService,
     required DatabaseService databaseService,
-  }) : _authService = authService, _databaseService = databaseService {
+  })  : _authService = authService,
+        _databaseService = databaseService {
     _initialize();
   }
 
@@ -32,33 +34,39 @@ class UserService extends ChangeNotifier {
   void _initialize() {
     // Listen to auth state changes
     _authService.authStateChanges.listen((user) async {
-      debugPrint('UserService: Auth state changed - user: ${user?.email ?? 'null'}');
+      debugPrint(
+          'UserService: Auth state changed - user: ${user?.email ?? 'null'}');
       if (user != null) {
         // Set the user directly from auth service
         _currentUser = user;
         notifyListeners();
-        
+
         // Try to sync with database, but don't fail if it doesn't work
         try {
-          debugPrint('UserService: Fetching user from database with ID: ${user.id}');
+          debugPrint(
+              'UserService: Fetching user from database with ID: ${user.id}');
           final dbUser = await _databaseService.getUserById(user.id);
           if (dbUser != null) {
             _currentUser = dbUser;
-            debugPrint('UserService: Loaded user from database: ${dbUser.email}');
+            debugPrint(
+                'UserService: Loaded user from database: ${dbUser.email}');
           } else {
             debugPrint('UserService: User not found in database, creating...');
             // Create user in database if it doesn't exist
             try {
               final userId = await _databaseService.createUser(user);
-              debugPrint('UserService: Created user in database with ID: $userId');
+              debugPrint(
+                  'UserService: Created user in database with ID: $userId');
             } catch (e) {
               debugPrint('UserService: Failed to create user in database: $e');
               // If there's an RLS or permission issue, try using service role key if available
               try {
                 // This would typically be handled by the database service
-                debugPrint('UserService: Will retry on next authentication event');
+                debugPrint(
+                    'UserService: Will retry on next authentication event');
               } catch (e2) {
-                debugPrint('UserService: Service role attempt also failed: $e2');
+                debugPrint(
+                    'UserService: Service role attempt also failed: $e2');
               }
             }
           }
@@ -82,8 +90,9 @@ class UserService extends ChangeNotifier {
       _error = null;
       notifyListeners();
 
-      final result = await _authService.signInWithEmailAndPassword(email, password);
-      
+      final result =
+          await _authService.signInWithEmailAndPassword(email, password);
+
       if (result.success && result.user != null) {
         _currentUser = result.user;
         // Update last login
@@ -91,7 +100,7 @@ class UserService extends ChangeNotifier {
       } else {
         _error = result.error;
       }
-      
+
       return result;
     } catch (e) {
       _error = 'Sign in failed: $e';
@@ -102,26 +111,33 @@ class UserService extends ChangeNotifier {
     }
   }
 
-  Future<AuthResult> signUp(String email, String password, String firstName, String lastName) async {
+  Future<AuthResult> signUp(
+      String email, String password, String firstName, String lastName) async {
     try {
       _isLoading = true;
       _error = null;
       notifyListeners();
 
       debugPrint('=========== USER CREATION PROCESS START ===========');
-      debugPrint('UserService: Starting user signup for email: $email with firstName: $firstName, lastName: $lastName');
-      
+      debugPrint(
+          'UserService: Starting user signup for email: $email with firstName: $firstName, lastName: $lastName');
+
       // Create user in authentication system
-      debugPrint('UserService: Calling createUserWithEmailAndPassword on auth service');
-      final authResult = await _authService.createUserWithEmailAndPassword(email, password, firstName, lastName);
-      
-      debugPrint('UserService: Auth result received - success: ${authResult.success}, error: ${authResult.error ?? "none"}, user: ${authResult.user?.id ?? "null"}');
-      
+      debugPrint(
+          'UserService: Calling createUserWithEmailAndPassword on auth service');
+      final authResult = await _authService.createUserWithEmailAndPassword(
+          email, password, firstName, lastName);
+
+      debugPrint(
+          'UserService: Auth result received - success: ${authResult.success}, error: ${authResult.error ?? "none"}, user: ${authResult.user?.id ?? "null"}');
+
       if (authResult.success && authResult.user != null) {
-        debugPrint('UserService: Auth creation successful, user ID: ${authResult.user!.id}');
-        
+        debugPrint(
+            'UserService: Auth creation successful, user ID: ${authResult.user!.id}');
+
         // Upsert user in database (prevents duplicate key errors)
-        debugPrint('UserService: Creating User object with ID: ${authResult.user!.id}');
+        debugPrint(
+            'UserService: Creating User object with ID: ${authResult.user!.id}');
         final user = User(
           id: authResult.user!.id,
           email: email,
@@ -132,10 +148,12 @@ class UserService extends ChangeNotifier {
           preferences: UserPreferences(),
           statistics: UserStatistics(),
         );
-        
-        debugPrint('UserService: User object created, preparing to call database service');
-        debugPrint('UserService: Creating user in database with ID: ${user.id}');
-        
+
+        debugPrint(
+            'UserService: User object created, preparing to call database service');
+        debugPrint(
+            'UserService: Creating user in database with ID: ${user.id}');
+
         try {
           final userId = await _databaseService.createUser(user);
           debugPrint('UserService: User created in database with ID: $userId');
@@ -143,20 +161,22 @@ class UserService extends ChangeNotifier {
           debugPrint('UserService: Database error: $dbError');
           // Continue even if database creation fails - we'll try again on auth state change
         }
-        
+
         _currentUser = user;
         debugPrint('UserService: User creation process completed successfully');
         debugPrint('=========== USER CREATION PROCESS END ===========');
         return AuthResult.success(user);
       } else {
         debugPrint('UserService: Auth creation failed: ${authResult.error}');
-        debugPrint('=========== USER CREATION PROCESS END WITH ERROR ===========');
+        debugPrint(
+            '=========== USER CREATION PROCESS END WITH ERROR ===========');
         _error = authResult.error;
         return authResult;
       }
     } catch (e) {
       debugPrint('UserService: Sign up failed with exception: $e');
-      debugPrint('=========== USER CREATION PROCESS END WITH EXCEPTION ===========');
+      debugPrint(
+          '=========== USER CREATION PROCESS END WITH EXCEPTION ===========');
       _error = 'Sign up failed: $e';
       return AuthResult.error(_error!);
     } finally {
@@ -185,10 +205,11 @@ class UserService extends ChangeNotifier {
       notifyListeners();
 
       final result = await _authService.signInWithGoogle();
-      
+
       if (result.success && result.user != null) {
         // Check if user exists in database, create if not
-        final existingUser = await _databaseService.getUserById(result.user!.id);
+        final existingUser =
+            await _databaseService.getUserById(result.user!.id);
         if (existingUser == null) {
           await _databaseService.createUser(result.user!);
         }
@@ -197,7 +218,7 @@ class UserService extends ChangeNotifier {
       } else {
         _error = result.error;
       }
-      
+
       return result;
     } catch (e) {
       _error = 'Google sign in failed: $e';
@@ -209,7 +230,8 @@ class UserService extends ChangeNotifier {
   }
 
   // User profile management
-  Future<void> updateProfile({String? firstName, String? lastName, String? profileImageUrl}) async {
+  Future<void> updateProfile(
+      {String? firstName, String? lastName, String? profileImageUrl}) async {
     if (_currentUser == null) return;
 
     try {
@@ -260,7 +282,7 @@ class UserService extends ChangeNotifier {
     try {
       await _databaseService.updatePremiumStatus(_currentUser!.id, true);
       await _authService.updatePremiumStatus(true);
-      
+
       _currentUser = _currentUser!.copyWith(isPremium: true);
       notifyListeners();
     } catch (e) {
@@ -328,7 +350,8 @@ class UserService extends ChangeNotifier {
     if (_currentUser == null || !_currentUser!.isPremium) return [];
 
     try {
-      return await _databaseService.getChatHistory(_currentUser!.id, limit: limit);
+      return await _databaseService.getChatHistory(_currentUser!.id,
+          limit: limit);
     } catch (e) {
       _error = 'Failed to load chat history: $e';
       notifyListeners();
@@ -353,15 +376,24 @@ class UserService extends ChangeNotifier {
     if (_currentUser == null) return;
 
     try {
-      final vocabulary = await _databaseService.getUserVocabulary(_currentUser!.id, language: language);
-      
+      final vocabulary = await _databaseService
+          .getUserVocabulary(_currentUser!.id, language: language);
+
       final totalWords = vocabulary.length;
-      final masteredWords = vocabulary.where((item) => item.masteryLevel >= 90).length;
-      final learningWords = vocabulary.where((item) => item.masteryLevel >= 30 && item.masteryLevel < 90).length;
-      final newWords = vocabulary.where((item) => item.masteryLevel < 30).length;
-      final wordsDueReview = vocabulary.where((item) => item.needsReview).length;
-      final averageMastery = totalWords > 0 
-          ? vocabulary.map((item) => item.masteryLevel).reduce((a, b) => a + b) / totalWords 
+      final masteredWords =
+          vocabulary.where((item) => item.masteryLevel >= 90).length;
+      final learningWords = vocabulary
+          .where((item) => item.masteryLevel >= 30 && item.masteryLevel < 90)
+          .length;
+      final newWords =
+          vocabulary.where((item) => item.masteryLevel < 30).length;
+      final wordsDueReview =
+          vocabulary.where((item) => item.needsReview).length;
+      final averageMastery = totalWords > 0
+          ? vocabulary
+                  .map((item) => item.masteryLevel)
+                  .reduce((a, b) => a + b) /
+              totalWords
           : 0.0;
 
       final wordsByType = <String, int>{};
@@ -388,6 +420,106 @@ class UserService extends ChangeNotifier {
     }
   }
 
+  // Flashcard session management
+  Future<FlashcardSession> createFlashcardSession(
+      FlashcardSession session) async {
+    if (!isLoggedIn) {
+      throw Exception('User must be logged in to create flashcard sessions');
+    }
+
+    try {
+      return await _databaseService.createFlashcardSession(session);
+    } catch (e) {
+      debugPrint('Failed to create flashcard session: $e');
+      rethrow;
+    }
+  }
+
+  Future<FlashcardSession?> getFlashcardSession(String sessionId) async {
+    if (!isLoggedIn) {
+      throw Exception('User must be logged in to get flashcard sessions');
+    }
+
+    try {
+      return await _databaseService.getFlashcardSession(sessionId);
+    } catch (e) {
+      debugPrint('Failed to get flashcard session: $e');
+      return null;
+    }
+  }
+
+  Future<void> updateFlashcardSession(FlashcardSession session) async {
+    if (!isLoggedIn) {
+      throw Exception('User must be logged in to update flashcard sessions');
+    }
+
+    try {
+      await _databaseService.updateFlashcardSession(session);
+    } catch (e) {
+      debugPrint('Failed to update flashcard session: $e');
+      rethrow;
+    }
+  }
+
+  Future<List<FlashcardSession>> getUserFlashcardSessions({
+    int limit = 50,
+  }) async {
+    if (!isLoggedIn) {
+      throw Exception('User must be logged in to get flashcard sessions');
+    }
+
+    try {
+      return await _databaseService.getUserFlashcardSessions(
+        _currentUser!.id,
+        limit: limit,
+      );
+    } catch (e) {
+      debugPrint('Failed to get user flashcard sessions: $e');
+      return [];
+    }
+  }
+
+  Future<void> deleteFlashcardSession(String sessionId) async {
+    if (!isLoggedIn) {
+      throw Exception('User must be logged in to delete flashcard sessions');
+    }
+
+    try {
+      await _databaseService.deleteFlashcardSession(sessionId);
+    } catch (e) {
+      debugPrint('Failed to delete flashcard session: $e');
+      rethrow;
+    }
+  }
+
+  // Flashcard session cards management
+  Future<FlashcardSessionCard> saveFlashcardSessionCard(
+      FlashcardSessionCard card) async {
+    if (!isLoggedIn) {
+      throw Exception('User must be logged in to save flashcard session cards');
+    }
+
+    try {
+      return await _databaseService.saveFlashcardSessionCard(card);
+    } catch (e) {
+      debugPrint('Failed to save flashcard session card: $e');
+      rethrow;
+    }
+  }
+
+  Future<List<FlashcardSessionCard>> getSessionCards(String sessionId) async {
+    if (!isLoggedIn) {
+      throw Exception('User must be logged in to get session cards');
+    }
+
+    try {
+      return await _databaseService.getSessionCards(sessionId);
+    } catch (e) {
+      debugPrint('Failed to get session cards: $e');
+      return [];
+    }
+  }
+
   String _hashPassword(String password) {
     final bytes = utf8.encode(password);
     final digest = sha256.convert(bytes);
@@ -408,4 +540,4 @@ class UserService extends ChangeNotifier {
   void dispose() {
     super.dispose();
   }
-} 
+}

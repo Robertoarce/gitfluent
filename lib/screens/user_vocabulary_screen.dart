@@ -5,6 +5,7 @@ import '../services/user_service.dart';
 import '../models/vocabulary_item.dart';
 import '../models/user_vocabulary.dart';
 import 'vocabulary_detail_screen.dart'; // Added import for VocabularyDetailScreen
+import 'flashcard_start_screen.dart';
 
 class UserVocabularyScreen extends StatefulWidget {
   const UserVocabularyScreen({super.key});
@@ -81,8 +82,23 @@ class _UserVocabularyScreenState extends State<UserVocabularyScreen>
         ),
         actions: [
           IconButton(
+            icon: const Icon(Icons.quiz),
+            onPressed: (_userItems.isNotEmpty || _legacyItems.isNotEmpty)
+                ? () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const FlashcardStartScreen(),
+                      ),
+                    );
+                  }
+                : null,
+            tooltip: 'Study Flashcards',
+          ),
+          IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: _loadVocabulary,
+            tooltip: 'Refresh Vocabulary',
           ),
         ],
       ),

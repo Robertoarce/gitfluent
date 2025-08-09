@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import '../services/vocabulary_service.dart';
 import '../models/vocabulary_item.dart';
 import 'vocabulary_detail_screen.dart';
+import 'flashcard_start_screen.dart';
+import '../utils/flashcard_route_transitions.dart';
 
 class VocabularyReviewScreen extends StatelessWidget {
   const VocabularyReviewScreen({super.key});
@@ -33,10 +35,14 @@ class VocabularyReviewScreen extends StatelessWidget {
             }
 
             // Get items
-            final List<VocabularyItem> allItems = List.from(vocabularyService.items);
-            final List<VocabularyItem> verbs = vocabularyService.getItemsByType(VocabularyItem.typeVerb);
-            final List<VocabularyItem> nouns = vocabularyService.getItemsByType(VocabularyItem.typeNoun);
-            final List<VocabularyItem> adverbs = vocabularyService.getItemsByType(VocabularyItem.typeAdverb);
+            final List<VocabularyItem> allItems =
+                List.from(vocabularyService.items);
+            final List<VocabularyItem> verbs =
+                vocabularyService.getItemsByType(VocabularyItem.typeVerb);
+            final List<VocabularyItem> nouns =
+                vocabularyService.getItemsByType(VocabularyItem.typeNoun);
+            final List<VocabularyItem> adverbs =
+                vocabularyService.getItemsByType(VocabularyItem.typeAdverb);
 
             return TabBarView(
               children: [
@@ -45,6 +51,30 @@ class VocabularyReviewScreen extends StatelessWidget {
                 _buildWordList(context, nouns),
                 _buildWordList(context, adverbs),
               ],
+            );
+          },
+        ),
+        floatingActionButton: Consumer<VocabularyService>(
+          builder: (context, vocabularyService, child) {
+            final hasVocabulary = vocabularyService.items.isNotEmpty;
+
+            return FloatingActionButton.extended(
+              onPressed: hasVocabulary
+                  ? () {
+                      FlashcardNavigation.toFlashcardStart(context);
+                    }
+                  : null,
+              icon: const Icon(Icons.quiz),
+              label: const Text('Study Flashcards'),
+              backgroundColor: hasVocabulary
+                  ? Theme.of(context).colorScheme.primary
+                  : Theme.of(context).colorScheme.surfaceVariant,
+              foregroundColor: hasVocabulary
+                  ? Theme.of(context).colorScheme.onPrimary
+                  : Theme.of(context).colorScheme.onSurfaceVariant,
+              tooltip: hasVocabulary
+                  ? 'Start flashcard study session'
+                  : 'Add vocabulary words to study with flashcards',
             );
           },
         ),
@@ -93,9 +123,13 @@ class VocabularyReviewScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(item.translation),
-                if (item.definition != null || (item.type == VocabularyItem.typeVerb && item.conjugations != null))
+                if (item.definition != null ||
+                    (item.type == VocabularyItem.typeVerb &&
+                        item.conjugations != null))
                   Text(
-                    item.type == VocabularyItem.typeVerb ? 'Has conjugations' : 'Has definition',
+                    item.type == VocabularyItem.typeVerb
+                        ? 'Has conjugations'
+                        : 'Has definition',
                     style: TextStyle(
                       fontSize: 12,
                       color: Theme.of(context).colorScheme.secondary,
@@ -172,4 +206,4 @@ class VocabularyReviewScreen extends StatelessWidget {
         return Icons.help_outline;
     }
   }
-} 
+}

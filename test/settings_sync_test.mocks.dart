@@ -3,13 +3,14 @@
 // Do not manually edit this file.
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
-import 'dart:async' as _i4;
-import 'dart:ui' as _i7;
+import 'dart:async' as _i5;
+import 'dart:ui' as _i8;
 
-import 'package:llm_chat_app/models/user.dart' as _i5;
-import 'package:llm_chat_app/models/user_vocabulary.dart' as _i6;
+import 'package:llm_chat_app/models/flashcard_session.dart' as _i3;
+import 'package:llm_chat_app/models/user.dart' as _i6;
+import 'package:llm_chat_app/models/user_vocabulary.dart' as _i7;
 import 'package:llm_chat_app/services/auth_service.dart' as _i2;
-import 'package:llm_chat_app/services/user_service.dart' as _i3;
+import 'package:llm_chat_app/services/user_service.dart' as _i4;
 import 'package:mockito/mockito.dart' as _i1;
 
 // ignore_for_file: type=lint
@@ -36,10 +37,32 @@ class _FakeAuthResult_0 extends _i1.SmartFake implements _i2.AuthResult {
         );
 }
 
+class _FakeFlashcardSession_1 extends _i1.SmartFake
+    implements _i3.FlashcardSession {
+  _FakeFlashcardSession_1(
+    Object parent,
+    Invocation parentInvocation,
+  ) : super(
+          parent,
+          parentInvocation,
+        );
+}
+
+class _FakeFlashcardSessionCard_2 extends _i1.SmartFake
+    implements _i3.FlashcardSessionCard {
+  _FakeFlashcardSessionCard_2(
+    Object parent,
+    Invocation parentInvocation,
+  ) : super(
+          parent,
+          parentInvocation,
+        );
+}
+
 /// A class which mocks [UserService].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockUserService extends _i1.Mock implements _i3.UserService {
+class MockUserService extends _i1.Mock implements _i4.UserService {
   MockUserService() {
     _i1.throwOnMissingStub(this);
   }
@@ -69,7 +92,7 @@ class MockUserService extends _i1.Mock implements _i3.UserService {
       ) as bool);
 
   @override
-  _i4.Future<_i2.AuthResult> signIn(
+  _i5.Future<_i2.AuthResult> signIn(
     String? email,
     String? password,
   ) =>
@@ -81,7 +104,7 @@ class MockUserService extends _i1.Mock implements _i3.UserService {
             password,
           ],
         ),
-        returnValue: _i4.Future<_i2.AuthResult>.value(_FakeAuthResult_0(
+        returnValue: _i5.Future<_i2.AuthResult>.value(_FakeAuthResult_0(
           this,
           Invocation.method(
             #signIn,
@@ -91,10 +114,10 @@ class MockUserService extends _i1.Mock implements _i3.UserService {
             ],
           ),
         )),
-      ) as _i4.Future<_i2.AuthResult>);
+      ) as _i5.Future<_i2.AuthResult>);
 
   @override
-  _i4.Future<_i2.AuthResult> signUp(
+  _i5.Future<_i2.AuthResult> signUp(
     String? email,
     String? password,
     String? firstName,
@@ -110,7 +133,7 @@ class MockUserService extends _i1.Mock implements _i3.UserService {
             lastName,
           ],
         ),
-        returnValue: _i4.Future<_i2.AuthResult>.value(_FakeAuthResult_0(
+        returnValue: _i5.Future<_i2.AuthResult>.value(_FakeAuthResult_0(
           this,
           Invocation.method(
             #signUp,
@@ -122,35 +145,35 @@ class MockUserService extends _i1.Mock implements _i3.UserService {
             ],
           ),
         )),
-      ) as _i4.Future<_i2.AuthResult>);
+      ) as _i5.Future<_i2.AuthResult>);
 
   @override
-  _i4.Future<void> signOut() => (super.noSuchMethod(
+  _i5.Future<void> signOut() => (super.noSuchMethod(
         Invocation.method(
           #signOut,
           [],
         ),
-        returnValue: _i4.Future<void>.value(),
-        returnValueForMissingStub: _i4.Future<void>.value(),
-      ) as _i4.Future<void>);
+        returnValue: _i5.Future<void>.value(),
+        returnValueForMissingStub: _i5.Future<void>.value(),
+      ) as _i5.Future<void>);
 
   @override
-  _i4.Future<_i2.AuthResult> signInWithGoogle() => (super.noSuchMethod(
+  _i5.Future<_i2.AuthResult> signInWithGoogle() => (super.noSuchMethod(
         Invocation.method(
           #signInWithGoogle,
           [],
         ),
-        returnValue: _i4.Future<_i2.AuthResult>.value(_FakeAuthResult_0(
+        returnValue: _i5.Future<_i2.AuthResult>.value(_FakeAuthResult_0(
           this,
           Invocation.method(
             #signInWithGoogle,
             [],
           ),
         )),
-      ) as _i4.Future<_i2.AuthResult>);
+      ) as _i5.Future<_i2.AuthResult>);
 
   @override
-  _i4.Future<void> updateProfile({
+  _i5.Future<void> updateProfile({
     String? firstName,
     String? lastName,
     String? profileImageUrl,
@@ -165,33 +188,33 @@ class MockUserService extends _i1.Mock implements _i3.UserService {
             #profileImageUrl: profileImageUrl,
           },
         ),
-        returnValue: _i4.Future<void>.value(),
-        returnValueForMissingStub: _i4.Future<void>.value(),
-      ) as _i4.Future<void>);
+        returnValue: _i5.Future<void>.value(),
+        returnValueForMissingStub: _i5.Future<void>.value(),
+      ) as _i5.Future<void>);
 
   @override
-  _i4.Future<void> updatePreferences(_i5.UserPreferences? preferences) =>
+  _i5.Future<void> updatePreferences(_i6.UserPreferences? preferences) =>
       (super.noSuchMethod(
         Invocation.method(
           #updatePreferences,
           [preferences],
         ),
-        returnValue: _i4.Future<void>.value(),
-        returnValueForMissingStub: _i4.Future<void>.value(),
-      ) as _i4.Future<void>);
+        returnValue: _i5.Future<void>.value(),
+        returnValueForMissingStub: _i5.Future<void>.value(),
+      ) as _i5.Future<void>);
 
   @override
-  _i4.Future<void> upgradeToPremium() => (super.noSuchMethod(
+  _i5.Future<void> upgradeToPremium() => (super.noSuchMethod(
         Invocation.method(
           #upgradeToPremium,
           [],
         ),
-        returnValue: _i4.Future<void>.value(),
-        returnValueForMissingStub: _i4.Future<void>.value(),
-      ) as _i4.Future<void>);
+        returnValue: _i5.Future<void>.value(),
+        returnValueForMissingStub: _i5.Future<void>.value(),
+      ) as _i5.Future<void>);
 
   @override
-  _i4.Future<List<_i6.UserVocabularyItem>> getUserVocabulary(
+  _i5.Future<List<_i7.UserVocabularyItem>> getUserVocabulary(
           {String? language}) =>
       (super.noSuchMethod(
         Invocation.method(
@@ -199,54 +222,147 @@ class MockUserService extends _i1.Mock implements _i3.UserService {
           [],
           {#language: language},
         ),
-        returnValue: _i4.Future<List<_i6.UserVocabularyItem>>.value(
-            <_i6.UserVocabularyItem>[]),
-      ) as _i4.Future<List<_i6.UserVocabularyItem>>);
+        returnValue: _i5.Future<List<_i7.UserVocabularyItem>>.value(
+            <_i7.UserVocabularyItem>[]),
+      ) as _i5.Future<List<_i7.UserVocabularyItem>>);
 
   @override
-  _i4.Future<void> saveVocabularyItem(_i6.UserVocabularyItem? item) =>
+  _i5.Future<void> saveVocabularyItem(_i7.UserVocabularyItem? item) =>
       (super.noSuchMethod(
         Invocation.method(
           #saveVocabularyItem,
           [item],
         ),
-        returnValue: _i4.Future<void>.value(),
-        returnValueForMissingStub: _i4.Future<void>.value(),
-      ) as _i4.Future<void>);
+        returnValue: _i5.Future<void>.value(),
+        returnValueForMissingStub: _i5.Future<void>.value(),
+      ) as _i5.Future<void>);
 
   @override
-  _i4.Future<_i6.UserVocabularyStats?> getVocabularyStats({String? language}) =>
+  _i5.Future<_i7.UserVocabularyStats?> getVocabularyStats({String? language}) =>
       (super.noSuchMethod(
         Invocation.method(
           #getVocabularyStats,
           [],
           {#language: language},
         ),
-        returnValue: _i4.Future<_i6.UserVocabularyStats?>.value(),
-      ) as _i4.Future<_i6.UserVocabularyStats?>);
+        returnValue: _i5.Future<_i7.UserVocabularyStats?>.value(),
+      ) as _i5.Future<_i7.UserVocabularyStats?>);
 
   @override
-  _i4.Future<void> saveChatMessage(Map<String, dynamic>? message) =>
+  _i5.Future<void> saveChatMessage(Map<String, dynamic>? message) =>
       (super.noSuchMethod(
         Invocation.method(
           #saveChatMessage,
           [message],
         ),
-        returnValue: _i4.Future<void>.value(),
-        returnValueForMissingStub: _i4.Future<void>.value(),
-      ) as _i4.Future<void>);
+        returnValue: _i5.Future<void>.value(),
+        returnValueForMissingStub: _i5.Future<void>.value(),
+      ) as _i5.Future<void>);
 
   @override
-  _i4.Future<List<Map<String, dynamic>>> getChatHistory({int? limit = 50}) =>
+  _i5.Future<List<Map<String, dynamic>>> getChatHistory({int? limit = 50}) =>
       (super.noSuchMethod(
         Invocation.method(
           #getChatHistory,
           [],
           {#limit: limit},
         ),
-        returnValue: _i4.Future<List<Map<String, dynamic>>>.value(
+        returnValue: _i5.Future<List<Map<String, dynamic>>>.value(
             <Map<String, dynamic>>[]),
-      ) as _i4.Future<List<Map<String, dynamic>>>);
+      ) as _i5.Future<List<Map<String, dynamic>>>);
+
+  @override
+  _i5.Future<_i3.FlashcardSession> createFlashcardSession(
+          _i3.FlashcardSession? session) =>
+      (super.noSuchMethod(
+        Invocation.method(
+          #createFlashcardSession,
+          [session],
+        ),
+        returnValue:
+            _i5.Future<_i3.FlashcardSession>.value(_FakeFlashcardSession_1(
+          this,
+          Invocation.method(
+            #createFlashcardSession,
+            [session],
+          ),
+        )),
+      ) as _i5.Future<_i3.FlashcardSession>);
+
+  @override
+  _i5.Future<_i3.FlashcardSession?> getFlashcardSession(String? sessionId) =>
+      (super.noSuchMethod(
+        Invocation.method(
+          #getFlashcardSession,
+          [sessionId],
+        ),
+        returnValue: _i5.Future<_i3.FlashcardSession?>.value(),
+      ) as _i5.Future<_i3.FlashcardSession?>);
+
+  @override
+  _i5.Future<void> updateFlashcardSession(_i3.FlashcardSession? session) =>
+      (super.noSuchMethod(
+        Invocation.method(
+          #updateFlashcardSession,
+          [session],
+        ),
+        returnValue: _i5.Future<void>.value(),
+        returnValueForMissingStub: _i5.Future<void>.value(),
+      ) as _i5.Future<void>);
+
+  @override
+  _i5.Future<List<_i3.FlashcardSession>> getUserFlashcardSessions(
+          {int? limit = 50}) =>
+      (super.noSuchMethod(
+        Invocation.method(
+          #getUserFlashcardSessions,
+          [],
+          {#limit: limit},
+        ),
+        returnValue: _i5.Future<List<_i3.FlashcardSession>>.value(
+            <_i3.FlashcardSession>[]),
+      ) as _i5.Future<List<_i3.FlashcardSession>>);
+
+  @override
+  _i5.Future<void> deleteFlashcardSession(String? sessionId) =>
+      (super.noSuchMethod(
+        Invocation.method(
+          #deleteFlashcardSession,
+          [sessionId],
+        ),
+        returnValue: _i5.Future<void>.value(),
+        returnValueForMissingStub: _i5.Future<void>.value(),
+      ) as _i5.Future<void>);
+
+  @override
+  _i5.Future<_i3.FlashcardSessionCard> saveFlashcardSessionCard(
+          _i3.FlashcardSessionCard? card) =>
+      (super.noSuchMethod(
+        Invocation.method(
+          #saveFlashcardSessionCard,
+          [card],
+        ),
+        returnValue: _i5.Future<_i3.FlashcardSessionCard>.value(
+            _FakeFlashcardSessionCard_2(
+          this,
+          Invocation.method(
+            #saveFlashcardSessionCard,
+            [card],
+          ),
+        )),
+      ) as _i5.Future<_i3.FlashcardSessionCard>);
+
+  @override
+  _i5.Future<List<_i3.FlashcardSessionCard>> getSessionCards(
+          String? sessionId) =>
+      (super.noSuchMethod(
+        Invocation.method(
+          #getSessionCards,
+          [sessionId],
+        ),
+        returnValue: _i5.Future<List<_i3.FlashcardSessionCard>>.value(
+            <_i3.FlashcardSessionCard>[]),
+      ) as _i5.Future<List<_i3.FlashcardSessionCard>>);
 
   @override
   void clearError() => super.noSuchMethod(
@@ -267,7 +383,7 @@ class MockUserService extends _i1.Mock implements _i3.UserService {
       );
 
   @override
-  void addListener(_i7.VoidCallback? listener) => super.noSuchMethod(
+  void addListener(_i8.VoidCallback? listener) => super.noSuchMethod(
         Invocation.method(
           #addListener,
           [listener],
@@ -276,7 +392,7 @@ class MockUserService extends _i1.Mock implements _i3.UserService {
       );
 
   @override
-  void removeListener(_i7.VoidCallback? listener) => super.noSuchMethod(
+  void removeListener(_i8.VoidCallback? listener) => super.noSuchMethod(
         Invocation.method(
           #removeListener,
           [listener],

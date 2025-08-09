@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/settings_service.dart';
 import '../services/language_settings_service.dart';
+import '../services/user_service.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -43,7 +44,8 @@ class SettingsScreen extends StatelessWidget {
               children: AIProvider.values.map((provider) {
                 return RadioListTile<AIProvider>(
                   title: Text(settings.getProviderName(provider)),
-                  subtitle: Text('API Key: ${settings.getProviderApiKeyName(provider)}'),
+                  subtitle: Text(
+                      'API Key: ${settings.getProviderApiKeyName(provider)}'),
                   value: provider,
                   groupValue: settings.currentProvider,
                   onChanged: (AIProvider? value) {
@@ -76,6 +78,155 @@ class SettingsScreen extends StatelessWidget {
           builder: (context, languageSettings, child) {
             return Column(
               children: [
+                // Debug info section
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.shade50,
+                    border: Border.all(color: Colors.blue.shade200),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        '🔍 Debug: Current Language Settings',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.blue,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                          'Target: ${languageSettings.targetLanguage?.code} (${languageSettings.targetLanguage?.name ?? 'None'})'),
+                      Text(
+                          'Native: ${languageSettings.nativeLanguage?.code} (${languageSettings.nativeLanguage?.name ?? 'None'})'),
+                      Text(
+                          'Support 1: ${languageSettings.supportLanguage1?.code} (${languageSettings.supportLanguage1?.name ?? 'None'})'),
+                      Text(
+                          'Support 2: ${languageSettings.supportLanguage2?.code} (${languageSettings.supportLanguage2?.name ?? 'None'})'),
+                      const SizedBox(height: 4),
+                      const Text(
+                        'If these show default values (it/en/es/fr) and you have different settings in Supabase, there might be a loading issue.',
+                        style: TextStyle(
+                            fontSize: 12, fontStyle: FontStyle.italic),
+                      ),
+                      const SizedBox(height: 8),
+                      ElevatedButton.icon(
+                        onPressed: () async {
+                          final userService = context.read<UserService>();
+                          if (userService.isLoggedIn &&
+                              userService.currentUser != null) {
+                            debugPrint(
+                                '🔄 Manual refresh: Loading language preferences from Supabase...');
+                            try {
+                              await languageSettings.loadFromUserPreferences(
+                                  userService.currentUser!.preferences);
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                        '✅ Language preferences refreshed from Supabase'),
+                                    backgroundColor: Colors.green,
+                                  ),
+                                );
+                              }
+                            } catch (e) {
+                              debugPrint('❌ Manual refresh failed: $e');
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('❌ Failed to refresh: $e'),
+                                    backgroundColor: Colors.red,
+                                  ),
+                                );
+                              }
+                            }
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                    '⚠️ Please log in to refresh from Supabase'),
+                                backgroundColor: Colors.orange,
+                              ),
+                            );
+                          }
+                        },
+                        icon: const Icon(Icons.refresh, size: 16),
+                        label: const Text('Refresh from Supabase'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blue.shade600,
+                          foregroundColor: Colors.white,
+                          textStyle: const TextStyle(fontSize: 12),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 6),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Supabase preferences debug section
+                Consumer<UserService>(
+                  builder: (context, userService, child) {
+                    if (!userService.isLoggedIn ||
+                        userService.currentUser == null) {
+                      return Container(
+                        padding: const EdgeInsets.all(12),
+                        margin: const EdgeInsets.only(bottom: 16),
+                        decoration: BoxDecoration(
+                          color: Colors.orange.shade50,
+                          border: Border.all(color: Colors.orange.shade200),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Text(
+                          '⚠️ Not logged in - Cannot show Supabase preferences',
+                          style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.orange),
+                        ),
+                      );
+                    }
+
+                    final prefs = userService.currentUser!.preferences;
+                    return Container(
+                      padding: const EdgeInsets.all(12),
+                      margin: const EdgeInsets.only(bottom: 16),
+                      decoration: BoxDecoration(
+                        color: Colors.green.shade50,
+                        border: Border.all(color: Colors.green.shade200),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            '📊 Debug: Raw Supabase User Preferences',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.green,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text('Target Language: "${prefs.targetLanguage}"'),
+                          Text('Native Language: "${prefs.nativeLanguage}"'),
+                          Text(
+                              'Support Language 1: "${prefs.supportLanguage1 ?? 'null'}"'),
+                          Text(
+                              'Support Language 2: "${prefs.supportLanguage2 ?? 'null'}"'),
+                          const SizedBox(height: 4),
+                          const Text(
+                            'These are the raw values from your Supabase user profile. They should match the Language Settings above.',
+                            style: TextStyle(
+                                fontSize: 12, fontStyle: FontStyle.italic),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+
                 _buildLanguageDropdown(
                   context: context,
                   label: 'Language to Learn',
@@ -117,7 +268,6 @@ class SettingsScreen extends StatelessWidget {
                   },
                   allowNull: true,
                 ),
-               
               ],
             );
           },
@@ -249,4 +399,4 @@ class SettingsScreen extends StatelessWidget {
       ],
     );
   }
-} 
+}

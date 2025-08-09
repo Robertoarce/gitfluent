@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/vocabulary_item.dart';
+import 'flashcard_start_screen.dart';
 // import '../services/vocabulary_service.dart';
 // import 'package:provider/provider.dart';
 
@@ -41,6 +42,19 @@ class VocabularyDetailScreen extends StatelessWidget {
               _buildConjugationsSection(item.conjugations!),
           ],
         ),
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const FlashcardStartScreen(),
+            ),
+          );
+        },
+        icon: const Icon(Icons.quiz),
+        label: const Text('Study Flashcards'),
+        tooltip: 'Practice this word with flashcards',
       ),
     );
   }
