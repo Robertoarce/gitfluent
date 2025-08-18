@@ -20,34 +20,42 @@ import 'screens/settings_screen.dart';
 import 'config/supabase_config.dart';
 import 'utils/flashcard_route_transitions.dart';
 import 'utils/app_navigation.dart';
+import 'utils/debug_helper.dart';
+import 'widgets/debug_overlay.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Initialize debug helper
+  await DebugHelper.initialize();
+
   try {
     await dotenv.load(fileName: ".env");
-    debugPrint('Environment loaded successfully');
+    DebugHelper.printDebug('config', 'Environment loaded successfully');
 
     // Check if required environment variables are present
     final url = dotenv.env['SUPABASE_URL'];
     final anonKey = dotenv.env['SUPABASE_ANON_KEY'];
     final serviceKey = dotenv.env['SUPABASE_SERVICE_ROLE_KEY'];
 
-    debugPrint('Environment check:');
-    debugPrint(' - SUPABASE_URL: ${url != null ? 'present' : 'MISSING!'}');
-    debugPrint(
+    DebugHelper.printDebug('config', 'Environment check:');
+    DebugHelper.printDebug(
+        'config', ' - SUPABASE_URL: ${url != null ? 'present' : 'MISSING!'}');
+    DebugHelper.printDebug('config',
         ' - SUPABASE_ANON_KEY: ${anonKey != null ? 'present' : 'MISSING!'}');
-    debugPrint(
+    DebugHelper.printDebug('config',
         ' - SUPABASE_SERVICE_ROLE_KEY: ${serviceKey != null ? 'present' : 'MISSING!'}');
 
     if (url == null || anonKey == null || serviceKey == null) {
-      debugPrint(
+      DebugHelper.printDebug('config',
           'WARNING: One or more required environment variables are missing!');
-      debugPrint('This will cause issues with Supabase functionality.');
+      DebugHelper.printDebug(
+          'config', 'This will cause issues with Supabase functionality.');
     }
   } catch (e) {
-    debugPrint('Error loading .env file: $e');
-    debugPrint('This will cause issues with Supabase functionality.');
+    DebugHelper.printDebug('config', 'Error loading .env file: $e');
+    DebugHelper.printDebug(
+        'config', 'This will cause issues with Supabase functionality.');
   }
 
   // Log Supabase configuration
@@ -55,14 +63,14 @@ void main() async {
 
   // Initialize Supabase
   try {
-    debugPrint('Initializing Supabase...');
+    DebugHelper.printDebug('config', 'Initializing Supabase...');
     await Supabase.initialize(
       url: SupabaseConfig.projectUrl,
       anonKey: SupabaseConfig.anonKey,
     );
-    debugPrint('Supabase initialized successfully');
+    DebugHelper.printDebug('config', 'Supabase initialized successfully');
   } catch (e) {
-    debugPrint('Error initializing Supabase: $e');
+    DebugHelper.printDebug('config', 'Error initializing Supabase: $e');
   }
 
   runApp(const MyApp());
@@ -208,7 +216,10 @@ class MyApp extends StatelessWidget {
                   '/settings': (context) => const SettingsScreen(),
                 },
                 builder: (context, child) {
-                  return ShadAppBuilder(child: child!);
+                  return DebugOverlay(
+                    key: debugOverlayKey,
+                    child: ShadAppBuilder(child: child!),
+                  );
                 },
               );
             },
@@ -333,7 +344,7 @@ class _AppHomeState extends State<AppHome> {
               '   - Support Language 2: ${languageSettings.supportLanguage2?.code} (${languageSettings.supportLanguage2?.name})');
 
           await languageSettings
-              .loadFromUserPreferences(userService.currentUser!.preferences);
+              .loadFromUserPreferences(userService.currentUser!);
 
           // Log language settings after loading from Supabase
           debugPrint(

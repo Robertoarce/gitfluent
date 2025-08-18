@@ -20,6 +20,10 @@ User _$UserFromJson(Map<String, dynamic> json) => User(
       profileImageUrl: json['profile_image_url'] as String?,
       authProvider: json['auth_provider'] as String? ?? 'email',
       providerId: json['provider_id'] as String?,
+      targetLanguage: json['target_language'] as String?,
+      nativeLanguage: json['native_language'] as String?,
+      supportLanguage1: json['support_language_1'] as String?,
+      supportLanguage2: json['support_language_2'] as String?,
       preferences: UserPreferences.fromJson(json['preferences'] as String),
       statistics: UserStatistics.fromJson(json['statistics'] as String),
     );
@@ -36,16 +40,16 @@ Map<String, dynamic> _$UserToJson(User instance) => <String, dynamic>{
       'profile_image_url': instance.profileImageUrl,
       'auth_provider': instance.authProvider,
       'provider_id': instance.providerId,
+      'target_language': instance.targetLanguage,
+      'native_language': instance.nativeLanguage,
+      'support_language_1': instance.supportLanguage1,
+      'support_language_2': instance.supportLanguage2,
       'preferences': instance.preferences,
       'statistics': instance.statistics,
     };
 
 UserPreferences _$UserPreferencesFromJson(Map<String, dynamic> json) =>
     UserPreferences(
-      targetLanguage: json['target_language'] as String? ?? 'it',
-      nativeLanguage: json['native_language'] as String? ?? 'en',
-      supportLanguage1: json['support_language_1'] as String? ?? 'es',
-      supportLanguage2: json['support_language_2'] as String? ?? 'fr',
       notificationsEnabled: json['notifications_enabled'] as bool? ?? true,
       soundEnabled: json['sound_enabled'] as bool? ?? true,
       theme: json['theme'] as String? ?? 'system',
@@ -53,10 +57,6 @@ UserPreferences _$UserPreferencesFromJson(Map<String, dynamic> json) =>
 
 Map<String, dynamic> _$UserPreferencesToJson(UserPreferences instance) =>
     <String, dynamic>{
-      'target_language': instance.targetLanguage,
-      'native_language': instance.nativeLanguage,
-      'support_language_1': instance.supportLanguage1,
-      'support_language_2': instance.supportLanguage2,
       'notifications_enabled': instance.notificationsEnabled,
       'sound_enabled': instance.soundEnabled,
       'theme': instance.theme,

@@ -1,0 +1,67 @@
+graph TD
+    A[App Starts] --> B[LanguageSettings.init]
+    B --> C[Load SharedPreferences]
+    C --> D{Stored Languages Found?}
+    
+    D -->|No| E[Set Defaults:<br/>🇫🇷 French - Target<br/>🇺🇸 English - Native]
+    D -->|Yes| F[Load User's Previous Languages]
+    
+    E --> G[Save to SharedPreferences]
+    F --> H[Connect to UserService]
+    G --> H
+    
+    H --> I{User Logged In?}
+    I -->|No| J[Use Local Language Settings]
+    I -->|Yes| K[Load from Supabase Database]
+    
+    K --> L[User Profile Language Preferences]
+    L --> M[Update Language Objects:<br/>• targetLanguage<br/>• nativeLanguage<br/>• supportLanguage1<br/>• supportLanguage2]
+    
+    M --> N[Sync to SharedPreferences]
+    N --> O[Notify All Services]
+    
+    O --> P[ChatService Updates AI Prompts]
+    O --> Q[VocabularyService Updates]
+    O --> R[FlashcardService Updates]
+    O --> S[UI Refreshes]
+    
+    J --> T[App Ready with Language Settings]
+    P --> T
+    Q --> T
+    R --> T
+    S --> T
+    
+    T --> U[User Can:]
+    U --> U1[💬 Chat in Target Language]
+    U --> U2[📚 Study Vocabulary]
+    U --> U3[🎴 Practice Flashcards]
+    U --> U4[⚙️ Change Language Settings]
+    
+    U4 --> V[Settings Screen]
+    V --> W[User Selects New Language]
+    W --> X[Save to SharedPreferences & Database]
+    X --> Y[Regenerate AI Prompts]
+    Y --> Z[Update All Services]
+    Z --> AA[Language Change Complete]
+    
+    %% Login Event
+    BB[User Logs In] --> CC[Auth State Changes]
+    CC --> DD[LanguageSettings Listener Triggered]
+    DD --> EE[Load Language Preferences from Database]
+    EE --> FF[Override Local Settings]
+    FF --> GG[Update All Services with User's Languages]
+    
+    %% Styling
+    classDef initNode fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    classDef langNode fill:#e8f5e8,stroke:#388e3c,stroke-width:2px
+    classDef userNode fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    classDef serviceNode fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    classDef actionNode fill:#fce4ec,stroke:#c2185b,stroke-width:2px
+    classDef eventNode fill:#fff8e1,stroke:#689f38,stroke-width:2px
+    
+    class A,B,C initNode
+    class E,F,G,H,L,M,N langNode
+    class I,K,BB,CC,DD,EE,FF userNode
+    class O,P,Q,R,Y,Z,GG serviceNode
+    class U1,U2,U3,U4,V,W,X actionNode
+    class T,AA eventNode

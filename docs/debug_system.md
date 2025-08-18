@@ -1,0 +1,184 @@
+# Live Debug System
+
+This document describes the live debug system that allows you to test and control debug output in real-time while the app is running.
+
+## Features
+
+### 📱 **Settings Screen Debug Controls**
+
+- Navigate to **Settings > Debug Settings** to find comprehensive debug controls
+- Toggle individual debug sections on/off with real-time effect
+- Quick actions: Enable All, Disable All, Reset to Defaults
+- Live status summary showing how many sections are enabled
+- Detailed descriptions for each debug section
+
+### 🔧 **Test Debug Button**
+
+- Floating action button in Settings screen to test debug output
+- Sends test messages to all enabled debug sections
+- Shows immediate feedback with count of enabled sections
+- Helps verify which sections are working
+
+### 👁️ **Visual Debug Overlay**
+
+- Small floating button (eye icon) appears on all screens
+- Tap to show/hide debug message overlay
+- Real-time debug messages appear directly on screen
+- Color-coded by section with timestamps
+- Keeps last 20 messages for easy review
+
+### 💾 **Persistent Configuration**
+
+- Runtime changes are automatically saved
+- Settings persist between app restarts
+- Override default config.yaml settings
+- Reset button to return to defaults
+
+## Debug Sections
+
+| Section                | Description                                         | Default |
+| ---------------------- | --------------------------------------------------- | ------- |
+| `supabase`             | Database operations, user management, data sync     | ON      |
+| `chat_service`         | AI chat, prompt handling, LLM responses             | ON      |
+| `user_service`         | User authentication, profile management             | ON      |
+| `vocabulary_service`   | Vocabulary storage, flashcards, learning data       | ON      |
+| `auth_service`         | Login/logout, authentication flows                  | OFF     |
+| `flashcard_service`    | Flashcard generation, study sessions                | OFF     |
+| `language_settings`    | Language preferences, locale changes                | OFF     |
+| `llm_output_formatter` | AI response formatting, JSON parsing                | OFF     |
+| `nlp_service`          | Natural language processing, text analysis          | OFF     |
+| `accessibility`        | Screen reader announcements, accessibility features | OFF     |
+| `config`               | Configuration loading, app initialization           | ON      |
+| `general`              | General app operations, misc debugging              | OFF     |
+
+## How to Use
+
+### 1. **Enable Debug Sections**
+
+```dart
+// Go to Settings > Debug Settings
+// Toggle specific sections you want to monitor
+// Or use "Enable All" for comprehensive debugging
+```
+
+### 2. **View Debug Output**
+
+```dart
+// Option A: Console/Logs (traditional)
+// Check your IDE's debug console or device logs
+
+// Option B: Visual Overlay (new!)
+// Tap the eye icon to show debug overlay
+// Messages appear in real-time with color coding
+```
+
+### 3. **Test Debug Output**
+
+```dart
+// In Settings screen, tap "Test Debug" FAB
+// This sends test messages to all enabled sections
+// Verify which sections are working correctly
+```
+
+### 4. **Add Debug Messages in Code**
+
+```dart
+import '../utils/debug_helper.dart';
+
+// In your service or widget:
+DebugHelper.printDebug('section_name', 'Your debug message here');
+
+// The message will only appear if that section is enabled
+```
+
+## Configuration Files
+
+### `lib/config/config.yaml`
+
+```yaml
+debug_sections:
+  supabase: true
+  chat_service: true
+  user_service: true
+  # ... other sections
+```
+
+### Runtime Overrides
+
+- Stored in SharedPreferences as `debug_sections_override`
+- Takes precedence over config.yaml defaults
+- Cleared when using "Reset to Defaults"
+
+## Development Tips
+
+### 🎯 **Targeted Debugging**
+
+- Enable only specific sections to reduce noise
+- Use different sections for different features
+- Visual overlay is great for mobile testing
+
+### 🔄 **Live Testing**
+
+- Change settings without restarting the app
+- Immediately see effect of debug changes
+- Test button provides instant feedback
+
+### 🎨 **Visual Debugging**
+
+- Each section has a unique color in the overlay
+- Timestamps help track sequence of events
+- Clear button to reset message history
+
+### 📱 **Production Safety**
+
+- Debug output only appears in debug builds
+- No performance impact in release builds
+- Settings persist for development convenience
+
+## Examples
+
+### Enable Specific Section
+
+```dart
+// Programmatically enable a section
+await DebugHelper.setSection('chat_service', true);
+```
+
+### Check if Section is Enabled
+
+```dart
+// Check before expensive debug operations
+if (DebugHelper.isEnabled('vocabulary_service')) {
+  // Perform detailed logging
+}
+```
+
+### Add to Visual Overlay
+
+```dart
+// Add message to both console and visual overlay
+DebugHelper.printDebug('user_service', 'User logged in successfully');
+addDebugMessageToOverlay('user_service', 'User logged in successfully');
+```
+
+## Troubleshooting
+
+### Debug Messages Not Appearing
+
+1. Check if the section is enabled in Settings
+2. Verify you're using the correct section name
+3. Ensure you're in a debug build
+4. Try the "Test Debug" button to verify setup
+
+### Visual Overlay Not Showing
+
+1. Look for the small eye icon (may be hidden)
+2. Tap the icon to toggle overlay visibility
+3. Check if there are any debug messages to display
+4. Try sending test messages first
+
+### Settings Not Persisting
+
+1. Ensure SharedPreferences is properly initialized
+2. Check device storage permissions
+3. Try "Reset to Defaults" and reconfigure

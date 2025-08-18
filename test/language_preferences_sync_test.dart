@@ -5,6 +5,7 @@ import 'package:llm_chat_app/services/auth_service.dart';
 import 'package:llm_chat_app/services/database_service.dart';
 import 'package:llm_chat_app/models/user.dart';
 import 'package:llm_chat_app/models/user_vocabulary.dart';
+import 'package:llm_chat_app/models/flashcard_session.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 // Mock services for testing
@@ -193,6 +194,33 @@ class MockDatabaseService implements DatabaseService {
 
   @override
   Future<void> cleanup() async {}
+
+  // Flashcard methods
+  @override
+  Future<FlashcardSession> createFlashcardSession(
+          FlashcardSession session) async =>
+      session;
+  @override
+  Future<FlashcardSession?> getFlashcardSession(String sessionId) async => null;
+  @override
+  Future<void> updateFlashcardSession(FlashcardSession session) async {}
+  @override
+  Future<List<FlashcardSession>> getUserFlashcardSessions(String userId,
+          {int limit = 50}) async =>
+      [];
+  @override
+  Future<void> deleteFlashcardSession(String sessionId) async {}
+  @override
+  Future<FlashcardSessionCard> saveFlashcardSessionCard(
+          FlashcardSessionCard card) async =>
+      card;
+  @override
+  Future<List<FlashcardSessionCard>> getSessionCards(String sessionId) async =>
+      [];
+  @override
+  Future<void> updateFlashcardSessionCard(FlashcardSessionCard card) async {}
+  @override
+  Future<void> deleteFlashcardSessionCard(String cardId) async {}
 }
 
 void main() {

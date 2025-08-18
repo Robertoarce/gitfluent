@@ -15,12 +15,12 @@ void main() {
 
     test('Loads default configuration from YAML', () async {
       final config = await PromptConfigService.loadConfig();
-      
+
       expect(config.modelName, 'gemini-2.0-flash');
       expect(config.temperature, 0.0);
       expect(config.maxTokens, 2048);
-      expect(config.systemPromptType, 'defaultSystemPrompt');
-      
+      expect(config.systemPromptType, 'base');
+
       // Verify default settings
       expect(config.defaultSettings['target_language'], 'it');
       expect(config.defaultSettings['native_language'], 'en');
@@ -31,7 +31,7 @@ void main() {
     test('Updates configuration and persists changes', () async {
       // First load default config
       final initialConfig = await PromptConfigService.loadConfig();
-      
+
       // Update configuration
       await PromptConfigService.updateConfig(
         temperature: 0.5,
@@ -44,20 +44,20 @@ void main() {
           'support_language_2': 'de',
         },
       );
-      
+
       // Load config again to verify changes
       final updatedConfig = await PromptConfigService.loadConfig();
-      
+
       expect(updatedConfig.temperature, 0.5);
       expect(updatedConfig.maxTokens, 1024);
       expect(updatedConfig.systemPromptType, 'vocabulary');
       expect(updatedConfig.defaultSettings['target_language'], 'fr');
       expect(updatedConfig.defaultSettings['support_language_2'], 'de');
-      
+
       // Clear cache and reload to verify persistence
       PromptConfigService.clearCache();
       final reloadedConfig = await PromptConfigService.loadConfig();
-      
+
       expect(reloadedConfig.temperature, 0.5);
       expect(reloadedConfig.maxTokens, 1024);
       expect(reloadedConfig.systemPromptType, 'vocabulary');
@@ -69,19 +69,19 @@ void main() {
       final initialConfig = await PromptConfigService.loadConfig();
       final initialTemperature = initialConfig.temperature;
       final initialMaxTokens = initialConfig.maxTokens;
-      
+
       // Update only temperature
       await PromptConfigService.updateConfig(
         temperature: 0.7,
       );
-      
+
       // Load config again to verify changes
       final updatedConfig = await PromptConfigService.loadConfig();
-      
+
       expect(updatedConfig.temperature, 0.7);
       expect(updatedConfig.maxTokens, initialMaxTokens);
       expect(updatedConfig.modelName, initialConfig.modelName);
       expect(updatedConfig.systemPromptType, initialConfig.systemPromptType);
     });
   });
-} 
+}

@@ -204,6 +204,28 @@ class MockUserService extends _i1.Mock implements _i4.UserService {
       ) as _i5.Future<void>);
 
   @override
+  _i5.Future<void> updateLanguageSettings({
+    String? targetLanguage,
+    String? nativeLanguage,
+    String? supportLanguage1,
+    String? supportLanguage2,
+  }) =>
+      (super.noSuchMethod(
+        Invocation.method(
+          #updateLanguageSettings,
+          [],
+          {
+            #targetLanguage: targetLanguage,
+            #nativeLanguage: nativeLanguage,
+            #supportLanguage1: supportLanguage1,
+            #supportLanguage2: supportLanguage2,
+          },
+        ),
+        returnValue: _i5.Future<void>.value(),
+        returnValueForMissingStub: _i5.Future<void>.value(),
+      ) as _i5.Future<void>);
+
+  @override
   _i5.Future<void> upgradeToPremium() => (super.noSuchMethod(
         Invocation.method(
           #upgradeToPremium,
@@ -238,12 +260,12 @@ class MockUserService extends _i1.Mock implements _i4.UserService {
       ) as _i5.Future<void>);
 
   @override
-  _i5.Future<_i7.UserVocabularyStats?> getVocabularyStats({String? language}) =>
+  _i5.Future<_i7.UserVocabularyStats?> getUserVocabularyStats(
+          String? language) =>
       (super.noSuchMethod(
         Invocation.method(
-          #getVocabularyStats,
-          [],
-          {#language: language},
+          #getUserVocabularyStats,
+          [language],
         ),
         returnValue: _i5.Future<_i7.UserVocabularyStats?>.value(),
       ) as _i5.Future<_i7.UserVocabularyStats?>);

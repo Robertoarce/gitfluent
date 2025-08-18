@@ -5,15 +5,16 @@ This diagram shows how the application loads and processes prompts before sendin
 ```mermaid
 graph TD
     Start[main.dart] --> LoadEnv[Load .env file]
+
     LoadEnv --> InitServices[Initialize Services]
     InitServices --> SettingsService[SettingsService.init]
     InitServices --> LanguageSettings[LanguageSettings.init]
     InitServices --> VocabularyService[VocabularyService.init]
-    
+
     SettingsService --> CreateChatService[Create ChatService]
     CreateChatService --> InitConfig[ChatService._initializeConfig]
-    
-    InitConfig --> LoadYaml[Load prompt_config.yaml]
+
+    InitConfig --> LoadYaml[Load config.yaml]
     LoadYaml --> ConfigService[PromptConfigService.loadConfig]
     ConfigService --> CheckCache{Check Cache}
     CheckCache -->|Cache Hit| ReturnCache[Return Cached Config]
@@ -71,6 +72,7 @@ graph TD
         SendLLM
         UseDefault
     end
+
 ```
 
 ## Initialization Flow
@@ -84,7 +86,7 @@ graph TD
    - Create `ChatService` with `SettingsService`
 
 2. **Configuration Loading** (`lib/services/prompt_config_service.dart`)
-   - `prompt_config.yaml` → `lib/config/prompt_config.yaml`
+   - `config.yaml` → `lib/config/config.yaml`
    - Cache check → `_config != null`
    - SharedPreferences → `_prefs.getString(_configKey)`
    - YAML loading → `rootBundle.loadString`
@@ -102,7 +104,7 @@ graph TD
 
 ## Variables and Types
 
-1. **Configuration Variables** (from `prompt_config.yaml`)
+1. **Configuration Variables** (from `config.yaml`)
    - `target_language` (default: 'it')
    - `native_language` (default: 'en')
    - `support_language_1` (default: 'es')
@@ -113,3 +115,4 @@ graph TD
    - `defaultSystemPrompt` (basic language learning format)
    - `qwen_1` (detailed translation format)
    - `example` (variable-based format)  -->
+```

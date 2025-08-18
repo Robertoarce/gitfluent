@@ -11,6 +11,7 @@ import 'language_settings_service.dart';
 import 'prompts.dart';
 import 'prompt_config_service.dart';
 import '../models/language_response.dart'; // Import the new model
+import '../utils/debug_helper.dart';
 
 enum MessageType { system, user, assistant }
 
@@ -126,12 +127,15 @@ class ChatService extends ChangeNotifier {
             'support_language_2': 'fr',
           };
 
-      debugPrint('Prompt type from config: $promptType');
-      debugPrint('Language variables: $variables');
+      DebugHelper.printDebug(
+          'chat_service', 'Prompt type from config: $promptType');
+      DebugHelper.printDebug('chat_service', 'Language variables: $variables');
 
       _systemPrompt = Prompts.getPrompt(promptType, variables: variables);
-      debugPrint('Selected prompt type: $promptType');
-      debugPrint('System prompt length: ${_systemPrompt.length}');
+      DebugHelper.printDebug(
+          'chat_service', 'Selected prompt type: $promptType');
+      DebugHelper.printDebug(
+          'chat_service', 'System prompt length: ${_systemPrompt.length}');
 
       if (_chatHistory.isEmpty) {
         _chatHistory.add(ChatMessage.system(_systemPrompt));
@@ -177,7 +181,11 @@ class ChatService extends ChangeNotifier {
   // Add method to update system prompt with current language settings
   Future<void> _updateSystemPromptWithLanguages() async {
     try {
-      if (_languageSettings == null) return;
+      if (_languageSettings == null) {
+        debugPrint(
+            '❌ _updateSystemPromptWithLanguages: No language settings available');
+        return;
+      }
 
       final variables = {
         'target_language': _languageSettings!.targetLanguage?.code ?? 'it',
@@ -186,7 +194,18 @@ class ChatService extends ChangeNotifier {
         'support_language_2': _languageSettings!.supportLanguage2?.code ?? 'fr',
       };
 
-      debugPrint('Updating system prompt with language variables: $variables');
+      debugPrint(
+          '🔄 Updating system prompt with language variables: $variables');
+      DebugHelper.printDebug(
+          'chat_service', 'Language settings update triggered:');
+      DebugHelper.printDebug('chat_service',
+          '  - Target: ${_languageSettings!.targetLanguage?.code}');
+      DebugHelper.printDebug('chat_service',
+          '  - Native: ${_languageSettings!.nativeLanguage?.code}');
+      DebugHelper.printDebug('chat_service',
+          '  - Support1: ${_languageSettings!.supportLanguage1?.code}');
+      DebugHelper.printDebug('chat_service',
+          '  - Support2: ${_languageSettings!.supportLanguage2?.code}');
 
       final promptType = _config?.systemPromptType ?? 'default';
       _systemPrompt = Prompts.getPrompt(promptType, variables: variables);
@@ -199,10 +218,18 @@ class ChatService extends ChangeNotifier {
         _chatHistory.insert(0, ChatMessage.system(_systemPrompt));
       }
 
+      debugPrint('✅ System prompt updated successfully');
       notifyListeners();
     } catch (e) {
-      debugPrint('Error updating system prompt with languages: $e');
+      debugPrint('❌ Error updating system prompt with languages: $e');
     }
+  }
+
+  // Public method to force update system prompt with current language settings
+  Future<void> forceUpdateLanguageSettings() async {
+    debugPrint(
+        '🔧 Force updating ChatService with current language settings...');
+    await _updateSystemPromptWithLanguages();
   }
 
   // Update _initializeAI to use the new method

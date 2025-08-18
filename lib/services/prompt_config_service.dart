@@ -24,15 +24,19 @@ class PromptConfig {
   factory PromptConfig.fromYaml(dynamic yaml) {
     // Convert YamlMap to regular Map
     final Map<String, dynamic> model = Map<String, dynamic>.from(yaml['model']);
-    final Map<String, dynamic> promptVars = Map<String, dynamic>.from(yaml['prompt_variables']);
-    final Map<String, dynamic> defaultSettings = Map<String, dynamic>.from(yaml['default_settings']);
+    final Map<String, dynamic> promptVars =
+        Map<String, dynamic>.from(yaml['prompt_variables']);
+    final Map<String, dynamic> defaultSettings =
+        Map<String, dynamic>.from(yaml['default_settings']);
 
     return PromptConfig(
       modelName: model['name'].toString(),
       temperature: (model['temperature'] as num).toDouble(),
       maxTokens: (model['max_tokens'] as num).toInt(),
-      promptVariables: promptVars.map((key, value) => MapEntry(key.toString(), value.toString())),
-      defaultSettings: defaultSettings.map((key, value) => MapEntry(key.toString(), value.toString())),
+      promptVariables: promptVars
+          .map((key, value) => MapEntry(key.toString(), value.toString())),
+      defaultSettings: defaultSettings
+          .map((key, value) => MapEntry(key.toString(), value.toString())),
       systemPromptType: yaml['system_prompt_type'].toString().trim(),
     );
   }
@@ -77,15 +81,14 @@ class PromptConfigService {
       }
 
       // If no saved config, load from YAML file
-      final String yamlString = await rootBundle.loadString('lib/config/prompt_config.yaml');
+      final String yamlString =
+          await rootBundle.loadString('lib/config/config.yaml');
       final dynamic yamlData = loadYaml(yamlString);
       _config = PromptConfig.fromYaml(yamlData);
 
-      
-      
       // Save the default config
       await _saveConfig();
-      
+
       return _config!;
     } catch (e) {
       throw Exception('Failed to load prompt configuration: $e');
@@ -108,7 +111,7 @@ class PromptConfigService {
     String? systemPromptType,
   }) async {
     final currentConfig = await loadConfig();
-    
+
     _config = PromptConfig(
       modelName: modelName ?? currentConfig.modelName,
       temperature: temperature ?? currentConfig.temperature,
@@ -150,4 +153,4 @@ class PromptConfigService {
     final config = await loadConfig();
     return config.systemPromptType;
   }
-} 
+}

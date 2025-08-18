@@ -81,14 +81,15 @@ void main() {
     group('Initialization', () {
       test('initializes correctly', () {
         expect(flashcardService.isInitialized, true);
-        expect(flashcardService.sessionStatus, FlashcardSessionStatus.idle);
+        expect(
+            flashcardService.sessionStatus, FlashcardSessionStatus.notStarted);
         expect(flashcardService.currentSession, isNull);
         expect(flashcardService.currentQuestion, isNull);
       });
 
       test('getters return expected default values', () {
         expect(flashcardService.getMaxWordsPerSession(), 20);
-        expect(flashcardService.getDefaultSessionDurationMinutes(), 15);
+        expect(flashcardService.getDefaultDuration(), 10);
         expect(
             flashcardService.getQuestionTypeWeights(), isA<Map<String, int>>());
       });
@@ -187,7 +188,8 @@ void main() {
         final result = await flashcardService.startSession(durationMinutes: 10);
 
         expect(result, false);
-        expect(flashcardService.sessionStatus, FlashcardSessionStatus.idle);
+        expect(
+            flashcardService.sessionStatus, FlashcardSessionStatus.notStarted);
       });
 
       test('pauseSession changes status correctly', () async {

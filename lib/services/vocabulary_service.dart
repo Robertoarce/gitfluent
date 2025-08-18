@@ -265,13 +265,13 @@ class VocabularyService extends ChangeNotifier {
       }
 
       // Create UserVocabularyItem immediately (optimized for speed)
-      final vocabularyItem = UserVocabularyItem(
+      final vocabItem = UserVocabularyItem(
         id: const Uuid().v4(),
         userId: user.id,
         word: word,
         baseForm: word, // Could be improved with actual base form detection
         wordType: wordType,
-        language: user.preferences.targetLanguage,
+        language: user.targetLanguage ?? 'en',
         translations: [translation],
         forms: forms, // Preserve all verb conjugations
         difficultyLevel: 1,
@@ -288,16 +288,16 @@ class VocabularyService extends ChangeNotifier {
       );
 
       debugPrint(
-          '💾 VocabularyService: About to save "$word" (${wordType}) with ${vocabularyItem.forms.length} forms to Supabase...');
+          '💾 VocabularyService: About to save "$word" (${wordType}) with ${vocabItem.forms.length} forms to Supabase...');
 
       // Save immediately to Supabase
-      await _userService!.saveVocabularyItem(vocabularyItem);
+      await _userService!.saveVocabularyItem(vocabItem);
 
       debugPrint(
           '✅ VocabularyService: Successfully saved "$word" to Supabase with all data preserved');
-      if (vocabularyItem.forms.isNotEmpty) {
+      if (vocabItem.forms.isNotEmpty) {
         debugPrint(
-            '🔤 VocabularyService: Verb forms saved: ${vocabularyItem.forms.take(3).join(", ")}${vocabularyItem.forms.length > 3 ? "..." : ""}');
+            '🔤 VocabularyService: Verb forms saved: ${vocabItem.forms.take(3).join(", ")}${vocabItem.forms.length > 3 ? "..." : ""}');
       }
     } catch (e) {
       debugPrint('❌ VocabularyService: Failed to save "$word" to Supabase: $e');

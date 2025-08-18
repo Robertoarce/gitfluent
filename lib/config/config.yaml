@@ -17,5 +17,20 @@ default_settings:
 
 system_prompt_type: base
 
+# Debug configuration - sections that can be turned on/off
+debug_sections:
+  supabase: true
+  chat_service: true
+  user_service: true
+  vocabulary_service: true
+  auth_service: false
+  flashcard_service: false
+  language_settings: true
+  llm_output_formatter: false
+  nlp_service: false
+  accessibility: false
+  config: true
+  general: false
+
 # //   "system_prompt_type": "qwen_1"
 # //   "system_prompt_type": "defaultSystemPrompt"

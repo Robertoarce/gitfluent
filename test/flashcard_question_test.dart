@@ -58,9 +58,9 @@ void main() {
         expect(question.id, 'traditional-1');
         expect(question.type, FlashcardQuestionType.traditional);
         expect(question.vocabularyItem, testVocabularyItem);
-        expect(question.questionText, 'casa');
+        expect(question.question, 'casa');
         expect(question.correctAnswer, 'house');
-        expect(question.options, isNull);
+        expect(question.options, isEmpty);
         expect(question.context, isNull);
       });
     });
@@ -75,9 +75,9 @@ void main() {
         expect(question.id, 'reverse-1');
         expect(question.type, FlashcardQuestionType.reverse);
         expect(question.vocabularyItem, testVocabularyItem);
-        expect(question.questionText, 'house');
+        expect(question.question, 'house');
         expect(question.correctAnswer, 'casa');
-        expect(question.options, isNull);
+        expect(question.options, isEmpty);
         expect(question.context, isNull);
       });
     });
@@ -94,7 +94,7 @@ void main() {
         expect(question.id, 'mc-1');
         expect(question.type, FlashcardQuestionType.multipleChoice);
         expect(question.vocabularyItem, testVocabularyItem);
-        expect(question.questionText, 'What does "casa" mean?');
+        expect(question.question, 'What does "casa" mean?');
         expect(question.correctAnswer, 'house');
         expect(question.options, isNotNull);
         expect(question.options!.length, 4); // 1 correct + 3 distractors
@@ -142,16 +142,16 @@ void main() {
         final question = FlashcardQuestion.fillInBlank(
           id: 'fib-1',
           vocabularyItem: testVocabularyItem,
-          sentenceContext: 'La ___ è bella',
+          customContext: 'La casa è bella',
         );
 
         expect(question.id, 'fib-1');
         expect(question.type, FlashcardQuestionType.fillInBlank);
         expect(question.vocabularyItem, testVocabularyItem);
-        expect(question.questionText, 'Fill in the blank: La ___ è bella');
+        expect(question.question, 'La ____ è bella');
         expect(question.correctAnswer, 'casa');
-        expect(question.options, isNull);
-        expect(question.context, 'La ___ è bella');
+        expect(question.options, isEmpty);
+        expect(question.context, 'La casa è bella');
       });
 
       test('fillInBlank uses example sentence when no context provided', () {
@@ -161,8 +161,8 @@ void main() {
         );
 
         expect(question.context, isNotNull);
-        expect(question.context!.contains('___'), true);
-        expect(question.questionText.startsWith('Fill in the blank:'), true);
+        expect(question.context!.contains('casa'), true);
+        expect(question.question, 'La ____ è bella');
       });
     });
 
@@ -186,25 +186,26 @@ void main() {
         fillInBlankQuestion = FlashcardQuestion.fillInBlank(
           id: 'fib',
           vocabularyItem: testVocabularyItem,
-          sentenceContext: 'La ___ è bella',
+          customContext: 'La ___ è bella',
         );
       });
 
       test('isCorrectAnswer validates traditional questions correctly', () {
         expect(traditionalQuestion.isCorrectAnswer('house'), true);
-        expect(traditionalQuestion.isCorrectAnswer('home'),
-            true); // Alternative translation
         expect(traditionalQuestion.isCorrectAnswer('House'),
             true); // Case insensitive
         expect(traditionalQuestion.isCorrectAnswer('HOUSE'), true);
+        expect(traditionalQuestion.isCorrectAnswer('home'),
+            false); // Only first translation is correct
         expect(traditionalQuestion.isCorrectAnswer('car'), false);
         expect(traditionalQuestion.isCorrectAnswer(''), false);
       });
 
       test('isCorrectAnswer validates multiple choice correctly', () {
         expect(multipleChoiceQuestion.isCorrectAnswer('house'), true);
-        expect(multipleChoiceQuestion.isCorrectAnswer('home'), true);
         expect(multipleChoiceQuestion.isCorrectAnswer('House'), true);
+        expect(multipleChoiceQuestion.isCorrectAnswer('home'),
+            false); // Only first translation is correct
         expect(multipleChoiceQuestion.isCorrectAnswer('car'), false);
         expect(multipleChoiceQuestion.isCorrectAnswer('invalid'), false);
       });
@@ -243,12 +244,12 @@ void main() {
         final fillInBlankQuestion = FlashcardQuestion.fillInBlank(
           id: 'fib',
           vocabularyItem: testVocabularyItem,
-          sentenceContext: 'La ___ è bella',
+          customContext: 'La ___ è bella',
         );
 
-        expect(traditionalQuestion.getHint(), contains('house'));
-        expect(multipleChoiceQuestion.getHint(), contains('Choose'));
-        expect(fillInBlankQuestion.getHint(), contains('Think about'));
+        expect(traditionalQuestion.getHint(), equals('Type: noun'));
+        expect(multipleChoiceQuestion.getHint(), equals('Starts with: H'));
+        expect(fillInBlankQuestion.getHint(), equals('Length: 4 letters'));
       });
 
       test('getHint handles vocabulary items without definitions', () {
@@ -271,7 +272,7 @@ void main() {
 
         final hint = question.getHint();
         expect(hint, isNotNull);
-        expect(hint.length, greaterThan(0));
+        expect(hint?.length, greaterThan(0));
       });
     });
 

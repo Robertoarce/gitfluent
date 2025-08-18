@@ -29,6 +29,6 @@ linter:
 
 analyzer:
   exclude:
-    - lib/config/prompt_config.json
+    - lib/config/config.yaml
   errors:
     invalid_annotation_target: ignore

@@ -1,10 +1,6 @@
 -- Add preferences column to users table
 ALTER TABLE public.users 
 ADD COLUMN IF NOT EXISTS preferences jsonb DEFAULT '{
-  "target_language": "it",
-  "native_language": "en", 
-  "support_language_1": "es",
-  "support_language_2": "fr",
   "notifications_enabled": true,
   "sound_enabled": true,
   "theme": "system",
@@ -16,10 +12,6 @@ ADD COLUMN IF NOT EXISTS preferences jsonb DEFAULT '{
 -- Update existing users to have the default preferences if they don't have any
 UPDATE public.users 
 SET preferences = '{
-  "target_language": "it",
-  "native_language": "en", 
-  "support_language_1": "es",
-  "support_language_2": "fr",
   "notifications_enabled": true,
   "sound_enabled": true,
   "theme": "system",

@@ -5,6 +5,7 @@ import 'dart:convert';
 import '../models/user.dart';
 import '../models/user_vocabulary.dart';
 import '../models/flashcard_session.dart';
+import '../utils/debug_helper.dart';
 import 'auth_service.dart';
 import 'database_service.dart';
 
@@ -34,24 +35,26 @@ class UserService extends ChangeNotifier {
   void _initialize() {
     // Listen to auth state changes
     _authService.authStateChanges.listen((user) async {
-      debugPrint(
+      DebugHelper.printDebug('user_service',
           'UserService: Auth state changed - user: ${user?.email ?? 'null'}');
       if (user != null) {
-        // Set the user directly from auth service
+        // DON'T notify listeners immediately - wait until we have complete user data
         _currentUser = user;
-        notifyListeners();
 
         // Try to sync with database, but don't fail if it doesn't work
         try {
-          debugPrint(
+          DebugHelper.printDebug('user_service',
               'UserService: Fetching user from database with ID: ${user.id}');
           final dbUser = await _databaseService.getUserById(user.id);
           if (dbUser != null) {
             _currentUser = dbUser;
             debugPrint(
                 'UserService: Loaded user from database: ${dbUser.email}');
+            debugPrint(
+                'UserService: Database user language settings - target: ${dbUser.targetLanguage}, native: ${dbUser.nativeLanguage}');
           } else {
-            debugPrint('UserService: User not found in database, creating...');
+            DebugHelper.printDebug('user_service',
+                'UserService: User not found in database, creating...');
             // Create user in database if it doesn't exist
             try {
               final userId = await _databaseService.createUser(user);
@@ -74,6 +77,8 @@ class UserService extends ChangeNotifier {
           debugPrint('UserService: Database sync failed (using auth user): $e');
           // Continue with auth user even if database fails
         }
+
+        // ONLY notify listeners after we have the complete user data (including preferences from database)
         notifyListeners();
       } else {
         _currentUser = null;
@@ -275,6 +280,30 @@ class UserService extends ChangeNotifier {
     }
   }
 
+  Future<void> updateLanguageSettings({
+    String? targetLanguage,
+    String? nativeLanguage,
+    String? supportLanguage1,
+    String? supportLanguage2,
+  }) async {
+    if (_currentUser == null) return;
+
+    try {
+      final updatedUser = _currentUser!.copyWith(
+        targetLanguage: targetLanguage ?? _currentUser!.targetLanguage,
+        nativeLanguage: nativeLanguage ?? _currentUser!.nativeLanguage,
+        supportLanguage1: supportLanguage1 ?? _currentUser!.supportLanguage1,
+        supportLanguage2: supportLanguage2 ?? _currentUser!.supportLanguage2,
+      );
+      await _databaseService.updateUser(updatedUser);
+      _currentUser = updatedUser;
+      notifyListeners();
+    } catch (e) {
+      _error = 'Failed to update language settings: $e';
+      notifyListeners();
+    }
+  }
+
   // Premium management
   Future<void> upgradeToPremium() async {
     if (_currentUser == null) return;
@@ -298,7 +327,7 @@ class UserService extends ChangeNotifier {
     try {
       return await _databaseService.getUserVocabulary(
         _currentUser!.id,
-        language: language ?? _currentUser!.preferences.targetLanguage,
+        language: language ?? _currentUser!.targetLanguage,
       );
     } catch (e) {
       _error = 'Failed to load vocabulary: $e';
@@ -319,13 +348,13 @@ class UserService extends ChangeNotifier {
     }
   }
 
-  Future<UserVocabularyStats?> getVocabularyStats({String? language}) async {
+  Future<UserVocabularyStats?> getUserVocabularyStats(String? language) async {
     if (_currentUser == null) return null;
 
     try {
       return await _databaseService.getUserVocabularyStats(
         _currentUser!.id,
-        language ?? _currentUser!.preferences.targetLanguage,
+        language ?? _currentUser!.targetLanguage ?? 'en',
       );
     } catch (e) {
       _error = 'Failed to load vocabulary stats: $e';
