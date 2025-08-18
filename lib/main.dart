@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter/foundation.dart'; // Add this import for kDebugMode
+import 'package:mcp_toolkit/mcp_toolkit.dart';
 import 'services/chat_service.dart';
 import 'services/settings_service.dart';
 import 'services/language_settings_service.dart';
@@ -105,16 +107,31 @@ class MyApp extends StatelessWidget {
         ),
         ChangeNotifierProxyProvider2<SupabaseAuthService,
             SupabaseDatabaseService, UserService>(
-          create: (context) => UserService(
-            authService: context.read<SupabaseAuthService>(),
-            databaseService: context.read<SupabaseDatabaseService>(),
-          ),
-          update: (context, authService, databaseService, previous) =>
-              previous ??
-              UserService(
-                authService: authService,
-                databaseService: databaseService,
-              ),
+          create: (context) {
+            final userService = UserService(
+              authService: context.read<SupabaseAuthService>(),
+              databaseService: context.read<SupabaseDatabaseService>(),
+            );
+            // Auto-login in debug mode
+            if (kDebugMode) {
+              _debugAutoLogin(userService);
+            }
+            return userService;
+          },
+          update: (context, authService, databaseService, previous) {
+            if (previous != null) {
+              return previous;
+            }
+            final userService = UserService(
+              authService: authService,
+              databaseService: databaseService,
+            );
+            // Auto-login in debug mode
+            if (kDebugMode) {
+              _debugAutoLogin(userService);
+            }
+            return userService;
+          },
         ),
 
         // Vocabulary service that depends on user service
@@ -248,6 +265,76 @@ class MyApp extends StatelessWidget {
       debugPrint('LanguageSettings initialized successfully');
     } catch (e) {
       debugPrint('Error initializing LanguageSettings: $e');
+    }
+  }
+
+  // Debug auto-login helper method
+  static Future<void> _debugAutoLogin(UserService userService) async {
+    if (!kDebugMode) return;
+
+    try {
+      DebugHelper.printDebug(
+          'config', '🚀 DEBUG MODE: Attempting auto-login...');
+
+      const debugEmail = 'test@debug.com';
+      const debugPassword = 'debugpassword123';
+
+      // Try to sign in with a test account first
+      var result = await userService.signIn(debugEmail, debugPassword);
+
+      if (!result.success) {
+        DebugHelper.printDebug(
+            'config', '👤 DEBUG AUTO-LOGIN: Test user not found, creating...');
+
+        // Create the test user if login failed
+        result = await userService.signUp(
+          debugEmail,
+          debugPassword,
+          'Debug',
+          'User',
+        );
+
+        if (result.success) {
+          DebugHelper.printDebug(
+              'config', '✨ DEBUG AUTO-LOGIN: Test user created successfully');
+        } else {
+          DebugHelper.printDebug('config',
+              '❌ DEBUG AUTO-LOGIN: Failed to create test user: ${result.error}');
+          return;
+        }
+      }
+
+      if (result.success) {
+        DebugHelper.printDebug('config',
+            '✅ DEBUG AUTO-LOGIN: Successfully logged in as test user');
+
+        // Give the system a moment to fully initialize the user
+        await Future.delayed(const Duration(milliseconds: 500));
+
+        // Ensure user is premium
+        await userService.upgradeToPremium();
+        DebugHelper.printDebug(
+            'config', '⭐ DEBUG AUTO-LOGIN: User upgraded to premium');
+
+        // Set specific language preferences for testing
+        if (userService.currentUser != null) {
+          await userService.updateLanguageSettings(
+            targetLanguage: 'it',
+            nativeLanguage: 'en',
+            supportLanguage1: 'fr',
+            supportLanguage2: 'es',
+          );
+          DebugHelper.printDebug('config',
+              '🌍 DEBUG AUTO-LOGIN: Set test language preferences (NL/ES/ES/ES)');
+        }
+      } else {
+        DebugHelper.printDebug('config',
+            '⚠️ DEBUG AUTO-LOGIN: Login failed, continuing without auto-login');
+      }
+    } catch (e) {
+      DebugHelper.printDebug(
+          'config', '❌ DEBUG AUTO-LOGIN: Error during auto-login: $e');
+      // Continue normally if auto-login fails
     }
   }
 

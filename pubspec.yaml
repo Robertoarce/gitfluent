@@ -35,6 +35,8 @@ dependencies:
   shadcn_ui: ^0.26.5
   # JSON serialization
   json_annotation: ^4.8.1
+  # MCP Flutter Inspector
+  mcp_toolkit: ^0.1.0
 
 dev_dependencies:
   flutter_test:

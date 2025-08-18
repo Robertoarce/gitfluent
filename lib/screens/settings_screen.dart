@@ -306,7 +306,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   value: languageSettings.targetLanguage,
                   onChanged: (Language? language) {
                     if (language != null) {
+                      // Enhanced debug logging for Scenario 3 testing
+                      debugPrint(
+                          '🎯 SCENARIO 3 TEST: User changing target language');
+                      debugPrint(
+                          '   FROM: ${languageSettings.targetLanguage?.code} (${languageSettings.targetLanguage?.name})');
+                      debugPrint('   TO: ${language.code} (${language.name})');
+                      debugPrint('   Timestamp: ${DateTime.now()}');
+
+                      // Add debug message to overlay if available
+                      addDebugMessageToOverlay('language_settings',
+                          '🎯 SCENARIO 3: Target language changing FROM ${languageSettings.targetLanguage?.name} TO ${language.name}');
+
+                      // Trigger the actual language change
                       languageSettings.setTargetLanguage(language);
+
+                      debugPrint(
+                          '✅ SCENARIO 3 TEST: setTargetLanguage() called, waiting for updates...');
+                      addDebugMessageToOverlay('language_settings',
+                          '✅ SCENARIO 3: Language change triggered, watch for updates!');
                     }
                   },
                 ),
