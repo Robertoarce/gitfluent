@@ -12,6 +12,8 @@ class SupabaseDatabaseService implements DatabaseService {
   @override
   Future<app_user.User?> getUserById(String userId) async {
     try {
+      debugPrint(
+          '🚀 SupabaseDatabaseService.getUserById: CALLED for userId: $userId');
       final response = await _supabase
           .from(SupabaseConfig.usersTable)
           .select()
@@ -19,11 +21,31 @@ class SupabaseDatabaseService implements DatabaseService {
           .single();
 
       if (response != null) {
-        return app_user.User.fromSupabase(response);
+        // 🔍 DIRECT DATABASE DUMP - Let's see what's ACTUALLY stored
+        debugPrint('🔍 RAW DATABASE DUMP for user $userId:');
+        debugPrint(
+            '   target_language: "${response['target_language']}" (type: ${response['target_language']?.runtimeType})');
+        debugPrint(
+            '   native_language: "${response['native_language']}" (type: ${response['native_language']?.runtimeType})');
+        debugPrint(
+            '   support_language_1: "${response['support_language_1']}" (type: ${response['support_language_1']?.runtimeType})');
+        debugPrint(
+            '   support_language_2: "${response['support_language_2']}" (type: ${response['support_language_2']?.runtimeType})');
+        debugPrint('🔍 RAW RESPONSE: ${response.toString()}');
+
+        debugPrint(
+            '🚀 SupabaseDatabaseService: About to call User.fromSupabase...');
+        final user = app_user.User.fromSupabase(response);
+        debugPrint(
+            '🚀 SupabaseDatabaseService: User.fromSupabase completed - target: "${user.targetLanguage}", native: "${user.nativeLanguage}"');
+        return user;
       }
+      debugPrint(
+          '🚀 SupabaseDatabaseService: No response from database for user $userId');
       return null;
     } catch (e) {
-      debugPrint('Error getting user by ID: $e');
+      debugPrint(
+          '🚨 SupabaseDatabaseService.getUserById: Error for user $userId: $e');
       return null;
     }
   }

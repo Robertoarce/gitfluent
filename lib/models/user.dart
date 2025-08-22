@@ -104,7 +104,12 @@ class User {
     final Map<String, dynamic> processedData = Map<String, dynamic>.from(data);
 
     // Debug logs for tracing
-    print('[User.fromSupabase] Raw data: ' + processedData.toString());
+    print('[User.fromSupabase] 🔍 LANGUAGE CORRUPTION TRACKER: Raw data: ' +
+        processedData.toString());
+    print(
+        '[User.fromSupabase] 🔍 RAW target_language: "${processedData['target_language']}" (${processedData['target_language']?.runtimeType})');
+    print(
+        '[User.fromSupabase] 🔍 RAW native_language: "${processedData['native_language']}" (${processedData['native_language']?.runtimeType})');
     print('[User.fromSupabase] created_at type: ' +
         (processedData['created_at']?.runtimeType.toString() ?? 'null'));
     print('[User.fromSupabase] last_login_at type: ' +
@@ -155,6 +160,34 @@ class User {
       processedData['is_premium'] = false;
     }
 
+    // Handle corrupted language fields - convert string "null" to actual null
+    final languageFields = [
+      'target_language',
+      'native_language',
+      'support_language_1',
+      'support_language_2'
+    ];
+
+    print('[User.fromSupabase] 🔍 BEFORE null fixing:');
+    for (final field in languageFields) {
+      print(
+          '[User.fromSupabase] 🔍   $field: "${processedData[field]}" (${processedData[field]?.runtimeType})');
+    }
+
+    for (final field in languageFields) {
+      if (processedData[field] == 'null') {
+        print(
+            '[User.fromSupabase] Fixed corrupted language field $field: "null" → null');
+        processedData[field] = null;
+      }
+    }
+
+    print('[User.fromSupabase] 🔍 AFTER null fixing:');
+    for (final field in languageFields) {
+      print(
+          '[User.fromSupabase] 🔍   $field: "${processedData[field]}" (${processedData[field]?.runtimeType})');
+    }
+
     // Always pass preferences/statistics as JSON strings
     if (processedData['preferences'] is! String) {
       print('[User.fromSupabase] Converting preferences to JSON string');
@@ -170,7 +203,21 @@ class User {
 
     print('[User.fromSupabase] Final data for fromJson: ' +
         processedData.toString());
-    return User.fromJson(processedData);
+    print(
+        '[User.fromSupabase] 🔍 TRACKING: Creating user with target_language: ${processedData['target_language']} at ${DateTime.now()}');
+    final user = User.fromJson(processedData);
+    print(
+        '[User.fromSupabase] 🔍 TRACKING: Created user object - target: "${user.targetLanguage}", native: "${user.nativeLanguage}"');
+    print('[User.fromSupabase] 🔍 FINAL USER OBJECT LANGUAGE VALUES:');
+    print(
+        '   🔍 user.targetLanguage: "${user.targetLanguage}" (${user.targetLanguage?.runtimeType})');
+    print(
+        '   🔍 user.nativeLanguage: "${user.nativeLanguage}" (${user.nativeLanguage?.runtimeType})');
+    print(
+        '   🔍 user.supportLanguage1: "${user.supportLanguage1}" (${user.supportLanguage1?.runtimeType})');
+    print(
+        '   🔍 user.supportLanguage2: "${user.supportLanguage2}" (${user.supportLanguage2?.runtimeType})');
+    return user;
   }
 
   User copyWith({
@@ -192,6 +239,12 @@ class User {
     UserPreferences? preferences,
     UserStatistics? statistics,
   }) {
+    // 🔍 TRACK LANGUAGE CORRUPTION IN COPYWITH
+    final newTargetLang = targetLanguage ?? this.targetLanguage;
+    final newNativeLang = nativeLanguage ?? this.nativeLanguage;
+    print(
+        '🔍 COPYWITH TRACKING: target: "${this.targetLanguage}" → "${newTargetLang}", native: "${this.nativeLanguage}" → "${newNativeLang}"');
+
     return User(
       id: id ?? this.id,
       email: email ?? this.email,
@@ -204,8 +257,8 @@ class User {
       profileImageUrl: profileImageUrl ?? this.profileImageUrl,
       authProvider: authProvider ?? this.authProvider,
       providerId: providerId ?? this.providerId,
-      targetLanguage: targetLanguage ?? this.targetLanguage,
-      nativeLanguage: nativeLanguage ?? this.nativeLanguage,
+      targetLanguage: newTargetLang,
+      nativeLanguage: newNativeLang,
       supportLanguage1: supportLanguage1 ?? this.supportLanguage1,
       supportLanguage2: supportLanguage2 ?? this.supportLanguage2,
       preferences: preferences ?? this.preferences,

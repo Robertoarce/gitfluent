@@ -97,8 +97,13 @@ class MyApp extends StatelessWidget {
         // User system services
         Provider<SupabaseAuthService>(
           create: (_) {
+            debugPrint(
+                '🚀 main.dart Provider: Creating SupabaseAuthService...');
             final authService = SupabaseAuthService();
+            debugPrint('🚀 main.dart Provider: About to call initialize()...');
             authService.initialize();
+            debugPrint(
+                '🚀 main.dart Provider: initialize() call completed (async)');
             return authService;
           },
         ),
@@ -316,17 +321,9 @@ class MyApp extends StatelessWidget {
         DebugHelper.printDebug(
             'config', '⭐ DEBUG AUTO-LOGIN: User upgraded to premium');
 
-        // Set specific language preferences for testing
-        if (userService.currentUser != null) {
-          await userService.updateLanguageSettings(
-            targetLanguage: 'it',
-            nativeLanguage: 'en',
-            supportLanguage1: 'fr',
-            supportLanguage2: 'es',
-          );
-          DebugHelper.printDebug('config',
-              '🌍 DEBUG AUTO-LOGIN: Set test language preferences (NL/ES/ES/ES)');
-        }
+        // Don't override language settings - let them load from database
+        DebugHelper.printDebug('config',
+            '🌍 DEBUG AUTO-LOGIN: Skipping language override - using database settings');
       } else {
         DebugHelper.printDebug('config',
             '⚠️ DEBUG AUTO-LOGIN: Login failed, continuing without auto-login');
@@ -408,34 +405,20 @@ class _AppHomeState extends State<AppHome> {
         }
       }
 
-      // Load language preferences from database
+      // Language preferences are automatically loaded by LanguageSettings via UserService listener
+      // No manual loading needed here - the setUserService() call above handles this automatically
       if (userService.currentUser != null) {
         try {
           debugPrint(
-              '🌍 AppHome._initializeServices: Loading language preferences from user profile...');
+              '🌍 AppHome._initializeServices: Language preferences will be loaded automatically by LanguageSettings listener');
           debugPrint(
               '🌍 AppHome._initializeServices: User preferences: ${userService.currentUser!.preferences.toJson()}');
 
           final languageSettings = context.read<LanguageSettings>();
 
-          // Log current language settings before loading from Supabase
+          // Log current language settings (these will be updated automatically by the listener)
           debugPrint(
-              '🌍 AppHome._initializeServices: Current language settings BEFORE Supabase load:');
-          debugPrint(
-              '   - Target Language: ${languageSettings.targetLanguage?.code} (${languageSettings.targetLanguage?.name})');
-          debugPrint(
-              '   - Native Language: ${languageSettings.nativeLanguage?.code} (${languageSettings.nativeLanguage?.name})');
-          debugPrint(
-              '   - Support Language 1: ${languageSettings.supportLanguage1?.code} (${languageSettings.supportLanguage1?.name})');
-          debugPrint(
-              '   - Support Language 2: ${languageSettings.supportLanguage2?.code} (${languageSettings.supportLanguage2?.name})');
-
-          await languageSettings
-              .loadFromUserPreferences(userService.currentUser!);
-
-          // Log language settings after loading from Supabase
-          debugPrint(
-              '🌍 AppHome._initializeServices: Language settings AFTER Supabase load:');
+              '🌍 AppHome._initializeServices: Current language settings:');
           debugPrint(
               '   - Target Language: ${languageSettings.targetLanguage?.code} (${languageSettings.targetLanguage?.name})');
           debugPrint(

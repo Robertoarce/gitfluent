@@ -6,6 +6,7 @@ import '../services/user_service.dart';
 import '../services/chat_service.dart';
 import '../utils/debug_helper.dart';
 import '../widgets/debug_overlay.dart';
+import '../utils/keyboard_shortcuts.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -17,27 +18,29 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Settings'),
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          _buildAIProviderSection(context),
-          const Divider(height: 32),
-          _buildLanguageSection(context),
-          const Divider(height: 32),
-          _buildDebugSection(context),
-          const Divider(height: 32),
-          _buildAnalysisLimitsSection(context),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _testDebugOutput,
-        icon: const Icon(Icons.bug_report),
-        label: const Text('Test Debug'),
-        tooltip: 'Test debug output for all enabled sections',
+    return KeyboardShortcutWrapper(
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Settings'),
+        ),
+        body: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            _buildAIProviderSection(context),
+            const Divider(height: 32),
+            _buildLanguageSection(context),
+            const Divider(height: 32),
+            _buildDebugSection(context),
+            const Divider(height: 32),
+            _buildAnalysisLimitsSection(context),
+          ],
+        ),
+        floatingActionButton: FloatingActionButton.extended(
+          onPressed: _testDebugOutput,
+          icon: const Icon(Icons.bug_report),
+          label: const Text('Test Debug'),
+          tooltip: 'Test debug output for all enabled sections',
+        ),
       ),
     );
   }

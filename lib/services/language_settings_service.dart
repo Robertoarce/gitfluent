@@ -40,6 +40,7 @@ class LanguageSettings extends ChangeNotifier {
   Language? _supportLanguage2;
 
   UserService? _userService;
+  bool _isLoadingFromUser = false;
 
   // Getters
   Language? get targetLanguage => _targetLanguage;
@@ -106,58 +107,112 @@ class LanguageSettings extends ChangeNotifier {
 
   // Load preferences from user's database profile
   Future<void> loadFromUserPreferences(User user) async {
-    DebugHelper.printDebug('language_settings',
-        '🌍 LanguageSettings.loadFromUserPreferences: Starting to load preferences from user data...');
-    DebugHelper.printDebug('language_settings',
-        '🌍 LanguageSettings.loadFromUserPreferences: Raw language fields from user:');
-    DebugHelper.printDebug(
-        'language_settings', '   - targetLanguage: "${user.targetLanguage}"');
-    DebugHelper.printDebug(
-        'language_settings', '   - nativeLanguage: "${user.nativeLanguage}"');
-    DebugHelper.printDebug('language_settings',
-        '   - supportLanguage1: "${user.supportLanguage1}"');
-    DebugHelper.printDebug('language_settings',
-        '   - supportLanguage2: "${user.supportLanguage2}"');
-
-    _targetLanguage = _findLanguageByCode(user.targetLanguage);
-    _nativeLanguage = _findLanguageByCode(user.nativeLanguage);
-    _supportLanguage1 = _findLanguageByCode(user.supportLanguage1);
-    _supportLanguage2 = _findLanguageByCode(user.supportLanguage2);
-
-    DebugHelper.printDebug('language_settings',
-        '🌍 LanguageSettings.loadFromUserPreferences: Language objects found:');
-    DebugHelper.printDebug('language_settings',
-        '   - _targetLanguage: ${_targetLanguage?.code} (${_targetLanguage?.name})');
-    DebugHelper.printDebug('language_settings',
-        '   - _nativeLanguage: ${_nativeLanguage?.code} (${_nativeLanguage?.name})');
-    DebugHelper.printDebug('language_settings',
-        '   - _supportLanguage1: ${_supportLanguage1?.code} (${_supportLanguage1?.name})');
-    DebugHelper.printDebug('language_settings',
-        '   - _supportLanguage2: ${_supportLanguage2?.code} (${_supportLanguage2?.name})');
-
-    // Also update SharedPreferences to keep them in sync
-    if (user.targetLanguage != null) {
-      await _prefs.setString('target_language', user.targetLanguage!);
-    }
-    if (user.nativeLanguage != null) {
-      await _prefs.setString('native_language', user.nativeLanguage!);
-    }
-    if (user.supportLanguage1 != null) {
-      await _prefs.setString('support_language_1', user.supportLanguage1!);
-    }
-    if (user.supportLanguage2 != null) {
-      await _prefs.setString('support_language_2', user.supportLanguage2!);
+    // Prevent multiple simultaneous calls
+    if (_isLoadingFromUser) {
+      DebugHelper.printDebug('language_settings',
+          '⏸️ LanguageSettings.loadFromUserPreferences: Already loading, skipping duplicate call');
+      return;
     }
 
-    debugPrint(
-        '🌍 LanguageSettings.loadFromUserPreferences: Updated SharedPreferences with user data');
-    debugPrint(
-        '🌍 LanguageSettings.loadFromUserPreferences: Calling notifyListeners() to update UI...');
+    _isLoadingFromUser = true;
 
-    notifyListeners();
+    try {
+      DebugHelper.printDebug('language_settings',
+          '🌍 LanguageSettings.loadFromUserPreferences: Starting to load preferences from user data...');
+      DebugHelper.printDebug('language_settings',
+          '🔍 USER OBJECT INFO: id=${user.id}, email=${user.email}');
+      DebugHelper.printDebug('language_settings',
+          '🌍 LanguageSettings.loadFromUserPreferences: Raw language fields from user:');
+      DebugHelper.printDebug('language_settings',
+          '   - targetLanguage: "${user.targetLanguage}" (${user.targetLanguage?.runtimeType})');
+      DebugHelper.printDebug('language_settings',
+          '   - nativeLanguage: "${user.nativeLanguage}" (${user.nativeLanguage?.runtimeType})');
+      DebugHelper.printDebug('language_settings',
+          '   - supportLanguage1: "${user.supportLanguage1}" (${user.supportLanguage1?.runtimeType})');
+      DebugHelper.printDebug('language_settings',
+          '   - supportLanguage2: "${user.supportLanguage2}" (${user.supportLanguage2?.runtimeType})');
 
-    debugPrint(
-        '✅ LanguageSettings.loadFromUserPreferences: Successfully completed loading preferences from user data');
+      // Smart override: Only use database values if they're valid, preserve existing good values
+      final dbTargetLanguage = _findLanguageByCode(user.targetLanguage);
+      final dbNativeLanguage = _findLanguageByCode(user.nativeLanguage);
+      final dbSupportLanguage1 = _findLanguageByCode(user.supportLanguage1);
+      final dbSupportLanguage2 = _findLanguageByCode(user.supportLanguage2);
+
+      // Enhanced logic: Use database values if valid, otherwise keep existing
+      if (dbTargetLanguage != null) {
+        _targetLanguage = dbTargetLanguage;
+        await _prefs.setString('target_language', dbTargetLanguage.code);
+        DebugHelper.printDebug('language_settings',
+            '✅ Using valid target language from database: ${dbTargetLanguage.code}');
+      } else {
+        DebugHelper.printDebug('language_settings',
+            '⚠️ Database target language invalid: "${user.targetLanguage}", keeping existing: ${_targetLanguage?.code}');
+        // If we have no local language either, this suggests a new user or corruption
+        if (_targetLanguage == null) {
+          DebugHelper.printDebug('language_settings',
+              '🔄 No local target language either, this may indicate corruption recovery needed');
+        }
+      }
+
+      if (dbNativeLanguage != null) {
+        _nativeLanguage = dbNativeLanguage;
+        await _prefs.setString('native_language', dbNativeLanguage.code);
+        DebugHelper.printDebug('language_settings',
+            '✅ Using valid native language from database: ${dbNativeLanguage.code}');
+      } else {
+        DebugHelper.printDebug('language_settings',
+            '⚠️ Database native language invalid: "${user.nativeLanguage}", keeping existing: ${_nativeLanguage?.code}');
+        // If we have no local language either, this suggests a new user or corruption
+        if (_nativeLanguage == null) {
+          DebugHelper.printDebug('language_settings',
+              '🔄 No local native language either, this may indicate corruption recovery needed');
+        }
+      }
+
+      // Handle support languages (these can be null)
+      if (dbSupportLanguage1 != null) {
+        _supportLanguage1 = dbSupportLanguage1;
+        await _prefs.setString('support_language_1', dbSupportLanguage1.code);
+        DebugHelper.printDebug('language_settings',
+            '✅ Using valid support language 1 from database: ${dbSupportLanguage1.code}');
+      } else {
+        DebugHelper.printDebug('language_settings',
+            '⚠️ Database support language 1 invalid: "${user.supportLanguage1}", keeping existing: ${_supportLanguage1?.code}');
+      }
+
+      if (dbSupportLanguage2 != null) {
+        _supportLanguage2 = dbSupportLanguage2;
+        await _prefs.setString('support_language_2', dbSupportLanguage2.code);
+        DebugHelper.printDebug('language_settings',
+            '✅ Using valid support language 2 from database: ${dbSupportLanguage2.code}');
+      } else {
+        DebugHelper.printDebug('language_settings',
+            '⚠️ Database support language 2 invalid: "${user.supportLanguage2}", keeping existing: ${_supportLanguage2?.code}');
+      }
+
+      DebugHelper.printDebug('language_settings',
+          '🌍 LanguageSettings.loadFromUserPreferences: Final language objects:');
+      DebugHelper.printDebug('language_settings',
+          '   - _targetLanguage: ${_targetLanguage?.code} (${_targetLanguage?.name})');
+      DebugHelper.printDebug('language_settings',
+          '   - _nativeLanguage: ${_nativeLanguage?.code} (${_nativeLanguage?.name})');
+      DebugHelper.printDebug('language_settings',
+          '   - _supportLanguage1: ${_supportLanguage1?.code} (${_supportLanguage1?.name})');
+      DebugHelper.printDebug('language_settings',
+          '   - _supportLanguage2: ${_supportLanguage2?.code} (${_supportLanguage2?.name})');
+
+      debugPrint(
+          '🌍 LanguageSettings.loadFromUserPreferences: Updated SharedPreferences with user data');
+      debugPrint(
+          '🌍 LanguageSettings.loadFromUserPreferences: Calling notifyListeners() to update UI...');
+
+      notifyListeners();
+
+      debugPrint(
+          '✅ LanguageSettings.loadFromUserPreferences: Successfully completed loading preferences from user data');
+    } finally {
+      _isLoadingFromUser = false;
+    }
   }
 
   // Sync current settings to database
@@ -167,14 +222,70 @@ class LanguageSettings extends ChangeNotifier {
     final currentUser = _userService!.currentUser;
     if (currentUser == null) return;
 
+    // CRITICAL FIX: Don't sync while loading from user preferences to prevent overwriting database values
+    if (_isLoadingFromUser) {
+      DebugHelper.printDebug('language_settings',
+          '⏸️ _syncToDatabase: Skipping sync while loading from user preferences to prevent overwriting database values');
+      return;
+    }
+
+    // IMPROVED: Better safeguards against null corruption
+    // Only sync if we have valid local values to prevent writing nulls to database
+    if (_targetLanguage == null || _nativeLanguage == null) {
+      DebugHelper.printDebug('language_settings',
+          '⚠️ _syncToDatabase: Skipping sync - missing required language values (target: ${_targetLanguage?.code}, native: ${_nativeLanguage?.code})');
+      return;
+    }
+
+    // Prepare values to sync - NEVER send null, always use current valid values or existing database values
+    final targetCode = _targetLanguage?.code ?? currentUser.targetLanguage;
+    final nativeCode = _nativeLanguage?.code ?? currentUser.nativeLanguage;
+    final support1Code =
+        _supportLanguage1?.code; // Can be null for support languages
+    final support2Code =
+        _supportLanguage2?.code; // Can be null for support languages
+
+    // SAFEGUARD: Don't sync if target or native would be null
+    if (targetCode == null || nativeCode == null) {
+      DebugHelper.printDebug('language_settings',
+          '🚨 _syncToDatabase: BLOCKING sync - would write null values to database! target=$targetCode, native=$nativeCode');
+      return;
+    }
+
+    // 🚨 DEBUG: Track exactly what values we're about to send to database
+    debugPrint('🚨 _syncToDatabase: CRITICAL DEBUG TRACKING:');
+    debugPrint(
+        '🚨   Local state: _targetLanguage=${_targetLanguage?.code}, _nativeLanguage=${_nativeLanguage?.code}');
+    debugPrint(
+        '🚨   CurrentUser: target=${currentUser.targetLanguage}, native=${currentUser.nativeLanguage}');
+    debugPrint(
+        '🚨   Final codes: target=$targetCode, native=$nativeCode, support1=$support1Code, support2=$support2Code');
+
+    // Check if values have actually changed to avoid unnecessary DB writes
+    final hasChanges = currentUser.targetLanguage != targetCode ||
+        currentUser.nativeLanguage != nativeCode ||
+        currentUser.supportLanguage1 != support1Code ||
+        currentUser.supportLanguage2 != support2Code;
+
+    debugPrint('🚨   hasChanges: $hasChanges');
+    debugPrint(
+        '🚨   Comparison: currentUser.target(${currentUser.targetLanguage}) != targetCode($targetCode) = ${currentUser.targetLanguage != targetCode}');
+
+    if (!hasChanges) {
+      debugPrint(
+          'LanguageSettings: No changes detected, skipping database sync');
+      return;
+    }
+
+    debugPrint(
+        '🚨 _syncToDatabase: SENDING TO DATABASE - target: $targetCode, native: $nativeCode');
+
     try {
       await _userService!.updateLanguageSettings(
-        targetLanguage: _targetLanguage?.code ?? currentUser.targetLanguage,
-        nativeLanguage: _nativeLanguage?.code ?? currentUser.nativeLanguage,
-        supportLanguage1:
-            _supportLanguage1?.code ?? currentUser.supportLanguage1,
-        supportLanguage2:
-            _supportLanguage2?.code ?? currentUser.supportLanguage2,
+        targetLanguage: targetCode,
+        nativeLanguage: nativeCode,
+        supportLanguage1: support1Code,
+        supportLanguage2: support2Code,
       );
       debugPrint(
           'LanguageSettings: Successfully synced language settings to database');
@@ -225,10 +336,16 @@ class LanguageSettings extends ChangeNotifier {
   }
 
   Language? _findLanguageByCode(String? code) {
-    if (code == null) return null;
+    // ENHANCED: Better detection of invalid values
+    if (code == null || code == 'null' || code.isEmpty || code.trim().isEmpty) {
+      return null;
+    }
     try {
       return availableLanguages.firstWhere((lang) => lang.code == code);
     } catch (_) {
+      // Invalid language code
+      DebugHelper.printDebug('language_settings',
+          '⚠️ _findLanguageByCode: Invalid language code: "$code"');
       return null;
     }
   }

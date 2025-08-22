@@ -36,9 +36,11 @@ class UserService extends ChangeNotifier {
     // Listen to auth state changes
     _authService.authStateChanges.listen((user) async {
       DebugHelper.printDebug('user_service',
-          'UserService: Auth state changed - user: ${user?.email ?? 'null'}');
+          '🚀 UserService: Auth state changed - user: ${user?.email ?? 'null'}');
       if (user != null) {
         // DON'T notify listeners immediately - wait until we have complete user data
+        debugPrint(
+            '🚀 UserService: Received user from AuthService - target: "${user.targetLanguage}", native: "${user.nativeLanguage}"');
         _currentUser = user;
 
         // Try to sync with database, but don't fail if it doesn't work
@@ -47,11 +49,17 @@ class UserService extends ChangeNotifier {
               'UserService: Fetching user from database with ID: ${user.id}');
           final dbUser = await _databaseService.getUserById(user.id);
           if (dbUser != null) {
+            debugPrint(
+                '🔍 TRACKING: Before overwrite - _currentUser target: "${_currentUser?.targetLanguage}", native: "${_currentUser?.nativeLanguage}"');
+            debugPrint(
+                '🔍 TRACKING: dbUser from database - target: "${dbUser.targetLanguage}", native: "${dbUser.nativeLanguage}"');
             _currentUser = dbUser;
             debugPrint(
                 'UserService: Loaded user from database: ${dbUser.email}');
             debugPrint(
                 'UserService: Database user language settings - target: ${dbUser.targetLanguage}, native: ${dbUser.nativeLanguage}');
+            debugPrint(
+                '🔍 TRACKING: After overwrite - _currentUser target: "${_currentUser?.targetLanguage}", native: "${_currentUser?.nativeLanguage}"');
           } else {
             DebugHelper.printDebug('user_service',
                 'UserService: User not found in database, creating...');
@@ -288,17 +296,56 @@ class UserService extends ChangeNotifier {
   }) async {
     if (_currentUser == null) return;
 
+    debugPrint('🚨 UserService.updateLanguageSettings: RECEIVED PARAMETERS:');
+    debugPrint('🚨   targetLanguage: $targetLanguage');
+    debugPrint('🚨   nativeLanguage: $nativeLanguage');
+    debugPrint('🚨   supportLanguage1: $supportLanguage1');
+    debugPrint('🚨   supportLanguage2: $supportLanguage2');
+    debugPrint(
+        '🚨   Current user before update: target=${_currentUser!.targetLanguage}, native=${_currentUser!.nativeLanguage}');
+
+    // ENHANCED SAFEGUARDS: Prevent null corruption
+    // Don't allow null values for required fields (target and native languages)
+    final finalTargetLanguage = targetLanguage ?? _currentUser!.targetLanguage;
+    final finalNativeLanguage = nativeLanguage ?? _currentUser!.nativeLanguage;
+
+    // CRITICAL: Block update if required languages would be null
+    if (finalTargetLanguage == null || finalNativeLanguage == null) {
+      debugPrint(
+          '🚨 UserService.updateLanguageSettings: BLOCKING update - null values detected!');
+      debugPrint('🚨   finalTargetLanguage: $finalTargetLanguage');
+      debugPrint('🚨   finalNativeLanguage: $finalNativeLanguage');
+      debugPrint(
+          '🚨   This prevents database corruption with literal "null" strings');
+      _error =
+          'Cannot update language settings: target and native languages are required';
+      notifyListeners();
+      return;
+    }
+
     try {
       final updatedUser = _currentUser!.copyWith(
-        targetLanguage: targetLanguage ?? _currentUser!.targetLanguage,
-        nativeLanguage: nativeLanguage ?? _currentUser!.nativeLanguage,
-        supportLanguage1: supportLanguage1 ?? _currentUser!.supportLanguage1,
-        supportLanguage2: supportLanguage2 ?? _currentUser!.supportLanguage2,
+        targetLanguage: finalTargetLanguage,
+        nativeLanguage: finalNativeLanguage,
+        supportLanguage1: supportLanguage1, // Support languages can be null
+        supportLanguage2: supportLanguage2, // Support languages can be null
       );
+
+      debugPrint(
+          '🚨 UserService.updateLanguageSettings: FINAL USER OBJECT TO DATABASE:');
+      debugPrint('🚨   target: ${updatedUser.targetLanguage}');
+      debugPrint('🚨   native: ${updatedUser.nativeLanguage}');
+      debugPrint('🚨   support1: ${updatedUser.supportLanguage1}');
+      debugPrint('🚨   support2: ${updatedUser.supportLanguage2}');
+
       await _databaseService.updateUser(updatedUser);
       _currentUser = updatedUser;
       notifyListeners();
+
+      debugPrint(
+          '✅ UserService.updateLanguageSettings: Successfully updated language settings');
     } catch (e) {
+      debugPrint('❌ UserService.updateLanguageSettings: Error: $e');
       _error = 'Failed to update language settings: $e';
       notifyListeners();
     }

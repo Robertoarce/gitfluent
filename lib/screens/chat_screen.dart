@@ -18,6 +18,7 @@ import 'vocabulary_review_screen.dart';
 import 'user_vocabulary_screen.dart';
 import 'flashcard_start_screen.dart';
 import '../utils/flashcard_route_transitions.dart';
+import '../utils/keyboard_shortcuts.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -61,18 +62,8 @@ class _ChatScreenState extends State<ChatScreen> {
     // }
     // title += ' -> Using: ${settings.getProviderName(settings.currentProvider)}';
 
-    return KeyboardListener(
-      focusNode: FocusNode(),
-      onKeyEvent: (event) {
-        if (event is KeyDownEvent &&
-            event.logicalKey == LogicalKeyboardKey.keyV &&
-            HardwareKeyboard.instance.isMetaPressed) {
-          final chatService = context.read<ChatService>();
-          final languageSettings = context.read<LanguageSettings>();
-          _controller.text = 'I lov working with u at the skool';
-          _sendMessage(chatService, languageSettings);
-        }
-      },
+    return KeyboardShortcutWrapper(
+      messageController: _controller,
       child: Scaffold(
         backgroundColor: Colors.black38,
         appBar: AppBar(

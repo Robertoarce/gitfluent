@@ -119,13 +119,35 @@ class ChatService extends ChangeNotifier {
 
       // Get the prompt type and variables directly from config
       final promptType = _config?.systemPromptType ?? 'default';
-      final variables = _config?.defaultSettings ??
-          {
-            'target_language': 'it',
-            'native_language': 'en',
-            'support_language_1': 'es',
-            'support_language_2': 'fr',
-          };
+
+      // 🔧 FIX: Use actual language settings if available, otherwise defer initialization
+      Map<String, String> variables;
+      if (_languageSettings != null &&
+          _languageSettings!.targetLanguage != null &&
+          _languageSettings!.nativeLanguage != null) {
+        // Use REAL user language settings
+        variables = {
+          'target_language': _languageSettings!.targetLanguage!.code,
+          'native_language': _languageSettings!.nativeLanguage!.code,
+          'support_language_1':
+              _languageSettings!.supportLanguage1?.code ?? 'es',
+          'support_language_2':
+              _languageSettings!.supportLanguage2?.code ?? 'fr',
+        };
+        DebugHelper.printDebug(
+            'chat_service', '✅ Using REAL user language settings');
+      } else {
+        // Only use fallbacks if absolutely no language settings available
+        variables = _config?.defaultSettings ??
+            {
+              'target_language': 'it',
+              'native_language': 'en',
+              'support_language_1': 'es',
+              'support_language_2': 'fr',
+            };
+        DebugHelper.printDebug('chat_service',
+            '⚠️ Using fallback language settings (no user data available yet)');
+      }
 
       DebugHelper.printDebug(
           'chat_service', 'Prompt type from config: $promptType');
