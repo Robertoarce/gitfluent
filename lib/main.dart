@@ -4,8 +4,8 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/foundation.dart'; // Add this import for kDebugMode
-import 'package:mcp_toolkit/mcp_toolkit.dart';
 import 'services/chat_service.dart';
+import 'services/conversation_service.dart';
 import 'services/settings_service.dart';
 import 'services/language_settings_service.dart';
 import 'services/vocabulary_service.dart';
@@ -15,12 +15,12 @@ import 'services/supabase_auth_service.dart';
 import 'services/supabase_database_service.dart';
 import 'models/user.dart' as app_user;
 import 'screens/chat_screen.dart';
+import 'screens/conversation_screen.dart';
 import 'screens/auth_screen.dart';
 import 'screens/user_vocabulary_screen.dart';
 import 'screens/flashcard_start_screen.dart';
 import 'screens/settings_screen.dart';
 import 'config/supabase_config.dart';
-import 'utils/flashcard_route_transitions.dart';
 import 'utils/app_navigation.dart';
 import 'utils/debug_helper.dart';
 import 'widgets/debug_overlay.dart';
@@ -212,6 +212,23 @@ class MyApp extends StatelessWidget {
             languageSettings: languageSettings,
           ),
         ),
+
+        // Conversation service depends on settings, language settings, and vocabulary service
+        ChangeNotifierProxyProvider3<SettingsService, LanguageSettings,
+            VocabularyService, ConversationService>(
+          create: (context) => ConversationService(
+            settings: context.read<SettingsService>(),
+            languageSettings: context.read<LanguageSettings>(),
+            vocabularyService: context.read<VocabularyService>(),
+          ),
+          update: (context, settings, languageSettings, vocabularyService,
+                  previous) =>
+              ConversationService(
+            settings: settings,
+            languageSettings: languageSettings,
+            vocabularyService: vocabularyService,
+          ),
+        ),
       ],
       child: Consumer<UserService>(
         builder: (context, userService, child) {
@@ -236,6 +253,17 @@ class MyApp extends StatelessWidget {
                   '/flashcards': (context) => const FlashcardStartScreen(),
                   '/vocabulary': (context) => const UserVocabularyScreen(),
                   '/settings': (context) => const SettingsScreen(),
+                  '/conversation': (context) => Consumer3<ConversationService,
+                          VocabularyService, LanguageSettings>(
+                        builder: (context, conversationService,
+                            vocabularyService, languageSettings, child) {
+                          return ConversationScreen(
+                            conversationService: conversationService,
+                            vocabularyService: vocabularyService,
+                            languageSettings: languageSettings,
+                          );
+                        },
+                      ),
                 },
                 builder: (context, child) {
                   return DebugOverlay(

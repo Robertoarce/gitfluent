@@ -659,8 +659,9 @@ class FlashcardService extends ChangeNotifier {
 
   // Question generation based on selected words
   Future<List<FlashcardQuestion>> generateQuestionsForSession(
-    List<UserVocabularyItem> selectedWords,
-  ) async {
+    List<UserVocabularyItem> selectedWords, {
+    String? language, // Add language parameter
+  }) async {
     if (selectedWords.isEmpty) {
       debugPrint(
           'FlashcardService: Cannot generate questions - no words provided');
@@ -672,7 +673,9 @@ class FlashcardService extends ChangeNotifier {
     final random = Random();
 
     // Get all vocabulary for generating distractors (for multiple choice)
-    final allVocabulary = await _vocabularyService?.getUserVocabulary() ?? [];
+    // Use the same language filter as the selected words to ensure consistent distractors
+    final allVocabulary =
+        await _vocabularyService?.getUserVocabulary(language: language) ?? [];
 
     debugPrint(
         'FlashcardService: Generating questions for ${selectedWords.length} words');
@@ -955,7 +958,8 @@ class FlashcardService extends ChangeNotifier {
       }
 
       // Step 3: Generate questions from selected words
-      _sessionQuestions = await generateQuestionsForSession(selectedWords);
+      _sessionQuestions =
+          await generateQuestionsForSession(selectedWords, language: language);
 
       if (_sessionQuestions.isEmpty) {
         debugPrint(

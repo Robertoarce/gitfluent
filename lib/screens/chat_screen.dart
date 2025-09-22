@@ -19,6 +19,7 @@ import 'user_vocabulary_screen.dart';
 import 'flashcard_start_screen.dart';
 import '../utils/flashcard_route_transitions.dart';
 import '../utils/keyboard_shortcuts.dart';
+import '../utils/app_navigation.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -82,6 +83,13 @@ class _ChatScreenState extends State<ChatScreen> {
                   },
                 ),
               ],
+            ),
+            IconButton(
+              icon: const Icon(Icons.chat_bubble_outline),
+              onPressed: () {
+                AppNavigation.toConversation(context);
+              },
+              tooltip: 'Conversation Mode',
             ),
             IconButton(
               icon: const Icon(Icons.quiz),

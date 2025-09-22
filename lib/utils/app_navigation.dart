@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
-import '../screens/flashcard_start_screen.dart';
 import '../screens/user_vocabulary_screen.dart';
 import '../screens/vocabulary_review_screen.dart';
 import '../screens/settings_screen.dart';
-import '../screens/auth_screen.dart';
 import 'flashcard_route_transitions.dart';
 
 /// Centralized navigation helper for the entire app
@@ -15,6 +13,7 @@ class AppNavigation {
   static const String flashcardsRoute = '/flashcards';
   static const String vocabularyRoute = '/vocabulary';
   static const String settingsRoute = '/settings';
+  static const String conversationRoute = '/conversation';
 
   /// Navigate to flashcard start screen with custom transition
   static Future<T?> toFlashcards<T extends Object?>(
@@ -57,6 +56,11 @@ class AppNavigation {
         builder: (context) => const SettingsScreen(),
       ),
     );
+  }
+
+  /// Navigate to conversation screen
+  static Future<T?> toConversation<T extends Object?>(BuildContext context) {
+    return Navigator.pushNamed<T>(context, conversationRoute);
   }
 
   /// Navigate to home screen (replacing current)

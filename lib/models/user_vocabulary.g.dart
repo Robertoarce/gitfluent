@@ -18,6 +18,7 @@ UserVocabularyItem _$UserVocabularyItemFromJson(Map<String, dynamic> json) =>
               ?.map((e) => e as String)
               .toList() ??
           const [],
+      translationLanguage: json['translation_language'] as String?,
       forms:
           (json['forms'] as List<dynamic>?)?.map((e) => e as String).toList() ??
               const [],
@@ -50,6 +51,7 @@ Map<String, dynamic> _$UserVocabularyItemToJson(UserVocabularyItem instance) =>
       'word_type': instance.wordType,
       'language': instance.language,
       'translations': instance.translations,
+      'translation_language': instance.translationLanguage,
       'forms': instance.forms,
       'difficulty_level': instance.difficultyLevel,
       'mastery_level': instance.masteryLevel,

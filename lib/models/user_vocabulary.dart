@@ -17,6 +17,8 @@ class UserVocabularyItem {
   final String wordType; // verb, noun, adjective, etc.
   final String language;
   final List<String> translations;
+  @JsonKey(name: 'translation_language')
+  final String? translationLanguage; // Language the translations are in
   final List<String> forms;
   @JsonKey(name: 'difficulty_level')
   final int difficultyLevel; // 1-5
@@ -49,6 +51,7 @@ class UserVocabularyItem {
     required this.wordType,
     required this.language,
     this.translations = const [],
+    this.translationLanguage,
     this.forms = const [],
     this.difficultyLevel = 1,
     this.masteryLevel = 0,
@@ -292,6 +295,7 @@ class UserVocabularyItem {
         translations: (data['translations'] is List)
             ? List<String>.from(data['translations'])
             : [],
+        translationLanguage: data['translation_language']?.toString(),
         forms: (data['forms'] is List) ? List<String>.from(data['forms']) : [],
         lastSeen: DateTime.now(),
         firstLearned: DateTime.now(),
@@ -314,6 +318,7 @@ class UserVocabularyItem {
     String? wordType,
     String? language,
     List<String>? translations,
+    String? translationLanguage,
     List<String>? forms,
     int? difficultyLevel,
     int? masteryLevel,
@@ -335,6 +340,7 @@ class UserVocabularyItem {
       wordType: wordType ?? this.wordType,
       language: language ?? this.language,
       translations: translations ?? this.translations,
+      translationLanguage: translationLanguage ?? this.translationLanguage,
       forms: forms ?? this.forms,
       difficultyLevel: difficultyLevel ?? this.difficultyLevel,
       masteryLevel: masteryLevel ?? this.masteryLevel,

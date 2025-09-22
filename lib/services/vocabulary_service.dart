@@ -273,6 +273,8 @@ class VocabularyService extends ChangeNotifier {
         wordType: wordType,
         language: user.targetLanguage ?? 'en',
         translations: [translation],
+        translationLanguage: user.nativeLanguage ??
+            'en', // Set translation language to user's native language
         forms: forms, // Preserve all verb conjugations
         difficultyLevel: 1,
         masteryLevel: 0,

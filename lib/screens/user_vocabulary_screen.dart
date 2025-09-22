@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/vocabulary_service.dart';
 import '../services/user_service.dart';
+import '../services/language_settings_service.dart';
 import '../models/vocabulary_item.dart';
 import '../models/user_vocabulary.dart';
 import 'vocabulary_detail_screen.dart'; // Added import for VocabularyDetailScreen
@@ -20,6 +21,7 @@ class _UserVocabularyScreenState extends State<UserVocabularyScreen>
   bool _isLoading = true;
   List<VocabularyItem> _legacyItems = [];
   List<UserVocabularyItem> _userItems = [];
+  String? _selectedLanguage; // Add language filter state
 
   @override
   void initState() {
@@ -40,13 +42,18 @@ class _UserVocabularyScreenState extends State<UserVocabularyScreen>
     try {
       final vocabularyService = context.read<VocabularyService>();
       final userService = context.read<UserService>();
+      final languageSettings = context.read<LanguageSettings>();
 
       // Load legacy vocabulary items
       _legacyItems = vocabularyService.items;
 
       // Load user vocabulary items if logged in
       if (userService.isLoggedIn) {
-        _userItems = await vocabularyService.getUserVocabulary();
+        // Use current target language for filtering if no specific language is selected
+        final filterLanguage =
+            _selectedLanguage ?? languageSettings.targetLanguage?.code;
+        _userItems =
+            await vocabularyService.getUserVocabulary(language: filterLanguage);
       }
     } catch (e) {
       debugPrint('Error loading vocabulary: $e');
@@ -59,9 +66,30 @@ class _UserVocabularyScreenState extends State<UserVocabularyScreen>
 
   @override
   Widget build(BuildContext context) {
+    final languageSettings = context.watch<LanguageSettings>();
+    final currentLanguage =
+        _selectedLanguage ?? languageSettings.targetLanguage?.code;
+    final currentLanguageName = _selectedLanguage != null
+        ? LanguageSettings.availableLanguages
+            .firstWhere((l) => l.code == _selectedLanguage,
+                orElse: () => const Language('unknown', 'Unknown'))
+            .name
+        : languageSettings.targetLanguage?.name ?? 'All';
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('My Vocabulary'),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('My Vocabulary'),
+            if (currentLanguage != null)
+              Text(
+                'Language: $currentLanguageName',
+                style: const TextStyle(
+                    fontSize: 12, fontWeight: FontWeight.normal),
+              ),
+          ],
+        ),
         backgroundColor: const Color.fromARGB(255, 71, 175, 227),
         foregroundColor: Colors.white,
         bottom: TabBar(
@@ -81,6 +109,66 @@ class _UserVocabularyScreenState extends State<UserVocabularyScreen>
           ],
         ),
         actions: [
+          // Language filter dropdown
+          PopupMenuButton<String?>(
+            icon: const Icon(Icons.language),
+            tooltip: 'Filter by Language',
+            onSelected: (String? languageCode) {
+              setState(() {
+                _selectedLanguage = languageCode;
+              });
+              _loadVocabulary();
+            },
+            itemBuilder: (BuildContext context) {
+              final items = <PopupMenuEntry<String?>>[
+                PopupMenuItem<String?>(
+                  value: null,
+                  child: Row(
+                    children: [
+                      Icon(Icons.all_inclusive,
+                          color: (_selectedLanguage == null)
+                              ? Theme.of(context).primaryColor
+                              : null),
+                      const SizedBox(width: 8),
+                      Text('All Languages',
+                          style: TextStyle(
+                            fontWeight: (_selectedLanguage == null)
+                                ? FontWeight.bold
+                                : FontWeight.normal,
+                          )),
+                    ],
+                  ),
+                ),
+                const PopupMenuDivider(),
+              ];
+
+              // Add available languages
+              for (final language in LanguageSettings.availableLanguages) {
+                items.add(
+                  PopupMenuItem<String?>(
+                    value: language.code,
+                    child: Row(
+                      children: [
+                        Icon(Icons.language,
+                            color: (_selectedLanguage == language.code)
+                                ? Theme.of(context).primaryColor
+                                : null),
+                        const SizedBox(width: 8),
+                        Text(language.name,
+                            style: TextStyle(
+                              fontWeight: (_selectedLanguage == language.code)
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
+                            )),
+                      ],
+                    ),
+                  ),
+                );
+              }
+
+              return items;
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.quiz),
             onPressed: (_userItems.isNotEmpty || _legacyItems.isNotEmpty)
@@ -317,12 +405,39 @@ class _UserVocabularyScreenState extends State<UserVocabularyScreen>
               ),
               if (item.translations.isNotEmpty) ...[
                 const SizedBox(height: 8),
-                Text(
-                  item.translations.join(', '),
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.grey[700],
-                  ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        item.translations.join(', '),
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.grey[700],
+                        ),
+                      ),
+                    ),
+                    if (item.translationLanguage != null) ...[
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                              color: Colors.blue.withValues(alpha: 0.3)),
+                        ),
+                        child: Text(
+                          _getLanguageName(item.translationLanguage!),
+                          style: const TextStyle(
+                            fontSize: 10,
+                            color: Colors.blue,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ],
               if (item.forms.isNotEmpty) ...[
@@ -473,5 +588,12 @@ class _UserVocabularyScreenState extends State<UserVocabularyScreen>
     } else {
       return '${difference.inMinutes}m ago';
     }
+  }
+
+  String _getLanguageName(String languageCode) {
+    final language = LanguageSettings.availableLanguages.firstWhere(
+        (l) => l.code == languageCode,
+        orElse: () => const Language('unknown', 'Unknown'));
+    return language.name;
   }
 }
