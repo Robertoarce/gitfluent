@@ -5,6 +5,7 @@ import '../services/user_service.dart';
 import '../services/language_settings_service.dart';
 import '../models/vocabulary_item.dart';
 import '../models/user_vocabulary.dart';
+import '../config/custom_theme.dart';
 import 'vocabulary_detail_screen.dart'; // Added import for VocabularyDetailScreen
 import 'flashcard_start_screen.dart';
 
@@ -77,26 +78,55 @@ class _UserVocabularyScreenState extends State<UserVocabularyScreen>
         : languageSettings.targetLanguage?.name ?? 'All';
 
     return Scaffold(
+      backgroundColor: CustomColorScheme.lightBlue2,
       appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        title: Row(
           children: [
-            const Text('My Vocabulary'),
-            if (currentLanguage != null)
-              Text(
-                'Language: $currentLanguageName',
-                style: const TextStyle(
-                    fontSize: 12, fontWeight: FontWeight.normal),
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: CustomColorScheme.darkPink,
+                borderRadius: BorderRadius.circular(8),
               ),
+              child: const Icon(
+                Icons.menu_book,
+                color: Colors.white,
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'My Vocabulary',
+                  style: TextStyle(
+                    color: CustomColorScheme.darkGreen,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                  ),
+                ),
+                if (currentLanguage != null)
+                  Text(
+                    'Language: $currentLanguageName',
+                    style: TextStyle(
+                      color: CustomColorScheme.darkGreen,
+                      fontSize: 12,
+                      fontWeight: FontWeight.normal,
+                    ),
+                  ),
+              ],
+            ),
           ],
         ),
-        backgroundColor: const Color.fromARGB(255, 71, 175, 227),
-        foregroundColor: Colors.white,
+        backgroundColor: CustomColorScheme.lightBlue2,
+        elevation: 0,
         bottom: TabBar(
           controller: _tabController,
-          labelColor: Colors.white,
-          unselectedLabelColor: Colors.white70,
-          indicatorColor: Colors.white,
+          labelColor: CustomColorScheme.darkGreen,
+          unselectedLabelColor: CustomColorScheme.darkGreen.withOpacity(0.7),
+          indicatorColor: CustomColorScheme.darkPink,
           tabs: [
             Tab(
               text: 'User Account (${_userItems.length})',
@@ -190,15 +220,33 @@ class _UserVocabularyScreenState extends State<UserVocabularyScreen>
           ),
         ],
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : TabBarView(
-              controller: _tabController,
-              children: [
-                _buildUserVocabularyTab(),
-                _buildLegacyVocabularyTab(),
-              ],
-            ),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              CustomColorScheme.lightBlue2,
+              CustomColorScheme.lightBlue2.withOpacity(0.8),
+            ],
+          ),
+        ),
+        child: _isLoading
+            ? Center(
+                child: CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    CustomColorScheme.darkPink,
+                  ),
+                ),
+              )
+            : TabBarView(
+                controller: _tabController,
+                children: [
+                  _buildUserVocabularyTab(),
+                  _buildLegacyVocabularyTab(),
+                ],
+              ),
+      ),
     );
   }
 

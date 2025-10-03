@@ -4,6 +4,7 @@ import '../services/conversation_service.dart';
 import '../services/vocabulary_service.dart';
 import '../services/language_settings_service.dart';
 import '../widgets/selectable_text_widget.dart';
+import '../config/custom_theme.dart';
 
 class ConversationScreen extends StatefulWidget {
   final ConversationService conversationService;
@@ -82,7 +83,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Added "${_selectedWordData!.word}" to vocabulary'),
-          backgroundColor: Colors.green,
+          backgroundColor: CustomColorScheme.darkPink,
         ),
       );
     }
@@ -102,7 +103,7 @@ class _ConversationScreenState extends State<ConversationScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Added "${_selectedWordData!.word}" to learning pool'),
-          backgroundColor: Colors.blue,
+          backgroundColor: CustomColorScheme.lightBlue1,
         ),
       );
     }
@@ -152,12 +153,42 @@ class _ConversationScreenState extends State<ConversationScreen> {
         widget.languageSettings.targetLanguage?.name ?? 'Target Language';
 
     return Scaffold(
+      backgroundColor: CustomColorScheme.lightBlue2,
       appBar: AppBar(
-        title: Text('Conversation in $targetLang'),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        title: Row(
+          children: [
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: CustomColorScheme.darkPink,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(
+                Icons.smart_toy,
+                color: Colors.white,
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Text(
+              'AI Language Tutor',
+              style: TextStyle(
+                color: CustomColorScheme.darkGreen,
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: CustomColorScheme.lightBlue2,
+        elevation: 0,
         actions: [
           IconButton(
-            icon: const Icon(Icons.clear),
+            icon: Icon(
+              Icons.clear,
+              color: CustomColorScheme.darkGreen,
+            ),
             onPressed: () {
               widget.conversationService.clearConversation();
             },
@@ -165,181 +196,279 @@ class _ConversationScreenState extends State<ConversationScreen> {
           ),
         ],
       ),
-      body: Column(
-        children: [
-          // Messages area
-          Expanded(
-            child: widget.conversationService.messages.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.chat_bubble_outline,
-                          size: 64,
-                          color: Colors.grey[400],
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          'Start a conversation in $targetLang',
-                          style: Theme.of(context)
-                              .textTheme
-                              .headlineSmall
-                              ?.copyWith(
-                                color: Colors.grey[600],
-                              ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'The AI will only respond in $targetLang',
-                          style:
-                              Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                    color: Colors.grey[500],
-                                  ),
-                        ),
-                      ],
-                    ),
-                  )
-                : ListView.builder(
-                    controller: _scrollController,
-                    padding: const EdgeInsets.all(16),
-                    itemCount: widget.conversationService.messages.length,
-                    itemBuilder: (context, index) {
-                      final message =
-                          widget.conversationService.messages[index];
-                      return _buildMessageBubble(message);
-                    },
-                  ),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              CustomColorScheme.lightBlue2,
+              CustomColorScheme.lightBlue2.withOpacity(0.8),
+            ],
           ),
-
-          // Loading indicator
-          if (widget.conversationService.isLoading)
-            const Padding(
-              padding: EdgeInsets.all(16),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  ),
-                  SizedBox(width: 16),
-                  Text('AI is thinking...'),
-                ],
-              ),
+        ),
+        child: Column(
+          children: [
+            // Messages area
+            Expanded(
+              child: widget.conversationService.messages.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            width: 80,
+                            height: 80,
+                            decoration: BoxDecoration(
+                              color: CustomColorScheme.lightBlue3,
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Icon(
+                              Icons.chat_bubble_outline,
+                              size: 40,
+                              color: CustomColorScheme.darkGreen,
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+                          Text(
+                            'Start a conversation in $targetLang',
+                            style: TextStyle(
+                              color: CustomColorScheme.darkGreen,
+                              fontSize: 20,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'The AI will only respond in $targetLang',
+                            style: TextStyle(
+                              color:
+                                  CustomColorScheme.darkGreen.withOpacity(0.7),
+                              fontSize: 16,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : Container(
+                      margin: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.1),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: ListView.builder(
+                          controller: _scrollController,
+                          padding: const EdgeInsets.all(16),
+                          itemCount: widget.conversationService.messages.length,
+                          itemBuilder: (context, index) {
+                            final message =
+                                widget.conversationService.messages[index];
+                            return _buildMessageBubble(message);
+                          },
+                        ),
+                      ),
+                    ),
             ),
 
-          // Word selection actions
-          if (_selectedWord != null && _selectedWordData != null)
+            // Loading indicator
+            if (widget.conversationService.isLoading)
+              Container(
+                margin: const EdgeInsets.symmetric(horizontal: 16),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          CustomColorScheme.darkPink,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Text(
+                      'AI is thinking...',
+                      style: TextStyle(
+                        color: CustomColorScheme.darkGreen,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+            // Word selection actions
+            if (_selectedWord != null && _selectedWordData != null)
+              Container(
+                margin: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Selected: "$_selectedWord"',
+                        style: TextStyle(
+                          color: CustomColorScheme.darkGreen,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      icon: Icon(
+                        Icons.translate,
+                        color: CustomColorScheme.darkPink,
+                      ),
+                      onPressed: _showTranslation,
+                      tooltip: 'Show translation',
+                    ),
+                    IconButton(
+                      icon: Icon(
+                        _selectedWordData!.isInVocabulary
+                            ? Icons.bookmark
+                            : Icons.bookmark_border,
+                        color: CustomColorScheme.darkPink,
+                      ),
+                      onPressed: _selectedWordData!.isInVocabulary
+                          ? null
+                          : _addToVocabulary,
+                      tooltip: _selectedWordData!.isInVocabulary
+                          ? 'Already in vocabulary'
+                          : 'Add to vocabulary',
+                    ),
+                    IconButton(
+                      icon: Icon(
+                        _selectedWordData!.isInLearningPool
+                            ? Icons.star
+                            : Icons.star_border,
+                        color: CustomColorScheme.lightBlue1,
+                      ),
+                      onPressed: _selectedWordData!.isInLearningPool
+                          ? null
+                          : _addToLearningPool,
+                      tooltip: _selectedWordData!.isInLearningPool
+                          ? 'Already in learning pool'
+                          : 'Add to learning pool',
+                    ),
+                    IconButton(
+                      icon: Icon(
+                        Icons.close,
+                        color: CustomColorScheme.darkGreen,
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          _selectedWord = null;
+                          _selectedWordData = null;
+                        });
+                      },
+                      tooltip: 'Clear selection',
+                    ),
+                  ],
+                ),
+              ),
+
+            // Input area
             Container(
+              margin: const EdgeInsets.all(16),
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surfaceVariant,
-                border: Border(
-                  top: BorderSide(
-                    color: Theme.of(context).dividerColor,
-                    width: 1,
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
                   ),
-                ),
+                ],
               ),
               child: Row(
                 children: [
                   Expanded(
-                    child: Text(
-                      'Selected: "$_selectedWord"',
-                      style: Theme.of(context).textTheme.titleMedium,
+                    child: TextField(
+                      controller: _messageController,
+                      decoration: InputDecoration(
+                        hintText: 'Type your message...',
+                        hintStyle: TextStyle(
+                          color: CustomColorScheme.darkGreen.withOpacity(0.5),
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(24),
+                          borderSide: BorderSide.none,
+                        ),
+                        filled: true,
+                        fillColor:
+                            CustomColorScheme.lightBlue3.withOpacity(0.3),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                      ),
+                      maxLines: null,
+                      textInputAction: TextInputAction.send,
+                      onSubmitted: (_) => _sendMessage(),
+                      style: TextStyle(
+                        color: CustomColorScheme.darkGreen,
+                      ),
                     ),
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.translate),
-                    onPressed: _showTranslation,
-                    tooltip: 'Show translation',
-                  ),
-                  IconButton(
-                    icon: Icon(
-                      _selectedWordData!.isInVocabulary
-                          ? Icons.bookmark
-                          : Icons.bookmark_border,
+                  const SizedBox(width: 8),
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: CustomColorScheme.darkPink,
+                      borderRadius: BorderRadius.circular(24),
                     ),
-                    onPressed: _selectedWordData!.isInVocabulary
-                        ? null
-                        : _addToVocabulary,
-                    tooltip: _selectedWordData!.isInVocabulary
-                        ? 'Already in vocabulary'
-                        : 'Add to vocabulary',
-                  ),
-                  IconButton(
-                    icon: Icon(
-                      _selectedWordData!.isInLearningPool
-                          ? Icons.star
-                          : Icons.star_border,
+                    child: IconButton(
+                      onPressed: widget.conversationService.isLoading
+                          ? null
+                          : _sendMessage,
+                      icon: const Icon(
+                        Icons.send,
+                        color: Colors.white,
+                        size: 20,
+                      ),
                     ),
-                    onPressed: _selectedWordData!.isInLearningPool
-                        ? null
-                        : _addToLearningPool,
-                    tooltip: _selectedWordData!.isInLearningPool
-                        ? 'Already in learning pool'
-                        : 'Add to learning pool',
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close),
-                    onPressed: () {
-                      setState(() {
-                        _selectedWord = null;
-                        _selectedWordData = null;
-                      });
-                    },
-                    tooltip: 'Clear selection',
                   ),
                 ],
               ),
             ),
-
-          // Input area
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surface,
-              border: Border(
-                top: BorderSide(
-                  color: Theme.of(context).dividerColor,
-                  width: 1,
-                ),
-              ),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _messageController,
-                    decoration: InputDecoration(
-                      hintText: 'Type your message in $targetLang...',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(24),
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
-                      ),
-                    ),
-                    maxLines: null,
-                    textInputAction: TextInputAction.send,
-                    onSubmitted: (_) => _sendMessage(),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                FloatingActionButton(
-                  onPressed: widget.conversationService.isLoading
-                      ? null
-                      : _sendMessage,
-                  mini: true,
-                  child: const Icon(Icons.send),
-                ),
-              ],
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -355,9 +484,13 @@ class _ConversationScreenState extends State<ConversationScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (!isUser) ...[
-            CircleAvatar(
-              radius: 16,
-              backgroundColor: Theme.of(context).colorScheme.primary,
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: CustomColorScheme.darkPink,
+                borderRadius: BorderRadius.circular(16),
+              ),
               child: const Icon(
                 Icons.smart_toy,
                 size: 16,
@@ -371,8 +504,8 @@ class _ConversationScreenState extends State<ConversationScreen> {
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: isUser
-                    ? Theme.of(context).colorScheme.primary
-                    : Theme.of(context).colorScheme.surfaceVariant,
+                    ? CustomColorScheme.lightBlue1
+                    : CustomColorScheme.lightBlue3,
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Column(
@@ -384,25 +517,27 @@ class _ConversationScreenState extends State<ConversationScreen> {
                       padding: const EdgeInsets.all(8),
                       margin: const EdgeInsets.only(bottom: 8),
                       decoration: BoxDecoration(
-                        color: Colors.orange.withOpacity(0.1),
+                        color: CustomColorScheme.lightYellow.withOpacity(0.3),
                         borderRadius: BorderRadius.circular(8),
-                        border:
-                            Border.all(color: Colors.orange.withOpacity(0.3)),
+                        border: Border.all(
+                          color: CustomColorScheme.lightYellow.withOpacity(0.5),
+                        ),
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.edit,
-                              size: 16, color: Colors.orange),
+                          Icon(
+                            Icons.edit,
+                            size: 16,
+                            color: CustomColorScheme.darkGreen,
+                          ),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
                               'Correction: ${message.correction}',
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .bodySmall
-                                  ?.copyWith(
-                                    color: Colors.orange[800],
-                                  ),
+                              style: TextStyle(
+                                color: CustomColorScheme.darkGreen,
+                                fontSize: 12,
+                              ),
                             ),
                           ),
                         ],
@@ -419,32 +554,24 @@ class _ConversationScreenState extends State<ConversationScreen> {
                     Text(
                       message.content,
                       style: TextStyle(
-                        color: isUser
-                            ? Colors.white
-                            : Theme.of(context).colorScheme.onSurfaceVariant,
+                        color:
+                            isUser ? Colors.white : CustomColorScheme.darkGreen,
+                        fontSize: 16,
                       ),
                     ),
-                  const SizedBox(height: 4),
-                  Text(
-                    _formatTime(message.timestamp),
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: isUser
-                              ? Colors.white70
-                              : Theme.of(context)
-                                  .colorScheme
-                                  .onSurfaceVariant
-                                  .withOpacity(0.7),
-                        ),
-                  ),
                 ],
               ),
             ),
           ),
           if (isUser) ...[
             const SizedBox(width: 8),
-            CircleAvatar(
-              radius: 16,
-              backgroundColor: Theme.of(context).colorScheme.secondary,
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: CustomColorScheme.lightBlue1,
+                borderRadius: BorderRadius.circular(16),
+              ),
               child: const Icon(
                 Icons.person,
                 size: 16,
@@ -455,20 +582,5 @@ class _ConversationScreenState extends State<ConversationScreen> {
         ],
       ),
     );
-  }
-
-  String _formatTime(DateTime timestamp) {
-    final now = DateTime.now();
-    final difference = now.difference(timestamp);
-
-    if (difference.inMinutes < 1) {
-      return 'Just now';
-    } else if (difference.inHours < 1) {
-      return '${difference.inMinutes}m ago';
-    } else if (difference.inDays < 1) {
-      return '${difference.inHours}h ago';
-    } else {
-      return '${difference.inDays}d ago';
-    }
   }
 }

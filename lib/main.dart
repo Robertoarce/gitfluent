@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:shadcn_ui/shadcn_ui.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/foundation.dart'; // Add this import for kDebugMode
+import 'config/custom_theme.dart';
 import 'services/chat_service.dart';
 import 'services/conversation_service.dart';
 import 'services/settings_service.dart';
@@ -232,45 +232,34 @@ class MyApp extends StatelessWidget {
       ],
       child: Consumer<UserService>(
         builder: (context, userService, child) {
-          return ShadApp.custom(
+          return MaterialApp(
+            title: 'AI Language Tutor',
+            theme: CustomTheme.lightTheme,
+            darkTheme: CustomTheme.darkTheme,
             themeMode: ThemeMode.light,
-            theme: ShadThemeData(
-              brightness: Brightness.light,
-              colorScheme: const ShadBlueColorScheme.light(),
-            ),
-            darkTheme: ShadThemeData(
-              brightness: Brightness.dark,
-              colorScheme: const ShadBlueColorScheme.dark(),
-            ),
-            appBuilder: (context) {
-              return MaterialApp(
-                title: 'GitFluent',
-                theme: Theme.of(context),
-                home: _buildHome(userService),
-                routes: {
-                  '/auth': (context) => const AuthScreen(),
-                  '/home': (context) => const AppHome(),
-                  '/flashcards': (context) => const FlashcardStartScreen(),
-                  '/vocabulary': (context) => const UserVocabularyScreen(),
-                  '/settings': (context) => const SettingsScreen(),
-                  '/conversation': (context) => Consumer3<ConversationService,
-                          VocabularyService, LanguageSettings>(
-                        builder: (context, conversationService,
-                            vocabularyService, languageSettings, child) {
-                          return ConversationScreen(
-                            conversationService: conversationService,
-                            vocabularyService: vocabularyService,
-                            languageSettings: languageSettings,
-                          );
-                        },
-                      ),
-                },
-                builder: (context, child) {
-                  return DebugOverlay(
-                    key: debugOverlayKey,
-                    child: ShadAppBuilder(child: child!),
-                  );
-                },
+            home: _buildHome(userService),
+            routes: {
+              '/auth': (context) => const AuthScreen(),
+              '/home': (context) => const AppHome(),
+              '/flashcards': (context) => const FlashcardStartScreen(),
+              '/vocabulary': (context) => const UserVocabularyScreen(),
+              '/settings': (context) => const SettingsScreen(),
+              '/conversation': (context) => Consumer3<ConversationService,
+                      VocabularyService, LanguageSettings>(
+                    builder: (context, conversationService, vocabularyService,
+                        languageSettings, child) {
+                      return ConversationScreen(
+                        conversationService: conversationService,
+                        vocabularyService: vocabularyService,
+                        languageSettings: languageSettings,
+                      );
+                    },
+                  ),
+            },
+            builder: (context, child) {
+              return DebugOverlay(
+                key: debugOverlayKey,
+                child: child!,
               );
             },
           );

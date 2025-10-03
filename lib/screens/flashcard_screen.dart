@@ -5,10 +5,8 @@ import '../services/flashcard_service.dart';
 import '../models/flashcard_question.dart';
 import '../widgets/flashcard_widget.dart';
 import '../widgets/progress_widget.dart';
-import '../widgets/feedback_widget.dart';
 import '../widgets/accessibility_helper.dart';
 import '../utils/flashcard_route_transitions.dart';
-import 'flashcard_results_screen.dart';
 
 class FlashcardScreen extends StatefulWidget {
   const FlashcardScreen({super.key});
@@ -19,11 +17,6 @@ class FlashcardScreen extends StatefulWidget {
 
 class _FlashcardScreenState extends State<FlashcardScreen>
     with TickerProviderStateMixin {
-  bool _showFeedback = false;
-  bool _isAnswerCorrect = false;
-  String _feedbackMessage = '';
-  String? _userAnswer;
-  String? _selectedDifficulty;
   bool _isFlipped = false;
 
   // Animation controllers
@@ -81,19 +74,9 @@ class _FlashcardScreenState extends State<FlashcardScreen>
   }) async {
     final flashcardService = context.read<FlashcardService>();
 
-    setState(() {
-      _userAnswer = userAnswer;
-      _isAnswerCorrect = isCorrect ?? false;
-      _selectedDifficulty = difficultyRating;
-      _showFeedback = true;
-    });
-
-    // Animate feedback
-    await _feedbackController.forward();
-
     // Provide haptic feedback
     AccessibilityHelper.provideHapticFeedback(
-      _isAnswerCorrect
+      isCorrect == true
           ? HapticFeedbackType.correct
           : HapticFeedbackType.incorrect,
     );
@@ -110,20 +93,16 @@ class _FlashcardScreenState extends State<FlashcardScreen>
       _showError('Failed to record answer. Please try again.');
     }
 
-    // Auto-advance after a delay for correct answers
-    if (_isAnswerCorrect && difficultyRating == null) {
-      await Future.delayed(const Duration(seconds: 2));
-      if (mounted) {
-        _nextQuestion();
-      }
+    // Auto-advance after a delay
+    await Future.delayed(const Duration(seconds: 1));
+    if (mounted) {
+      _nextQuestion();
     }
   }
 
   Future<void> _nextQuestion() async {
     final flashcardService = context.read<FlashcardService>();
 
-    // Hide feedback first
-    await _hideFeedback();
 
     // Check if this was the last question
     if (!flashcardService.hasNextQuestion()) {
@@ -156,8 +135,6 @@ class _FlashcardScreenState extends State<FlashcardScreen>
 
     if (!flashcardService.hasPreviousQuestion()) return;
 
-    // Hide feedback first
-    await _hideFeedback();
 
     // Animate question transition
     await _questionTransitionController.reverse();
@@ -179,16 +156,6 @@ class _FlashcardScreenState extends State<FlashcardScreen>
     }
   }
 
-  Future<void> _hideFeedback() async {
-    if (_showFeedback) {
-      await _feedbackController.reverse();
-      setState(() {
-        _showFeedback = false;
-        _userAnswer = null;
-        _selectedDifficulty = null;
-      });
-    }
-  }
 
   Future<void> _pauseSession() async {
     final flashcardService = context.read<FlashcardService>();
@@ -556,53 +523,26 @@ class _FlashcardScreenState extends State<FlashcardScreen>
       return _buildPausedState();
     }
 
-    return Column(
-      children: [
-        // Main Flashcard Area
-        Expanded(
-          child: Padding(
-            padding: AccessibilityHelper.getResponsivePadding(context),
-            child: SlideTransition(
-              position: _slideAnimation,
-              child: FadeTransition(
-                opacity: _fadeAnimation,
-                child: FlashcardWidget(
-                  question: currentQuestion,
-                  showAnswer: _isFlipped,
-                  onShowAnswer: () {
-                    setState(() {
-                      _isFlipped = !_isFlipped;
-                    });
-                    AccessibilityHelper.provideHapticFeedback(
-                        HapticFeedbackType.selection);
-                  },
-                  onAnswerSubmitted: (answer) =>
-                      _handleAnswer(userAnswer: answer),
-                  onSelfAssessment: (rating) =>
-                      _handleAnswer(difficultyRating: rating),
-                ),
-              ),
-            ),
-          ),
+    return SlideTransition(
+      position: _slideAnimation,
+      child: FadeTransition(
+        opacity: _fadeAnimation,
+        child: FlashcardWidget(
+          question: currentQuestion,
+          showAnswer: _isFlipped,
+          onShowAnswer: () {
+            setState(() {
+              _isFlipped = !_isFlipped;
+            });
+            AccessibilityHelper.provideHapticFeedback(
+                HapticFeedbackType.selection);
+          },
+          onAnswerSubmitted: (answer) =>
+              _handleAnswer(userAnswer: answer),
+          onSelfAssessment: (rating) =>
+              _handleAnswer(difficultyRating: rating),
         ),
-
-        // Feedback Area
-        if (_showFeedback)
-          FadeTransition(
-            opacity: _feedbackController,
-            child: Container(
-              margin: const EdgeInsets.all(16),
-              child: FeedbackWidget(
-                isCorrect: _isAnswerCorrect,
-                question: currentQuestion,
-                userAnswer: _userAnswer,
-                correctAnswer: currentQuestion.correctAnswer,
-                currentStreak: 0,
-                showDetailed: true,
-              ),
-            ),
-          ),
-      ],
+      ),
     );
   }
 
@@ -684,10 +624,9 @@ class _FlashcardScreenState extends State<FlashcardScreen>
               child: AccessibilityHelper.buildAccessibleCard(
                 context: context,
                 child: OutlinedButton.icon(
-                  onPressed:
-                      flashcardService.hasPreviousQuestion() && !_showFeedback
-                          ? _previousQuestion
-                          : null,
+                  onPressed: flashcardService.hasPreviousQuestion()
+                      ? _previousQuestion
+                      : null,
                   icon: const Icon(Icons.arrow_back),
                   label: const Text('Previous'),
                   style: OutlinedButton.styleFrom(

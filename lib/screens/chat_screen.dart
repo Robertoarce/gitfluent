@@ -3,23 +3,17 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'dart:convert';
-import 'dart:async';
 import '../services/chat_service.dart';
-import '../services/settings_service.dart';
 import '../services/language_settings_service.dart';
-import '../services/vocabulary_service.dart';
-import '../services/vocabulary_processor.dart';
-import '../services/llm_output_formatter.dart';
 import '../services/user_service.dart';
-import '../models/vocabulary_item.dart';
+import '../services/vocabulary_service.dart';
 import '../models/language_response.dart';
+import '../config/custom_theme.dart';
 import 'settings_screen.dart';
-import 'vocabulary_review_screen.dart';
-import 'user_vocabulary_screen.dart';
-import 'flashcard_start_screen.dart';
 import '../utils/flashcard_route_transitions.dart';
 import '../utils/keyboard_shortcuts.dart';
 import '../utils/app_navigation.dart';
+import 'user_vocabulary_screen.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -54,26 +48,51 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final settings = context.watch<SettingsService>();
-    final languageSettings = context.watch<LanguageSettings>();
-
-    String title = ' GitFluent -> made by Roberto Arce';
-    // if (languageSettings.targetLanguage != null) {
-    //   title += '${languageSettings.targetLanguage?.name}';
-    // }
-    // title += ' -> Using: ${settings.getProviderName(settings.currentProvider)}';
+    String title = 'AI Language Tutor';
 
     return KeyboardShortcutWrapper(
       messageController: _controller,
       child: Scaffold(
-        backgroundColor: Colors.black38,
+        backgroundColor: CustomColorScheme.lightBlue2,
         appBar: AppBar(
-          backgroundColor: const Color.fromARGB(255, 71, 175, 227),
-          title: Text(title),
+          backgroundColor: CustomColorScheme.lightBlue2,
+          elevation: 0,
+          title: Row(
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: CustomColorScheme.darkPink,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.smart_toy,
+                  color: Colors.white,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                title,
+                style: TextStyle(
+                  color: CustomColorScheme.darkGreen,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                ),
+              ),
+            ],
+          ),
           actions: [
             Row(
               children: [
-                const Text('Detailed mode', style: TextStyle(fontSize: 13)),
+                Text(
+                  'Detailed mode',
+                  style: TextStyle(
+                    color: CustomColorScheme.darkGreen,
+                    fontSize: 13,
+                  ),
+                ),
                 Switch(
                   value: _detailedMode,
                   onChanged: (value) {
@@ -81,36 +100,49 @@ class _ChatScreenState extends State<ChatScreen> {
                       _detailedMode = value;
                     });
                   },
+                  activeColor: CustomColorScheme.darkPink,
                 ),
               ],
             ),
             IconButton(
-              icon: const Icon(Icons.chat_bubble_outline),
+              icon: Icon(
+                Icons.chat_bubble_outline,
+                color: CustomColorScheme.darkGreen,
+              ),
               onPressed: () {
                 AppNavigation.toConversation(context);
               },
               tooltip: 'Conversation Mode',
             ),
             IconButton(
-              icon: const Icon(Icons.quiz),
+              icon: Icon(
+                Icons.quiz,
+                color: CustomColorScheme.darkGreen,
+              ),
               onPressed: () {
                 FlashcardNavigation.toFlashcardStart(context);
               },
               tooltip: 'Study Flashcards',
             ),
             IconButton(
-              icon: const Icon(Icons.menu_book),
+              icon: Icon(
+                Icons.menu_book,
+                color: CustomColorScheme.darkGreen,
+              ),
               onPressed: () {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                      builder: (context) => const VocabularyReviewScreen()),
+                      builder: (context) => const UserVocabularyScreen()),
                 );
               },
-              tooltip: 'Review Vocabulary',
+              tooltip: 'My Vocabulary',
             ),
             IconButton(
-              icon: const Icon(Icons.settings),
+              icon: Icon(
+                Icons.settings,
+                color: CustomColorScheme.darkGreen,
+              ),
               onPressed: () {
                 Navigator.push(
                   context,
@@ -120,82 +152,124 @@ class _ChatScreenState extends State<ChatScreen> {
               },
             ),
             IconButton(
-              icon: const Icon(Icons.delete_outline),
+              icon: Icon(
+                Icons.delete_outline,
+                color: CustomColorScheme.darkGreen,
+              ),
               onPressed: () {
                 context.read<ChatService>().clearChat();
               },
             ),
             IconButton(
-              icon: const Icon(Icons.logout),
+              icon: Icon(
+                Icons.logout,
+                color: CustomColorScheme.darkGreen,
+              ),
               onPressed: () async {
                 await context.read<UserService>().signOut();
               },
             ),
           ],
         ),
-        body: Column(
-          children: [
-            Expanded(
-              child: Consumer<ChatService>(
-                builder: (context, chatService, child) {
-                  _scrollToBottom();
-                  return ListView.builder(
-                    controller: _scrollController,
-                    padding: const EdgeInsets.all(16),
-                    itemCount: chatService.messages.length,
-                    itemBuilder: (context, index) {
-                      final message = chatService.messages[index];
-                      // Parse the message JSON if possible
-                      LanguageResponse? parsedResponse;
-                      if (!message.isUser &&
-                          message.LLMjsonResponse != null &&
-                          message.LLMjsonResponse!.isNotEmpty) {
-                        // Try to parse directly from stored JSON first
-                        try {
-                          parsedResponse = LanguageResponse.fromJson(
-                              json.decode(message.LLMjsonResponse!));
-                          debugPrint(
-                              'Successfully parsed stored JSON response');
-                        } catch (e) {
-                          // If direct parsing fails, use the helper method
-                          debugPrint(
-                              'Stored JSON parsing failed, trying helper: $e');
-                          parsedResponse =
-                              _tryParseJsonResponse(message.LLMjsonResponse!);
-                        }
-                      }
-
-                      return Column(
-                        crossAxisAlignment: message.isUser
-                            ? CrossAxisAlignment.end
-                            : CrossAxisAlignment.start,
-                        children: [
-                          _MessageBubble(
-                            message: message,
-                            parsedResponse: parsedResponse,
-                            detailedMode: _detailedMode,
+        body: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                CustomColorScheme.lightBlue2,
+                CustomColorScheme.lightBlue2.withOpacity(0.8),
+              ],
+            ),
+          ),
+          child: Column(
+            children: [
+              Expanded(
+                child: Consumer<ChatService>(
+                  builder: (context, chatService, child) {
+                    _scrollToBottom();
+                    return Container(
+                      margin: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.1),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
                           ),
-                          if (!message.isUser)
-                            VocabularyButtons(
-                              message: message,
-                              parsedResponse: parsedResponse,
-                            ),
                         ],
-                      );
-                    },
-                  );
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: ListView.builder(
+                          controller: _scrollController,
+                          padding: const EdgeInsets.all(16),
+                          itemCount: chatService.messages.length,
+                          itemBuilder: (context, index) {
+                            final message = chatService.messages[index];
+                            // Parse the message JSON if possible
+                            LanguageResponse? parsedResponse;
+                            if (!message.isUser &&
+                                message.LLMjsonResponse != null &&
+                                message.LLMjsonResponse!.isNotEmpty) {
+                              // Try to parse directly from stored JSON first
+                              try {
+                                parsedResponse = LanguageResponse.fromJson(
+                                    json.decode(message.LLMjsonResponse!));
+                                debugPrint(
+                                    'Successfully parsed stored JSON response');
+                              } catch (e) {
+                                // If direct parsing fails, use the helper method
+                                debugPrint(
+                                    'Stored JSON parsing failed, trying helper: $e');
+                                parsedResponse = _tryParseJsonResponse(
+                                    message.LLMjsonResponse!);
+                              }
+                            }
+
+                            return Column(
+                              crossAxisAlignment: message.isUser
+                                  ? CrossAxisAlignment.end
+                                  : CrossAxisAlignment.start,
+                              children: [
+                                _MessageBubble(
+                                  message: message,
+                                  parsedResponse: parsedResponse,
+                                  detailedMode: _detailedMode,
+                                ),
+                                if (!message.isUser)
+                                  VocabularyButtons(
+                                    message: message,
+                                    parsedResponse: parsedResponse,
+                                  ),
+                              ],
+                            );
+                          },
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              Consumer<ChatService>(
+                builder: (context, chatService, child) {
+                  return chatService.isLoading
+                      ? Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 16),
+                          child: LinearProgressIndicator(
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              CustomColorScheme.darkPink,
+                            ),
+                          ),
+                        )
+                      : const SizedBox();
                 },
               ),
-            ),
-            Consumer<ChatService>(
-              builder: (context, chatService, child) {
-                return chatService.isLoading
-                    ? const LinearProgressIndicator()
-                    : const SizedBox();
-              },
-            ),
-            _buildMessageInput(),
-          ],
+              _buildMessageInput(),
+            ],
+          ),
         ),
       ),
     );
@@ -203,14 +277,16 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Widget _buildMessageInput() {
     return Container(
-      padding: const EdgeInsets.all(8),
+      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            offset: const Offset(0, -2),
-            blurRadius: 4,
-            color: Colors.black.withValues(alpha: 0.1),
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
@@ -234,9 +310,16 @@ class _ChatScreenState extends State<ChatScreen> {
                       controller: _controller,
                       decoration: InputDecoration(
                         hintText: 'Type your message... (Shift+Enter to send)',
+                        hintStyle: TextStyle(
+                          color: CustomColorScheme.darkGreen.withOpacity(0.5),
+                        ),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(24),
+                          borderSide: BorderSide.none,
                         ),
+                        filled: true,
+                        fillColor:
+                            CustomColorScheme.lightBlue3.withOpacity(0.3),
                         contentPadding: const EdgeInsets.symmetric(
                           horizontal: 16,
                           vertical: 12,
@@ -245,21 +328,36 @@ class _ChatScreenState extends State<ChatScreen> {
                       maxLines: null,
                       textCapitalization: TextCapitalization.sentences,
                       keyboardType: TextInputType.multiline,
+                      style: TextStyle(
+                        color: CustomColorScheme.darkGreen,
+                      ),
                     ),
                   );
                 },
               ),
             ),
             const SizedBox(width: 8),
-            Consumer2<ChatService, LanguageSettings>(
-              builder: (context, chatService, languageSettings, child) {
-                return IconButton(
-                  icon: const Icon(Icons.send),
-                  onPressed: chatService.isLoading
-                      ? null
-                      : () => _sendMessage(chatService, languageSettings),
-                );
-              },
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: CustomColorScheme.darkPink,
+                borderRadius: BorderRadius.circular(24),
+              ),
+              child: Consumer2<ChatService, LanguageSettings>(
+                builder: (context, chatService, languageSettings, child) {
+                  return IconButton(
+                    icon: const Icon(
+                      Icons.send,
+                      color: Colors.white,
+                      size: 20,
+                    ),
+                    onPressed: chatService.isLoading
+                        ? null
+                        : () => _sendMessage(chatService, languageSettings),
+                  );
+                },
+              ),
             ),
           ],
         ),
@@ -269,58 +367,25 @@ class _ChatScreenState extends State<ChatScreen> {
 
   void _sendMessage(
       ChatService chatService, LanguageSettings languageSettings) {
-    if (_controller.text.isEmpty) return;
+    final message = _controller.text.trim();
+    if (message.isEmpty) return;
 
-    chatService.sendMessage(_controller.text);
     _controller.clear();
+    chatService.sendMessage(message);
   }
 
-  // Helper method to parse JSON response - shared by message bubble and vocabulary buttons
-  LanguageResponse? _tryParseJsonResponse(String content) {
-    if (content.isEmpty) {
-      debugPrint('Empty content provided to JSON parser');
+  LanguageResponse? _tryParseJsonResponse(String jsonString) {
+    try {
+      final Map<String, dynamic> jsonMap = json.decode(jsonString);
+      return LanguageResponse.fromJson(jsonMap);
+    } catch (e) {
+      debugPrint('Failed to parse JSON response: $e');
       return null;
     }
-
-    try {
-      // First try direct parsing of the entire content
-      debugPrint('Attempting to parse JSON content directly');
-      return LanguageResponse.fromJson(json.decode(content));
-    } catch (e) {
-      debugPrint('Direct JSON parsing failed: $e');
-
-      // Try to extract JSON if it's embedded in text
-      try {
-        // Look for JSON inside code blocks
-        final jsonCodeBlockRegex = RegExp(r'```json\s*([\s\S]*?)\s*```');
-        final codeMatch = jsonCodeBlockRegex.firstMatch(content);
-
-        if (codeMatch != null && codeMatch.group(1) != null) {
-          debugPrint('Found JSON in code block');
-          final jsonString = codeMatch.group(1)!.trim();
-          return LanguageResponse.fromJson(json.decode(jsonString));
-        }
-
-        // Try simple regex extraction
-        final jsonRegex = RegExp(r'(\{[\s\S]*\})');
-        final match = jsonRegex.firstMatch(content);
-
-        if (match != null) {
-          debugPrint('Found JSON using simple regex');
-          final jsonString = match.group(1);
-          if (jsonString != null) {
-            return LanguageResponse.fromJson(json.decode(jsonString));
-          }
-        }
-      } catch (e) {
-        debugPrint('Failed to parse JSON response: $e');
-      }
-    }
-    return null;
   }
 }
 
-class _MessageBubble extends StatefulWidget {
+class _MessageBubble extends StatelessWidget {
   final Message message;
   final LanguageResponse? parsedResponse;
   final bool detailedMode;
@@ -332,28 +397,8 @@ class _MessageBubble extends StatefulWidget {
   });
 
   @override
-  State<_MessageBubble> createState() => _MessageBubbleState();
-}
-
-class _MessageBubbleState extends State<_MessageBubble> {
-  bool _showCorrections = false;
-  bool _showVocabulary = false;
-
-  @override
-  void didUpdateWidget(_MessageBubble oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    // Reset expanded sections when detailed mode changes
-    if (oldWidget.detailedMode != widget.detailedMode && !widget.detailedMode) {
-      setState(() {
-        _showCorrections = false;
-        _showVocabulary = false;
-      });
-    }
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final isUser = widget.message.isUser;
+    final isUser = message.isUser;
     final ScrollController scrollController = ScrollController();
 
     return Align(
@@ -368,8 +413,8 @@ class _MessageBubbleState extends State<_MessageBubble> {
         padding: const EdgeInsets.all(1),
         decoration: BoxDecoration(
           color: isUser
-              ? Theme.of(context).colorScheme.primary
-              : Theme.of(context).colorScheme.surfaceVariant,
+              ? CustomColorScheme.lightBlue1
+              : CustomColorScheme.lightBlue3,
           borderRadius: BorderRadius.circular(16),
         ),
         child: Scrollbar(
@@ -381,9 +426,9 @@ class _MessageBubbleState extends State<_MessageBubble> {
             padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
             child: isUser
                 ? SelectableText(
-                    widget.message.content,
+                    message.content,
                     style: TextStyle(
-                      color: Theme.of(context).colorScheme.onPrimary,
+                      color: Colors.white,
                     ),
                   )
                 : _buildFormattedContent(context),
@@ -394,17 +439,17 @@ class _MessageBubbleState extends State<_MessageBubble> {
   }
 
   Widget _buildFormattedContent(BuildContext context) {
-    if (widget.parsedResponse != null) {
+    if (parsedResponse != null) {
       return CollapsibleResponseFormatter(
-        response: widget.parsedResponse!,
-        detailedMode: widget.detailedMode,
+        response: parsedResponse!,
+        detailedMode: detailedMode,
       );
     } else {
-      return SelectableMarkdown(
-        data: widget.message.content,
+      return Markdown(
+        data: message.content,
         styleSheet: MarkdownStyleSheet(
           p: TextStyle(
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
+            color: CustomColorScheme.darkGreen,
           ),
         ),
       );
@@ -430,400 +475,364 @@ class CollapsibleResponseFormatter extends StatefulWidget {
 
 class _CollapsibleResponseFormatterState
     extends State<CollapsibleResponseFormatter> {
-  bool _showCorrections = false;
-  bool _showVocabulary = false;
-
-  @override
-  void didUpdateWidget(CollapsibleResponseFormatter oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    // Reset expanded sections when detailed mode changes
-    if (oldWidget.detailedMode != widget.detailedMode && !widget.detailedMode) {
-      setState(() {
-        _showCorrections = false;
-        _showVocabulary = false;
-      });
-    }
-  }
+  bool _showTranslation = true;
+  bool _showExplanation = true;
+  bool _showVocabulary = true;
 
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Translation section is always visible
-        _buildTranslationSection(),
+        // Main response
+        SelectableText(
+          widget.response.targetLanguageSentence,
+          style: TextStyle(
+            color: CustomColorScheme.darkGreen,
+            fontSize: 16,
+          ),
+        ),
+        const SizedBox(height: 16),
 
-        // Collapsible corrections section
-        if (widget.response.corrections.isNotEmpty)
-          _buildCollapsibleCorrectionsSection(),
+        // Collapsible sections
+        if (widget.response.nativeLanguageTranslation.isNotEmpty)
+          _buildCollapsibleSection(
+            'Translation',
+            widget.response.nativeLanguageTranslation,
+            _showTranslation,
+            (value) => setState(() => _showTranslation = value),
+            Icons.translate,
+          ),
 
-        // Collapsible vocabulary section
-        if (widget.response.vocabularyBreakdown.isNotEmpty)
-          _buildCollapsibleVocabularySection(),
-
-        // Additional context if available
         if (widget.response.additionalContext != null &&
             widget.response.additionalContext!.isNotEmpty)
-          _buildAdditionalContextSection(),
+          _buildCollapsibleSection(
+            'Additional Context',
+            widget.response.additionalContext!,
+            _showExplanation,
+            (value) => setState(() => _showExplanation = value),
+            Icons.lightbulb_outline,
+          ),
+
+        if (widget.response.vocabularyBreakdown.isNotEmpty)
+          _buildCollapsibleSection(
+            'Vocabulary Breakdown',
+            widget.response.vocabularyBreakdown
+                .map((v) => '${v.word}: ${v.translations.join(', ')}')
+                .join('\n'),
+            _showVocabulary,
+            (value) => setState(() => _showVocabulary = value),
+            Icons.book,
+          ),
       ],
     );
   }
 
-  Widget _buildTranslationSection() {
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 8),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Row(
-              children: [
-                Icon(Icons.translate, color: Colors.blue),
-                SizedBox(width: 8),
-                Text(
-                  'Translation',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                ),
-              ],
-            ),
-            const Divider(),
-            if (widget.response.targetLanguageSentence.isNotEmpty)
-              SelectableText(
-                widget.response.targetLanguageSentence,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            if (widget.response.targetLanguageSentence.isNotEmpty &&
-                widget.response.nativeLanguageTranslation.isNotEmpty)
-              const SizedBox(height: 8),
-            if (widget.response.nativeLanguageTranslation.isNotEmpty)
-              SelectableText(
-                widget.response.nativeLanguageTranslation,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontStyle: FontStyle.italic,
-                  color: Colors.grey.shade700,
-                ),
-              ),
-          ],
+  Widget _buildCollapsibleSection(
+    String title,
+    String content,
+    bool isExpanded,
+    ValueChanged<bool> onToggle,
+    IconData icon,
+  ) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: CustomColorScheme.lightBlue3.withOpacity(0.3),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: CustomColorScheme.lightBlue1.withOpacity(0.3),
         ),
       ),
-    );
-  }
-
-  Widget _buildCollapsibleCorrectionsSection() {
-    // Check if we have real corrections or just "None" values
-    final hasCorrections = !(widget.response.corrections.isEmpty ||
-        (widget.response.corrections.length == 1 &&
-            (widget.response.corrections[0] == "None." ||
-                widget.response.corrections[0]
-                    .toLowerCase()
-                    .contains("none"))));
-
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 8),
-      child: InkWell(
-        onTap: () => setState(() => _showCorrections = !_showCorrections),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Icon(
-                    hasCorrections ? Icons.edit : Icons.check_circle,
-                    color: hasCorrections ? Colors.orange : Colors.green,
-                  ),
-                  const SizedBox(width: 8),
-                  const Text(
-                    'Cleaned input',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                  ),
-                  const Spacer(),
-                  Icon(
-                    _showCorrections || widget.detailedMode
-                        ? Icons.expand_less
-                        : Icons.expand_more,
-                    size: 20,
-                  ),
-                ],
-              ),
-
-              // Only show content if section is expanded or in detailed mode
-              if (_showCorrections || widget.detailedMode) ...[
-                const Divider(),
-
-                // If no corrections, show a message
-                if (!hasCorrections)
-                  const Text(
-                    'No corrections needed.',
-                    style: TextStyle(
-                      fontStyle: FontStyle.italic,
-                      color: Colors.green,
-                    ),
-                  )
-                else
-                  // Display each correction
-                  ...widget.response.corrections
-                      .where((correction) =>
-                          correction.trim().isNotEmpty &&
-                          correction != "None." &&
-                          !correction.toLowerCase().contains("none"))
-                      .map((correction) => Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 4),
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Icon(Icons.arrow_right,
-                                    size: 16, color: Colors.grey),
-                                const SizedBox(width: 4),
-                                Expanded(
-                                  child: Text(correction),
-                                ),
-                              ],
-                            ),
-                          )),
-              ],
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCollapsibleVocabularySection() {
-    final vocabulary = widget.response.vocabularyBreakdown;
-
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 8),
-      child: InkWell(
-        onTap: () => setState(() => _showVocabulary = !_showVocabulary),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  const Icon(Icons.school, color: Colors.purple),
-                  const SizedBox(width: 8),
-                  const Text(
-                    'Vocabulary',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                  ),
-                  const Spacer(),
-                  Icon(
-                    _showVocabulary || widget.detailedMode
-                        ? Icons.expand_less
-                        : Icons.expand_more,
-                    size: 20,
-                  ),
-                ],
-              ),
-
-              // Only show content if section is expanded or in detailed mode
-              if (_showVocabulary || widget.detailedMode) ...[
-                const Divider(),
-
-                // Group vocabulary by type
-                ..._buildVocabularyContent(vocabulary),
-              ],
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  List<Widget> _buildVocabularyContent(List<VocabularyBreakdown> vocabulary) {
-    if (vocabulary.isEmpty) {
-      return [const Text('No vocabulary items')];
-    }
-
-    try {
-      // Group vocabulary by type
-      final verbs = vocabulary
-          .where((item) => item.wordType.toLowerCase().contains('verb'))
-          .toList();
-      final nouns = vocabulary
-          .where((item) => item.wordType.toLowerCase().contains('noun'))
-          .toList();
-      final others = vocabulary
-          .where((item) =>
-              !item.wordType.toLowerCase().contains('verb') &&
-              !item.wordType.toLowerCase().contains('noun'))
-          .toList();
-
-      final widgets = <Widget>[];
-
-      // Verbs section
-      if (verbs.isNotEmpty) {
-        widgets.add(
-            _buildVocabularyTypeHeader('Verbs', Icons.run_circle, Colors.blue));
-        widgets.addAll(verbs.map((verb) => _buildVocabularyItem(verb)));
-        widgets.add(const SizedBox(height: 8));
-      }
-
-      // Nouns section
-      if (nouns.isNotEmpty) {
-        widgets.add(
-            _buildVocabularyTypeHeader('Nouns', Icons.label, Colors.green));
-        widgets.addAll(nouns.map((noun) => _buildVocabularyItem(noun)));
-        widgets.add(const SizedBox(height: 8));
-      }
-
-      // Other words section
-      if (others.isNotEmpty) {
-        widgets.add(_buildVocabularyTypeHeader(
-            'Other Words', Icons.text_fields, Colors.orange));
-        widgets.addAll(others.map((other) => _buildVocabularyItem(other)));
-      }
-
-      return widgets;
-    } catch (e) {
-      debugPrint('Error building vocabulary section: $e');
-      return [Text('Error displaying vocabulary: $e')];
-    }
-  }
-
-  Widget _buildVocabularyTypeHeader(String title, IconData icon, Color color) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 12, bottom: 4),
-      child: Row(
-        children: [
-          Icon(icon, color: color, size: 18),
-          const SizedBox(width: 6),
-          Text(
-            title,
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: color,
-              fontSize: 14,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildVocabularyItem(VocabularyBreakdown item) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                '${item.word} ',
-                style: const TextStyle(
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              if (item.baseForm.isNotEmpty && item.baseForm != item.word)
-                Text(
-                  '(${item.baseForm})',
-                  style: TextStyle(
-                    fontStyle: FontStyle.italic,
-                    fontSize: 13,
-                    color: Colors.grey.shade700,
-                  ),
-                ),
-            ],
-          ),
-          if (item.translations.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(left: 12, top: 2),
-              child: Text(
-                item.translations.join(', '),
-                style: TextStyle(
-                  color: Colors.grey.shade800,
-                  fontSize: 13,
-                ),
+          ListTile(
+            leading: Icon(
+              icon,
+              color: CustomColorScheme.darkPink,
+              size: 20,
+            ),
+            title: Text(
+              title,
+              style: TextStyle(
+                color: CustomColorScheme.darkGreen,
+                fontWeight: FontWeight.w600,
               ),
             ),
-          if (item.forms.isNotEmpty)
+            trailing: Icon(
+              isExpanded ? Icons.expand_less : Icons.expand_more,
+              color: CustomColorScheme.darkGreen,
+            ),
+            onTap: () => onToggle(!isExpanded),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          ),
+          if (isExpanded)
             Padding(
-              padding: const EdgeInsets.only(left: 12, top: 2),
-              child: Text(
-                'Forms: ${item.forms.join(', ')}',
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: SelectableText(
+                content,
                 style: TextStyle(
-                  color: Colors.grey.shade600,
-                  fontSize: 12,
-                  fontStyle: FontStyle.italic,
+                  color: CustomColorScheme.darkGreen,
+                  fontSize: 14,
                 ),
               ),
             ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildAdditionalContextSection() {
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 8),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Row(
-              children: [
-                Icon(Icons.info_outline, color: Colors.teal),
-                SizedBox(width: 8),
-                Text(
-                  'Additional Context',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                ),
-              ],
-            ),
-            const Divider(),
-            Text(
-              widget.response.additionalContext!,
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey.shade800,
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
 }
 
-class SelectableMarkdown extends StatelessWidget {
-  final String data;
-  final MarkdownStyleSheet? styleSheet;
+class VocabularyButtons extends StatelessWidget {
+  final Message message;
+  final LanguageResponse? parsedResponse;
 
-  const SelectableMarkdown({
+  const VocabularyButtons({
     super.key,
-    required this.data,
-    this.styleSheet,
+    required this.message,
+    this.parsedResponse,
   });
 
   @override
   Widget build(BuildContext context) {
-    return SelectableText(
-      data,
-      style: styleSheet?.p ?? DefaultTextStyle.of(context).style,
+    if (parsedResponse?.vocabularyBreakdown == null ||
+        parsedResponse!.vocabularyBreakdown.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(top: 8, bottom: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header with "Add All" and "View Details" buttons
+          Row(
+            children: [
+              ElevatedButton.icon(
+                onPressed: () => _addAllToVocabulary(context),
+                icon: const Icon(Icons.bookmark_add, size: 16),
+                label: const Text('Add All'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: CustomColorScheme.darkPink,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                ),
+              ),
+              const SizedBox(width: 8),
+              ElevatedButton.icon(
+                onPressed: () => _showVocabularyDetails(context),
+                icon: const Icon(Icons.info_outline, size: 16),
+                label: const Text('View Details'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: CustomColorScheme.lightBlue1,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          // Individual vocabulary word buttons
+          Text(
+            'Vocabulary Words:',
+            style: TextStyle(
+              color: CustomColorScheme.darkGreen,
+              fontWeight: FontWeight.w600,
+              fontSize: 14,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: parsedResponse!.vocabularyBreakdown.map((vocabItem) {
+              return _buildVocabularyWordButton(context, vocabItem);
+            }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildVocabularyWordButton(BuildContext context, dynamic vocabItem) {
+    return Container(
+      decoration: BoxDecoration(
+        color: CustomColorScheme.lightBlue3.withOpacity(0.3),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: CustomColorScheme.lightBlue1.withOpacity(0.5),
+        ),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => _addSingleWordToVocabulary(context, vocabItem),
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.add_circle_outline,
+                  size: 16,
+                  color: CustomColorScheme.darkPink,
+                ),
+                const SizedBox(width: 6),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      vocabItem.word,
+                      style: TextStyle(
+                        color: CustomColorScheme.darkGreen,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                      ),
+                    ),
+                    Text(
+                      vocabItem.wordType,
+                      style: TextStyle(
+                        color: CustomColorScheme.darkGreen.withOpacity(0.7),
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _addAllToVocabulary(BuildContext context) async {
+    if (parsedResponse?.vocabularyBreakdown == null ||
+        parsedResponse!.vocabularyBreakdown.isEmpty) {
+      return;
+    }
+
+    try {
+      final vocabularyService = context.read<VocabularyService>();
+
+      // Add all vocabulary items from the breakdown
+      for (final vocabItem in parsedResponse!.vocabularyBreakdown) {
+        await vocabularyService.addOrUpdateItem(
+          vocabItem.word,
+          vocabItem.wordType,
+          vocabItem.translations.join(', '),
+          definition: vocabItem.forms.join(', '),
+          conversationId: message.timestamp.millisecondsSinceEpoch.toString(),
+        );
+      }
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+                'Added ${parsedResponse!.vocabularyBreakdown.length} words to vocabulary'),
+            backgroundColor: CustomColorScheme.darkPink,
+            action: SnackBarAction(
+              label: 'View',
+              textColor: Colors.white,
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const UserVocabularyScreen(),
+                  ),
+                );
+              },
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error adding to vocabulary: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  void _addSingleWordToVocabulary(
+      BuildContext context, dynamic vocabItem) async {
+    try {
+      final vocabularyService = context.read<VocabularyService>();
+
+      await vocabularyService.addOrUpdateItem(
+        vocabItem.word,
+        vocabItem.wordType,
+        vocabItem.translations.join(', '),
+        definition: vocabItem.forms.join(', '),
+        conversationId: message.timestamp.millisecondsSinceEpoch.toString(),
+      );
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Added "${vocabItem.word}" to vocabulary'),
+            backgroundColor: CustomColorScheme.darkPink,
+            duration: const Duration(seconds: 2),
+            action: SnackBarAction(
+              label: 'View',
+              textColor: Colors.white,
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const UserVocabularyScreen(),
+                  ),
+                );
+              },
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error adding "${vocabItem.word}": $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  void _showVocabularyDetails(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Vocabulary Details'),
+        content: Text(parsedResponse?.vocabularyBreakdown
+                .map((v) => '${v.word}: ${v.translations.join(', ')}')
+                .join('\n') ??
+            ''),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
     );
   }
 }

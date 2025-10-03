@@ -5,7 +5,7 @@ import '../services/user_service.dart';
 import '../services/vocabulary_service.dart';
 import '../widgets/accessibility_helper.dart';
 import '../utils/flashcard_route_transitions.dart';
-import 'flashcard_screen.dart';
+import '../config/custom_theme.dart';
 
 class FlashcardStartScreen extends StatefulWidget {
   const FlashcardStartScreen({super.key});
@@ -236,26 +236,73 @@ class _FlashcardStartScreenState extends State<FlashcardStartScreen> {
     final theme = Theme.of(context);
 
     return Scaffold(
+      backgroundColor: CustomColorScheme.lightBlue2,
       appBar: AppBar(
-        title: const Text('Study Flashcards'),
-        backgroundColor: const Color.fromARGB(255, 71, 175, 227),
-        foregroundColor: Colors.white,
+        title: Row(
+          children: [
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: CustomColorScheme.darkPink,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(
+                Icons.quiz,
+                color: Colors.white,
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Text(
+              'Study Flashcards',
+              style: TextStyle(
+                color: CustomColorScheme.darkGreen,
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: CustomColorScheme.lightBlue2,
+        elevation: 0,
         actions: [
           if (_hasInterruptedSession)
             IconButton(
-              icon: const Icon(Icons.play_arrow),
+              icon: Icon(
+                Icons.play_arrow,
+                color: CustomColorScheme.darkGreen,
+              ),
               onPressed: _isLoading ? null : _resumeInterruptedSession,
               tooltip: 'Resume interrupted session',
             ),
         ],
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : ResponsiveLayout(
-              mobile: _buildMobileLayout(),
-              tablet: _buildTabletLayout(),
-              desktop: _buildDesktopLayout(),
-            ),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              CustomColorScheme.lightBlue2,
+              CustomColorScheme.lightBlue2.withOpacity(0.8),
+            ],
+          ),
+        ),
+        child: _isLoading
+            ? Center(
+                child: CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    CustomColorScheme.darkPink,
+                  ),
+                ),
+              )
+            : ResponsiveLayout(
+                mobile: _buildMobileLayout(),
+                tablet: _buildTabletLayout(),
+                desktop: _buildDesktopLayout(),
+              ),
+      ),
       bottomNavigationBar: _buildBottomActions(theme),
     );
   }
