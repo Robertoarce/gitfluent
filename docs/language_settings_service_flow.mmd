@@ -1,0 +1,56 @@
+%%{init: {'themeVariables': { 'textColor': '#000000', 'primaryTextColor': '#000000', 'secondaryTextColor': '#000000' }}}%%
+graph TD
+
+    A[App Startup] --> B[LanguageSettings.init]
+    B --> C{Initialize SharedPreferences}
+    C --> D[Call _loadLanguages]
+    D --> D1[Get target_language from SharedPreferences]
+    D1 --> D2[Get native_language from SharedPreferences]
+    D2 --> D3[Get support_language_1 from SharedPreferences]
+    D3 --> D4[Get support_language_2 from SharedPreferences]
+    D4 --> D5[Find Language object for target_language code]
+    D5 --> D6[Find Language object for native_language code]
+    D6 --> D7[Find Language object for support_language_1 code]
+    D7 --> D8[Find Language object for support_language_2 code]
+    D8 --> D9[Assign Language objects to _targetLanguage, _nativeLanguage, _supportLanguage1, _supportLanguage2]
+    D9 --> D10[Notify Listeners]
+    D10 --> E{Check if _targetLanguage is null}
+    E -- Yes --> F[Set default target language Italian]
+    E -- No --> G[Continue]
+    F --> G
+
+    G --> H{Check if _nativeLanguage is null}
+    H -- Yes --> I[Set default native language English]
+    H -- No --> J[Continue]
+    I --> J
+
+    J --> K{Check if _supportLanguage1 is null}
+    K -- Yes --> L[Set default support language 1 Spanish]
+    K -- No --> M[Continue]
+    L --> M
+
+    M --> N{Check if _supportLanguage2 is null}
+    N -- Yes --> O[Set default support language 2 French]
+    N -- No --> P[Initialization Complete]
+
+
+%% Additional Notes (converted from Markdown):
+%% Key Components
+%% - Language Class: Data class with code ("en") and name ("English").
+%% - availableLanguages: Supported languages list.
+%% - SharedPreferences _prefs: Persistent storage for language settings.
+%% - Properties: _targetLanguage, _nativeLanguage, _supportLanguage1, _supportLanguage2.
+%%
+%% Functionality
+%% - init(): Initializes SharedPreferences and loads or sets defaults.
+%% - _loadLanguages(): Loads language codes and assigns Language objects; notifies listeners.
+%% - _findLanguageByCode(String? code): Helper to resolve Language by code.
+%% - Setters: setTargetLanguage, setNativeLanguage, setSupportLanguage1, setSupportLanguage2 (persist + notify).
+%% - Getters: provide read-only access to current language selections.
+%%
+%% Usage
+%% - Provided via Provider/MultiProvider; widgets listen for changes using ChangeNotifier.
+%% - Access: Provider.of<LanguageSettings>(context).targetLanguage;
+%% - Update: Provider.of<LanguageSettings>(context, listen: false).setTargetLanguage(newLanguage);
+
+

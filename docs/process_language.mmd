@@ -1,3 +1,4 @@
+%%{init: {'themeVariables': { 'textColor': '#000000', 'primaryTextColor': '#000000', 'secondaryTextColor': '#000000' }}}%%
 graph TD
     A[App Starts] --> B[LanguageSettings.init]
     B --> C[Load SharedPreferences]
@@ -52,12 +53,12 @@ graph TD
     FF --> GG[Update All Services with User's Languages]
     
     %% Styling
-    classDef initNode fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
-    classDef langNode fill:#e8f5e8,stroke:#388e3c,stroke-width:2px
-    classDef userNode fill:#fff3e0,stroke:#f57c00,stroke-width:2px
-    classDef serviceNode fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
-    classDef actionNode fill:#fce4ec,stroke:#c2185b,stroke-width:2px
-    classDef eventNode fill:#fff8e1,stroke:#689f38,stroke-width:2px
+    classDef initNode stroke:#1976d2,stroke-width:2px
+    classDef langNode stroke:#388e3c,stroke-width:2px
+    classDef userNode stroke:#f57c00,stroke-width:2px
+    classDef serviceNode stroke:#7b1fa2,stroke-width:2px
+    classDef actionNode stroke:#c2185b,stroke-width:2px
+    classDef eventNode stroke:#689f38,stroke-width:2px
     
     class A,B,C initNode
     class E,F,G,H,L,M,N langNode

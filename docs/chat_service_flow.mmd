@@ -1,8 +1,4 @@
-# Chat Service Flow Diagram
-
-This diagram illustrates the key functionalities and interactions within the `ChatService`.
-
-```mermaid
+%%{init: {'themeVariables': { 'textColor': '#000000', 'primaryTextColor': '#000000', 'secondaryTextColor': '#000000' }}}%%
 graph TD
     A[App Startup] --> B{MultiProvider in main.dart}
     B --> C[Create SettingsService]
@@ -35,18 +31,18 @@ graph TD
     G --> H[ChatService.sendMessage called]
 
     H --> I[Add User Message to _messages & _chatHistory]
-    H --> J[Set _isLoading   true Notify Listeners - UI shows loading ]
+    H --> J[Set _isLoading = true and notify listeners]
 
     J --> K{Determine current AI Provider}
     K -->|OpenAI| L[Call _openAILlm.invoke with constructed prompt]
     K -->|Gemini| M[Call _geminiModel.generateContent with constructed prompt]
 
-    L --> N[Receive LLM Response -reply]
+    L --> N[Receive LLM Response - reply]
     M --> N
 
     N --> O[Call _getVocabFromLLMResponse - extracts JSON & formats]
     O --> P[Add Assistant Message to _messages & _chatHistory]
-    P --> Q[Set _isLoading = false Notify Listeners - UI updates]
+    P --> Q[Set _isLoading = false and notify listeners]
 
     R[Clear Chat] --> S[ChatService.clearChat]
     S --> T[Clear _messages & _chatHistory]
@@ -60,12 +56,13 @@ graph TD
     style O fill:#ffccbc
     style Q fill:#a5d6a7
     style S fill:#cfd8dc
-```
 
-## Key Components and Flow Description
+%% Additional Notes (converted from Markdown):
+%% This diagram illustrates the key functionalities and interactions within the ChatService.
+%% - Initialization: ChatService is initialized during app startup via MultiProvider. It depends on SettingsService to load AI provider details and prompt configurations from PromptConfigService.
+%% - AI Initialization: Based on user settings, either OpenAI or Gemini models are initialized. A system prompt, customized by language settings, is set for the chat history.
+%% - Sending Messages: When a user sends a message, it's added to the chat history, and a loading indicator appears. The message, along with previous conversation context, is sent to the selected LLM.
+%% - Response Processing: The LLM's response is received and then processed by _getVocabFromLLMResponse to extract vocabulary (if present) and format the text for display. The assistant's reply is then added to the chat history, and the UI updates.
+%% - Chat Clearing: The clearChat method allows the user to clear the current conversation history, resetting it to the initial system prompt.
 
-- **Initialization**: The `ChatService` is initialized during app startup via `MultiProvider`. It depends on `SettingsService` to load AI provider details and prompt configurations from `PromptConfigService`.
-- **AI Initialization**: Based on user settings, either OpenAI or Gemini models are initialized. A system prompt, customized by language settings, is set for the chat history.
-- **Sending Messages**: When a user sends a message, it's added to the chat history, and a loading indicator appears. The message, along with previous conversation context, is sent to the selected LLM.
-- **Response Processing**: The LLM's response is received and then processed by `_getVocabFromLLMResponse` to extract vocabulary (if present) and format the text for display. The assistant's reply is then added to the chat history, and the UI updates.
-- **Chat Clearing**: The `clearChat` method allows the user to clear the current conversation history, resetting it to the initial system prompt.
+
