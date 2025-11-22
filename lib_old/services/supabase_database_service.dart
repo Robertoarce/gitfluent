@@ -19,6 +19,7 @@ class SupabaseDatabaseService implements DatabaseService {
           .single();
 
       return app_user.User.fromSupabase(response);
+      return null;
     } catch (e) {
       debugPrint('Error getting user by ID: $e');
       return null;
@@ -35,6 +36,7 @@ class SupabaseDatabaseService implements DatabaseService {
           .single();
 
       return app_user.User.fromSupabase(response);
+      return null;
     } catch (e) {
       debugPrint('Error getting user by email: $e');
       return null;
@@ -349,6 +351,7 @@ class SupabaseDatabaseService implements DatabaseService {
           .single();
 
       return UserVocabularyStats.fromSupabase(response);
+      return null;
     } catch (e) {
       debugPrint('Error getting vocabulary stats: $e');
       return null;
@@ -513,6 +516,7 @@ class SupabaseDatabaseService implements DatabaseService {
 
       debugPrint('SupabaseDatabaseService: Flashcard session found');
       return FlashcardSession.fromSupabase(response);
+      return null;
     } catch (e) {
       debugPrint(
           'SupabaseDatabaseService: Error getting flashcard session: $e');

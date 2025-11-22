@@ -88,7 +88,10 @@ class UserVocabularyItem {
           Map<String, dynamic>.from(data);
 
       // Debug logs for tracing
-      // debugPrint('[UserVocabularyItem.fromSupabase] Processing item: ${processedData['word']}');
+      debugPrint(
+          '[UserVocabularyItem.fromSupabase] Processing item: ${processedData['word']}');
+      debugPrint(
+          '[UserVocabularyItem.fromSupabase] Raw data for ${processedData['word']}: $data');
 
       // Ensure translations is a List<String>
       if (processedData['translations'] != null) {
@@ -152,6 +155,8 @@ class UserVocabularyItem {
       } else {
         processedData['last_seen'] = DateTime.now().toIso8601String();
       }
+      debugPrint(
+          '[UserVocabularyItem.fromSupabase] Processed last_seen: ${processedData['last_seen']}');
 
       // For first_learned
       dynamic firstLearnedValue = processedData['first_learned'];
@@ -172,6 +177,8 @@ class UserVocabularyItem {
       } else {
         processedData['first_learned'] = DateTime.now().toIso8601String();
       }
+      debugPrint(
+          '[UserVocabularyItem.fromSupabase] Processed first_learned: ${processedData['first_learned']}');
 
       // For next_review
       dynamic nextReviewValue = processedData['next_review'];
@@ -192,6 +199,8 @@ class UserVocabularyItem {
       } else {
         processedData['next_review'] = null; // nextReview can be null
       }
+      debugPrint(
+          '[UserVocabularyItem.fromSupabase] Processed next_review: ${processedData['next_review']}');
 
       // Ensure other required fields are present and correctly typed
       if (!processedData.containsKey('id') || processedData['id'] == null) {
@@ -215,6 +224,14 @@ class UserVocabularyItem {
       if (!processedData.containsKey('language') ||
           processedData['language'] == null) {
         processedData['language'] = 'en';
+      }
+      if (!processedData.containsKey('translations') ||
+          processedData['translations'] == null) {
+        processedData['translations'] = <String>[];
+      }
+      if (!processedData.containsKey('forms') ||
+          processedData['forms'] == null) {
+        processedData['forms'] = <String>[];
       }
       if (!processedData.containsKey('difficulty_level') ||
           processedData['difficulty_level'] == null) {
@@ -246,6 +263,8 @@ class UserVocabularyItem {
 
       final userVocabularyItem = UserVocabularyItem.fromJson(
           processedData); // Use the generated fromJson
+      debugPrint(
+          '[UserVocabularyItem.fromSupabase] Successfully parsed UserVocabularyItem for ${userVocabularyItem.word}');
       return userVocabularyItem;
     } catch (e) {
       debugPrint(
@@ -259,6 +278,9 @@ class UserVocabularyItem {
       final String baseForm = data['base_form']?.toString() ?? word;
       final String wordType = data['word_type']?.toString() ?? 'unknown';
       final String language = data['language']?.toString() ?? 'en';
+
+      debugPrint(
+          '[UserVocabularyItem.fromSupabase] Returning fallback UserVocabularyItem due to error. Word: $word');
 
       return UserVocabularyItem(
         id: id,

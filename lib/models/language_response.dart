@@ -1,10 +1,20 @@
-// Model class for the language learning response in JSON format
+import 'package:json_annotation/json_annotation.dart';
+
+part 'language_response.g.dart';
+
+@JsonSerializable()
 class LanguageResponse {
   final List<String> corrections;
+  @JsonKey(name: 'target_language_sentence')
   final String targetLanguageSentence;
+  @JsonKey(name: 'native_language_translation')
   final String nativeLanguageTranslation;
-  final List<VocabularyBreakdown> vocabularyBreakdown;
+  @JsonKey(name: 'vocabulary_breakdown')
+  final List<VocabularyItem> vocabularyBreakdown;
+  @JsonKey(name: 'additional_context')
   final String? additionalContext;
+  @JsonKey(name: 'languages_used')
+  final List<String>? languagesUsed;
 
   LanguageResponse({
     required this.corrections,
@@ -12,39 +22,25 @@ class LanguageResponse {
     required this.nativeLanguageTranslation,
     required this.vocabularyBreakdown,
     this.additionalContext,
+    this.languagesUsed,
   });
 
-  factory LanguageResponse.fromJson(Map<String, dynamic> json) {
-    return LanguageResponse(
-      corrections: List<String>.from(json['corrections'] ?? []),
-      targetLanguageSentence: json['target_language_sentence'] ?? '',
-      nativeLanguageTranslation: json['native_language_translation'] ?? '',
-      vocabularyBreakdown: (json['vocabulary_breakdown'] as List?)
-          ?.map((item) => VocabularyBreakdown.fromJson(item))
-          .toList() ?? [],
-      additionalContext: json['additional_context'],
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'corrections': corrections,
-      'target_language_sentence': targetLanguageSentence,
-      'native_language_translation': nativeLanguageTranslation,
-      'vocabulary_breakdown': vocabularyBreakdown.map((v) => v.toJson()).toList(),
-      'additional_context': additionalContext,
-    };
-  }
+  factory LanguageResponse.fromJson(Map<String, dynamic> json) =>
+      _$LanguageResponseFromJson(json);
+  Map<String, dynamic> toJson() => _$LanguageResponseToJson(this);
 }
 
-class VocabularyBreakdown {
+@JsonSerializable()
+class VocabularyItem {
   final String word;
+  @JsonKey(name: 'word_type')
   final String wordType;
+  @JsonKey(name: 'base_form')
   final String baseForm;
   final List<String> forms;
   final List<String> translations;
 
-  VocabularyBreakdown({
+  VocabularyItem({
     required this.word,
     required this.wordType,
     required this.baseForm,
@@ -52,23 +48,7 @@ class VocabularyBreakdown {
     required this.translations,
   });
 
-  factory VocabularyBreakdown.fromJson(Map<String, dynamic> json) {
-    return VocabularyBreakdown(
-      word: json['word'] ?? '',
-      wordType: json['word_type'] ?? '',
-      baseForm: json['base_form'] ?? '',
-      forms: List<String>.from(json['forms'] ?? []),
-      translations: List<String>.from(json['translations'] ?? []),
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'word': word,
-      'word_type': wordType,
-      'base_form': baseForm,
-      'forms': forms,
-      'translations': translations,
-    };
-  }
-} 
+  factory VocabularyItem.fromJson(Map<String, dynamic> json) =>
+      _$VocabularyItemFromJson(json);
+  Map<String, dynamic> toJson() => _$VocabularyItemToJson(this);
+}

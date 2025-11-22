@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:email_validator/email_validator.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
-import 'package:flutter/gestures.dart';
+import 'package:flutter/gestures.dart'; // Added for TapGestureRecognizer
 import '../services/user_service.dart';
 
 class AuthScreen extends StatefulWidget {
@@ -425,15 +425,15 @@ class _AuthScreenState extends State<AuthScreen>
             decoration: InputDecoration(
               labelText: 'Password',
               prefixIcon: const Icon(Icons.lock_outlined),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
               suffixIcon: IconButton(
                 icon: Icon(_obscureRegisterPassword
                     ? Icons.visibility
                     : Icons.visibility_off),
                 onPressed: () => setState(
                     () => _obscureRegisterPassword = !_obscureRegisterPassword),
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
               ),
             ),
             validator: (value) {
@@ -453,15 +453,15 @@ class _AuthScreenState extends State<AuthScreen>
             decoration: InputDecoration(
               labelText: 'Confirm Password',
               prefixIcon: const Icon(Icons.lock_outlined),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
               suffixIcon: IconButton(
                 icon: Icon(_obscureConfirmPassword
                     ? Icons.visibility
                     : Icons.visibility_off),
                 onPressed: () => setState(
                     () => _obscureConfirmPassword = !_obscureConfirmPassword),
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
               ),
             ),
             validator: (value) {
@@ -598,9 +598,8 @@ class _AuthScreenState extends State<AuthScreen>
       _loginPasswordController.text,
     );
 
-    // Navigation is handled by the AuthWrapper in main.dart based on auth state
-    if (!result.success && mounted) {
-      // Error is already set in userService and displayed by Consumer
+    if (result.success && mounted) {
+      Navigator.of(context).pushReplacementNamed('/home');
     }
   }
 
@@ -615,9 +614,8 @@ class _AuthScreenState extends State<AuthScreen>
       _registerLastNameController.text.trim(),
     );
 
-    // Navigation is handled by the AuthWrapper in main.dart based on auth state
-    if (!result.success && mounted) {
-      // Error is already set in userService and displayed by Consumer
+    if (result.success && mounted) {
+      Navigator.of(context).pushReplacementNamed('/home');
     }
   }
 

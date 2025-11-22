@@ -42,4 +42,4 @@ abstract class AuthService {
   // Initialization and cleanup
   Future<void> initialize();
   Future<void> cleanup();
-}
+} 

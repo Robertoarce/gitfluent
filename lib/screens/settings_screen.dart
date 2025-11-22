@@ -1,402 +1,177 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../services/settings_service.dart';
-import '../services/language_settings_service.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 import '../services/user_service.dart';
 
-class SettingsScreen extends StatelessWidget {
+class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
 
   @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  @override
   Widget build(BuildContext context) {
+    final userService = context.watch<UserService>();
+    final currentUser = userService.currentUser;
+
+    if (currentUser == null) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
     return Scaffold(
+      backgroundColor: Colors.grey[50],
       appBar: AppBar(
         title: const Text('Settings'),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        centerTitle: true,
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          _buildAIProviderSection(context),
-          const Divider(height: 32),
-          _buildLanguageSection(context),
-          const Divider(height: 32),
-          _buildAnalysisLimitsSection(context),
+          // Profile Section
+          _buildSectionHeader('Profile'),
+          ShadCard(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 30,
+                  backgroundColor: const Color(0xFF6B47ED),
+                  child: Text(
+                    currentUser.email.substring(0, 1).toUpperCase(),
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        currentUser.email,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Member since ${currentUser.createdAt.year}',
+                        style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          // Language Settings
+          _buildSectionHeader('Language Preferences'),
+          ShadCard(
+            padding: EdgeInsets.zero,
+            child: Column(
+              children: [
+                _buildLanguageTile(
+                  title: 'Target Language',
+                  subtitle: 'The language you are learning',
+                  value: currentUser.targetLanguage,
+                  onChanged: (value) {
+                    userService.updateLanguagePreferences(
+                      targetLanguage: value,
+                      nativeLanguage: currentUser.nativeLanguage,
+                    );
+                  },
+                ),
+                const Divider(height: 1),
+                _buildLanguageTile(
+                  title: 'Native Language',
+                  subtitle: 'Your primary language',
+                  value: currentUser.nativeLanguage,
+                  onChanged: (value) {
+                    userService.updateLanguagePreferences(
+                      targetLanguage: currentUser.targetLanguage,
+                      nativeLanguage: value,
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          // Account Actions
+          _buildSectionHeader('Account'),
+          ShadCard(
+            padding: EdgeInsets.zero,
+            child: Column(
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.logout, color: Colors.red),
+                  title: const Text('Sign Out', style: TextStyle(color: Colors.red)),
+                  onTap: () async {
+                    await userService.signOut();
+                    // Navigation is handled by AuthWrapper in main.dart
+                  },
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildAIProviderSection(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'AI Provider',
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 16),
-        Consumer<SettingsService>(
-          builder: (context, settings, child) {
-            return Column(
-              children: AIProvider.values.map((provider) {
-                return RadioListTile<AIProvider>(
-                  title: Text(settings.getProviderName(provider)),
-                  subtitle: Text(
-                      'API Key: ${settings.getProviderApiKeyName(provider)}'),
-                  value: provider,
-                  groupValue: settings.currentProvider,
-                  onChanged: (AIProvider? value) {
-                    if (value != null) {
-                      settings.setProvider(value);
-                    }
-                  },
-                );
-              }).toList(),
-            );
-          },
-        ),
-      ],
-    );
-  }
-
-  Widget _buildLanguageSection(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Language Settings',
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 16),
-        Consumer<LanguageSettings>(
-          builder: (context, languageSettings, child) {
-            return Column(
-              children: [
-                // Debug info section
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  margin: const EdgeInsets.only(bottom: 16),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.shade50,
-                    border: Border.all(color: Colors.blue.shade200),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        '🔍 Debug: Current Language Settings',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.blue,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                          'Target: ${languageSettings.targetLanguage?.code} (${languageSettings.targetLanguage?.name ?? 'None'})'),
-                      Text(
-                          'Native: ${languageSettings.nativeLanguage?.code} (${languageSettings.nativeLanguage?.name ?? 'None'})'),
-                      Text(
-                          'Support 1: ${languageSettings.supportLanguage1?.code} (${languageSettings.supportLanguage1?.name ?? 'None'})'),
-                      Text(
-                          'Support 2: ${languageSettings.supportLanguage2?.code} (${languageSettings.supportLanguage2?.name ?? 'None'})'),
-                      const SizedBox(height: 4),
-                      const Text(
-                        'If these show default values (it/en/es/fr) and you have different settings in Supabase, there might be a loading issue.',
-                        style: TextStyle(
-                            fontSize: 12, fontStyle: FontStyle.italic),
-                      ),
-                      const SizedBox(height: 8),
-                      ElevatedButton.icon(
-                        onPressed: () async {
-                          final userService = context.read<UserService>();
-                          if (userService.isLoggedIn &&
-                              userService.currentUser != null) {
-                            debugPrint(
-                                '🔄 Manual refresh: Loading language preferences from Supabase...');
-                            try {
-                              await languageSettings.loadFromUserPreferences(
-                                  userService.currentUser!.preferences);
-                              if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text(
-                                        '✅ Language preferences refreshed from Supabase'),
-                                    backgroundColor: Colors.green,
-                                  ),
-                                );
-                              }
-                            } catch (e) {
-                              debugPrint('❌ Manual refresh failed: $e');
-                              if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text('❌ Failed to refresh: $e'),
-                                    backgroundColor: Colors.red,
-                                  ),
-                                );
-                              }
-                            }
-                          } else {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                    '⚠️ Please log in to refresh from Supabase'),
-                                backgroundColor: Colors.orange,
-                              ),
-                            );
-                          }
-                        },
-                        icon: const Icon(Icons.refresh, size: 16),
-                        label: const Text('Refresh from Supabase'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blue.shade600,
-                          foregroundColor: Colors.white,
-                          textStyle: const TextStyle(fontSize: 12),
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 6),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                // Supabase preferences debug section
-                Consumer<UserService>(
-                  builder: (context, userService, child) {
-                    if (!userService.isLoggedIn ||
-                        userService.currentUser == null) {
-                      return Container(
-                        padding: const EdgeInsets.all(12),
-                        margin: const EdgeInsets.only(bottom: 16),
-                        decoration: BoxDecoration(
-                          color: Colors.orange.shade50,
-                          border: Border.all(color: Colors.orange.shade200),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Text(
-                          '⚠️ Not logged in - Cannot show Supabase preferences',
-                          style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: Colors.orange),
-                        ),
-                      );
-                    }
-
-                    final prefs = userService.currentUser!.preferences;
-                    return Container(
-                      padding: const EdgeInsets.all(12),
-                      margin: const EdgeInsets.only(bottom: 16),
-                      decoration: BoxDecoration(
-                        color: Colors.green.shade50,
-                        border: Border.all(color: Colors.green.shade200),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            '📊 Debug: Raw Supabase User Preferences',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: Colors.green,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text('Target Language: "${prefs.targetLanguage}"'),
-                          Text('Native Language: "${prefs.nativeLanguage}"'),
-                          Text(
-                              'Support Language 1: "${prefs.supportLanguage1 ?? 'null'}"'),
-                          Text(
-                              'Support Language 2: "${prefs.supportLanguage2 ?? 'null'}"'),
-                          const SizedBox(height: 4),
-                          const Text(
-                            'These are the raw values from your Supabase user profile. They should match the Language Settings above.',
-                            style: TextStyle(
-                                fontSize: 12, fontStyle: FontStyle.italic),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                ),
-
-                _buildLanguageDropdown(
-                  context: context,
-                  label: 'Language to Learn',
-                  value: languageSettings.targetLanguage,
-                  onChanged: (Language? language) {
-                    if (language != null) {
-                      languageSettings.setTargetLanguage(language);
-                    }
-                  },
-                ),
-                const SizedBox(height: 16),
-                _buildLanguageDropdown(
-                  context: context,
-                  label: 'Your Language',
-                  value: languageSettings.nativeLanguage,
-                  onChanged: (Language? language) {
-                    if (language != null) {
-                      languageSettings.setNativeLanguage(language);
-                    }
-                  },
-                ),
-                const SizedBox(height: 16),
-                _buildLanguageDropdown(
-                  context: context,
-                  label: 'Support Language 1',
-                  value: languageSettings.supportLanguage1,
-                  onChanged: (Language? language) {
-                    languageSettings.setSupportLanguage1(language);
-                  },
-                  allowNull: true,
-                ),
-                const SizedBox(height: 16),
-                _buildLanguageDropdown(
-                  context: context,
-                  label: 'Support Language 2',
-                  value: languageSettings.supportLanguage2,
-                  onChanged: (Language? language) {
-                    languageSettings.setSupportLanguage2(language);
-                  },
-                  allowNull: true,
-                ),
-              ],
-            );
-          },
-        ),
-      ],
-    );
-  }
-
-  Widget _buildLanguageDropdown({
-    required BuildContext context,
-    required String label,
-    required Language? value,
-    required void Function(Language?) onChanged,
-    bool allowNull = false,
-  }) {
-    return InputDecorator(
-      decoration: InputDecoration(
-        labelText: label,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<Language>(
-          value: value,
-          isExpanded: true,
-          hint: Text('Select $label'),
-          items: [
-            if (allowNull)
-              const DropdownMenuItem<Language>(
-                value: null,
-                child: Text('None'),
-              ),
-            ...LanguageSettings.availableLanguages.map((language) {
-              return DropdownMenuItem<Language>(
-                value: language,
-                child: Text(language.name),
-              );
-            }),
-          ],
-          onChanged: onChanged,
+  Widget _buildSectionHeader(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8, left: 4),
+      child: Text(
+        title,
+        style: TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.bold,
+          color: Colors.grey[600],
+          letterSpacing: 0.5,
         ),
       ),
     );
   }
 
-  Widget _buildAnalysisLimitsSection(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Analysis Limits',
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 16),
-        Consumer<SettingsService>(
-          builder: (context, settings, child) {
-            return Column(
-              children: [
-                _buildLimitSlider(
-                  context: context,
-                  label: 'Maximum Verbs',
-                  value: settings.maxVerbs.toDouble(),
-                  min: 1,
-                  max: SettingsService.maxVerbsLimit.toDouble(),
-                  defaultValue: SettingsService.defaultMaxVerbs,
-                  onChanged: (value) => settings.setMaxVerbs(value.round()),
-                ),
-                const SizedBox(height: 16),
-                _buildLimitSlider(
-                  context: context,
-                  label: 'Maximum Nouns',
-                  value: settings.maxNouns.toDouble(),
-                  min: 1,
-                  max: SettingsService.maxNounsLimit.toDouble(),
-                  defaultValue: SettingsService.defaultMaxNouns,
-                  onChanged: (value) => settings.setMaxNouns(value.round()),
-                ),
-              ],
-            );
-          },
-        ),
-      ],
-    );
-  }
-
-  Widget _buildLimitSlider({
-    required BuildContext context,
-    required String label,
-    required double value,
-    required double min,
-    required double max,
-    required int defaultValue,
-    required ValueChanged<double> onChanged,
+  Widget _buildLanguageTile({
+    required String title,
+    required String subtitle,
+    required String value,
+    required Function(String) onChanged,
   }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              label,
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            Text(
-              '${value.round()} (Default: $defaultValue)',
-              style: TextStyle(
-                color: Theme.of(context).colorScheme.secondary,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Slider(
-          value: value,
-          min: min,
-          max: max,
-          divisions: (max - min).round(),
-          label: value.round().toString(),
-          onChanged: onChanged,
-        ),
-      ],
+    return ListTile(
+      title: Text(title),
+      subtitle: Text(subtitle),
+      trailing: DropdownButton<String>(
+        value: value,
+        underline: const SizedBox(),
+        items: const [
+          DropdownMenuItem(value: 'en', child: Text('English')),
+          DropdownMenuItem(value: 'es', child: Text('Spanish')),
+          DropdownMenuItem(value: 'fr', child: Text('French')),
+          DropdownMenuItem(value: 'de', child: Text('German')),
+          DropdownMenuItem(value: 'it', child: Text('Italian')),
+        ],
+        onChanged: (newValue) {
+          if (newValue != null && newValue != value) {
+            onChanged(newValue);
+          }
+        },
+      ),
     );
   }
 }
