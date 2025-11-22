@@ -91,7 +91,7 @@ class SettingsService extends ChangeNotifier {
   String? getProviderApiKeyName(AIProvider provider) {
     switch (provider) {
       case AIProvider.gemini:
-        return 'GEMINI_API_KEY';
+        return 'GOOGLE_API_KEY';
       case AIProvider.openai:
         return 'OPENAI_API_KEY';
     }

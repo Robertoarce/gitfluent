@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+
 import 'package:flutter/foundation.dart'; // Add this import for kDebugMode
 import 'config/custom_theme.dart';
 import 'services/chat_service.dart';
@@ -10,9 +10,12 @@ import 'services/settings_service.dart';
 import 'services/language_settings_service.dart';
 import 'services/vocabulary_service.dart';
 import 'services/flashcard_service.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'services/user_service.dart';
-import 'services/supabase_auth_service.dart';
-import 'services/supabase_database_service.dart';
+import 'services/firebase_auth_service.dart';
+import 'services/firebase_database_service.dart';
+import 'services/auth_service.dart';
+import 'services/database_service.dart';
 import 'models/user.dart' as app_user;
 import 'screens/chat_screen.dart';
 import 'screens/conversation_screen.dart';
@@ -20,7 +23,6 @@ import 'screens/auth_screen.dart';
 import 'screens/user_vocabulary_screen.dart';
 import 'screens/flashcard_start_screen.dart';
 import 'screens/settings_screen.dart';
-import 'config/supabase_config.dart';
 import 'utils/app_navigation.dart';
 import 'utils/debug_helper.dart';
 import 'widgets/debug_overlay.dart';
@@ -36,43 +38,18 @@ void main() async {
     DebugHelper.printDebug('config', 'Environment loaded successfully');
 
     // Check if required environment variables are present
-    final url = dotenv.env['SUPABASE_URL'];
-    final anonKey = dotenv.env['SUPABASE_ANON_KEY'];
-    final serviceKey = dotenv.env['SUPABASE_SERVICE_ROLE_KEY'];
+    final googleApiKey = dotenv.env['GOOGLE_API_KEY'];
 
-    DebugHelper.printDebug('config', 'Environment check:');
-    DebugHelper.printDebug(
-        'config', ' - SUPABASE_URL: ${url != null ? 'present' : 'MISSING!'}');
-    DebugHelper.printDebug('config',
-        ' - SUPABASE_ANON_KEY: ${anonKey != null ? 'present' : 'MISSING!'}');
-    DebugHelper.printDebug('config',
-        ' - SUPABASE_SERVICE_ROLE_KEY: ${serviceKey != null ? 'present' : 'MISSING!'}');
-
-    if (url == null || anonKey == null || serviceKey == null) {
+    if (googleApiKey == null) {
       DebugHelper.printDebug('config',
-          'WARNING: One or more required environment variables are missing!');
-      DebugHelper.printDebug(
-          'config', 'This will cause issues with Supabase functionality.');
+          'WARNING: GOOGLE_API_KEY is missing! AI features will not work.');
     }
-  } catch (e) {
-    DebugHelper.printDebug('config', 'Error loading .env file: $e');
-    DebugHelper.printDebug(
-        'config', 'This will cause issues with Supabase functionality.');
-  }
 
-  // Log Supabase configuration
-  SupabaseConfig.logConfigInfo();
-
-  // Initialize Supabase
-  try {
-    DebugHelper.printDebug('config', 'Initializing Supabase...');
-    await Supabase.initialize(
-      url: SupabaseConfig.projectUrl,
-      anonKey: SupabaseConfig.anonKey,
-    );
-    DebugHelper.printDebug('config', 'Supabase initialized successfully');
+    // Initialize Firebase
+    await Firebase.initializeApp();
+    DebugHelper.printDebug('config', 'Firebase initialized successfully');
   } catch (e) {
-    DebugHelper.printDebug('config', 'Error initializing Supabase: $e');
+    DebugHelper.printDebug('config', 'Error initializing app: $e');
   }
 
   runApp(const MyApp());
@@ -95,27 +72,17 @@ class MyApp extends StatelessWidget {
         ),
 
         // User system services
-        Provider<SupabaseAuthService>(
-          create: (_) {
-            debugPrint(
-                '🚀 main.dart Provider: Creating SupabaseAuthService...');
-            final authService = SupabaseAuthService();
-            debugPrint('🚀 main.dart Provider: About to call initialize()...');
-            authService.initialize();
-            debugPrint(
-                '🚀 main.dart Provider: initialize() call completed (async)');
-            return authService;
-          },
+        Provider<AuthService>(
+          create: (_) => FirebaseAuthService(),
         ),
-        Provider<SupabaseDatabaseService>(
-          create: (_) => SupabaseDatabaseService(),
+        Provider<DatabaseService>(
+          create: (_) => FirebaseDatabaseService(),
         ),
-        ChangeNotifierProxyProvider2<SupabaseAuthService,
-            SupabaseDatabaseService, UserService>(
+        ChangeNotifierProxyProvider2<AuthService, DatabaseService, UserService>(
           create: (context) {
             final userService = UserService(
-              authService: context.read<SupabaseAuthService>(),
-              databaseService: context.read<SupabaseDatabaseService>(),
+              authService: context.read<AuthService>(),
+              databaseService: context.read<DatabaseService>(),
             );
             // Auto-login in debug mode
             if (kDebugMode) {
@@ -413,7 +380,7 @@ class _AppHomeState extends State<AppHome> {
       // Check premium status from database to ensure it's up to date
       if (userService.currentUser != null) {
         final isPremium = await context
-            .read<SupabaseDatabaseService>()
+            .read<DatabaseService>()
             .isPremiumUser(userService.currentUser!.id);
         if (isPremium != userService.isPremium) {
           debugPrint('Updating premium status from database: $isPremium');
@@ -460,14 +427,14 @@ class _AppHomeState extends State<AppHome> {
       try {
         final items = await vocabularyService.getUserVocabulary();
         debugPrint(
-            '✅ AppHome._initializeServices: Loaded ${items.length} vocabulary items from Supabase');
+            '✅ AppHome._initializeServices: Loaded ${items.length} vocabulary items from Database');
       } catch (e) {
         debugPrint(
-            '❌ AppHome._initializeServices: Error loading vocabulary from Supabase: $e');
+            '❌ AppHome._initializeServices: Error loading vocabulary from Database: $e');
       }
     } else {
       debugPrint(
-          '⚠️ AppHome._initializeServices: User not logged in - skipping Supabase data loading');
+          '⚠️ AppHome._initializeServices: User not logged in - skipping data loading');
     }
   }
 

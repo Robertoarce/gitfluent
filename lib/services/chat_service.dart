@@ -286,11 +286,11 @@ class ChatService extends ChangeNotifier {
           break;
 
         case AIProvider.gemini:
-          final apiKey = dotenv.env['GEMINI_API_KEY'];
+          final apiKey = dotenv.env['GOOGLE_API_KEY'];
           if (apiKey == null || apiKey.isEmpty) {
             _messages.add(Message(
               content:
-                  'Error: Gemini API key not found in .env file. Please add GEMINI_API_KEY to your .env file.',
+                  'Error: Google API key not found in .env file. Please add GOOGLE_API_KEY to your .env file.',
               isUser: false,
             ));
             notifyListeners();
@@ -304,7 +304,7 @@ class ChatService extends ChangeNotifier {
               maxOutputTokens: _config?.maxTokens ?? 2048,
             ),
           );
-          debugPrint('Gemini initialized successfully');
+          debugPrint('Gemini initialized successfully with GOOGLE_API_KEY');
           break;
       }
 
